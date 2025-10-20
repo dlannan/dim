@@ -486,6 +486,42 @@ end
 
 ---------------------------------------------------------------------------------------
 
+dirtools.get_fileinfo = function( file_path )
+    
+    local cmd = string.format('for %%I in ("%s") do @echo %%~zI %%~tI %%~aI', file_path)
+    local f = io.popen(cmd)
+    local out = f:read("*a")
+    f:close()
+
+    out = out:gsub("[\r\n]+", "")
+    local size, mod, attrs = out:match("^(.-) (.+) (.+)$")
+    if size == nil then return nil, "not found" end
+
+    -- Determine type from attributes
+    local is_dir = attrs:find("d") ~= nil
+    local is_archive = attrs:find("a") ~= nil
+    local is_readonly = attrs:find("r") ~= nil
+    local is_hidden = attrs:find("h") ~= nil
+
+    local filetype = "file"
+    if(is_dir) then filetype = "dir" end
+
+    -- print(file_path, size, mod, filetype)
+
+    return {
+        path = file_path,
+        size = tonumber(size) or 0,
+        modified = mod,        -- "MM/DD/YYYY HH:MM"
+        attrs = attrs,         -- raw attributes like "d-----"
+        type = filetype,
+        archive = is_archive,
+        readonly = is_readonly,
+        hidden = is_hidden,
+    }
+end
+
+---------------------------------------------------------------------------------------
+
 return dirtools
 
 ---------------------------------------------------------------------------------------
