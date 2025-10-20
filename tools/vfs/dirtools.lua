@@ -467,6 +467,15 @@ dirtools.change_folder = function( path, child )
 end
 
 ---------------------------------------------------------------------------------------
+dirtools.change_dir = function( path )
+    if(ffi.os == "Windows") then 
+        os.execute("chdir /D "..path)
+    else 
+        os.execute("cd "..path)
+    end
+end
+
+---------------------------------------------------------------------------------------
 -- By default the paths are added
 
 dirtools.init = function( base_path )
