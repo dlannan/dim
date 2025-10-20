@@ -57,7 +57,7 @@ local function draw_items(self, items, x, y, draw_fn)
   local color = style.text
 
   for _, item in ipairs(items) do
-    if type(item) == "userdata" then
+    if type(item) == "table" and item.font then
       font = item
     elseif type(item) == "table" then
       color = item

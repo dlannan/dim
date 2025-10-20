@@ -32,8 +32,8 @@ print(EXEFILE)
 
 -- --------------------------------------------------------------------------------------
 -- Load in the methods lites registers for rendering and io and such.
-
-require("src.api.api")
+require("src.system")
+require("src.renderer")
 
 local core
 
@@ -104,9 +104,25 @@ local function init()
 
     local hwnd = sapp.sapp_win32_get_hwnd()
     ffi.C.ShowWindow(hwnd, SW_MAXIMIZE)
+    SCALE = sapp.sapp_dpi_scale()
 end
 
 -- --------------------------------------------------------------------------------------
+-- Global? yes.. so lite can access it.
+app_has_focus = false 
+
+LITE_EVENT = {}
+LITE_EVENT[sapp.SAPP_EVENTTYPE_CHAR]        = "inputtext"
+    
+LITE_EVENT[sapp.SAPP_EVENTTYPE_KEY_DOWN]    = "keypressed"
+LITE_EVENT[sapp.SAPP_EVENTTYPE_KEY_UP]      = "keyreleased"
+
+LITE_EVENT[sapp.SAPP_EVENTTYPE_MOUSE_DOWN]  = "mousepressed"
+LITE_EVENT[sapp.SAPP_EVENTTYPE_MOUSE_UP]    = "mousereleased"
+
+LITE_EVENT[sapp.SAPP_EVENTTYPE_MOUSE_MOVE]  = "mousemoved"
+LITE_EVENT[sapp.SAPP_EVENTTYPE_MOUSE_SCROLL] = "mousewheel"
+
 
 local function input(event) 
 
@@ -115,13 +131,67 @@ local function input(event)
         local w         = sapp.sapp_widthf()
         local h         = sapp.sapp_heightf()   
         -- core resize?
-    end
+    elseif ev.type == sapp.SAPP_EVENTTYPE_FOCUSED then
+        sapp.sapp_show_mouse(true)
+        app_has_focus = true
+    elseif ev.type == sapp.SAPP_EVENTTYPE_UNFOCUSED then
+        sapp.sapp_show_mouse(false)
+        app_has_focus = false
+    else 
+        nk.snk_handle_event(event)
+    end  
 
+    if event.type == sapp.SAPP_EVENTTYPE_MOUSE_DOWN or
+        event.type == sapp.SAPP_EVENTTYPE_MOUSE_UP then
+
+        local x, y = event.mouse_x, event.mouse_y
+        local button = event.button
+        system.push_event({
+            type = LITE_EVENT[event.type],
+            a = x, b = y, c = button, d = -1
+        })    
+
+    elseif event.type == sapp.SAPP_EVENTTYPE_MOUSE_MOVE then
+    
+        local x, y = event.mouse_x, event.mouse_y
+        local dx, dy = event.mouse_dx, event.mouse_dy
+    
+        -- print("Mouse event at", x, y, "delta", dx, dy, "button", button)
+        system.push_event({
+            type = LITE_EVENT[event.type],
+            a = x, b = y, c = dx, d = dy
+        })    
+
+    elseif event.type == sapp.SAPP_EVENTTYPE_MOUSE_SCROLL then
+    
+        local x, y = event.mouse_x, event.mouse_y
+        local dx, dy = event.mouse_dx, event.mouse_dy
+    
+        -- print("Mouse event at", x, y, "delta", dx, dy, "button", button)
+        system.push_event({
+            type = LITE_EVENT[event.type],
+            a = x, b = y, c = dx, d = dy
+        })    
+
+    elseif event.type == sapp.SAPP_EVENTTYPE_KEY_DOWN or
+        event.type == sapp.SAPP_EVENTTYPE_KEY_UP or 
+        event.type == sapp.SAPP_EVENTTYPE_CHAR then
+    
+        local key = event.key_code
+        local char = event.char_code
+        local mods = event.modifiers
+    
+        print("Key event", key, "char", char, "mods", mods)
+        system.push_event({
+            type = LITE_EVENT[event.type],
+            a = key, b = char, c = mods, d = -1
+        })    
+    end
 end
 
 -- -----------------------------------------------------------------------------------------
 
-local function core_init()
+local function core_init(ctx)
     SCALE = tonumber(os.getenv("LITE_SCALE")) or SCALE
     PATHSEP = package.config:sub(1, 1)
     EXEDIR = EXEFILE:match("^(.+)[/\\\\].*$")
@@ -129,6 +199,20 @@ local function core_init()
     package.path = EXEDIR .. '/data/?/init.lua;' .. package.path
     core = require('core')
     core.init()
+end
+
+-- -----------------------------------------------------------------------------------------
+
+local winrect       = ffi.new("struct nk_rect[1]", {{0, 0, 1000, 600}})
+local function core_run(ctx)
+
+    winrect[0].h = sapp.sapp_height()
+    local window_flags =  bit.bor( nk.NK_WINDOW_MOVABLE, nk.NK_WINDOW_NO_SCROLLBAR, nk.NK_WINDOW_MINIMIZABLE) 
+    if (nk.nk_begin(ctx, "Dim", winrect[0], window_flags) == true) then
+        core.run()
+        nk.nk_end(ctx)
+    end
+    return not nk.nk_window_is_closed(ctx, "Overview")    
 end
 
 -- --------------------------------------------------------------------------------------
@@ -144,12 +228,12 @@ local function frame()
     local ctx = nk.snk_new_frame()
 
     renderer.ctx    = ctx 
-    
+
     if(core == nil) then     
-        ErrorCheck( pcall( core_init, w, h ) )
+        ErrorCheck( pcall( core_init ) )
         nk.nk_style_show_cursor(ctx)   
     else
-        ErrorCheck( pcall( core.run ) )
+        ErrorCheck( pcall( core_run, ctx ) )
     end
 
     -- // the sokol_gfx draw pass
