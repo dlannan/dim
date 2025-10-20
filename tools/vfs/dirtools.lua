@@ -94,6 +94,12 @@ end
 
 ---------------------------------------------------------------------------------------
 
+dirtools.add_init_package_path = function( new_path )
+    package.path    = package.path..";"..new_path.."/init.lua"
+end
+
+---------------------------------------------------------------------------------------
+
 dirtools.compare_paths = function(p1, p2)
     -- Remove  minus, they seem to cause the most problems 
     p1 = string.gsub(p1, "%-", "_")
@@ -243,9 +249,11 @@ dirtools.get_app_path = function( expected_root_folder )
     if(ffi.os == "Windows") then 
         local cmdh = io.popen("cd", "r")
         if(cmdh) then base_dir = cmdh:read("*a"); cmdh:close() end
+        base_dir = string.gsub(base_dir, "\n", "")
     else 
         local cmdh = io.popen("pwd", "r")
         if(cmdh) then base_dir = cmdh:read("*a"); cmdh:close() end
+        base_dir = string.gsub(base_dir, "\n", "")
     end
 
     if(expected_root_folder) then
