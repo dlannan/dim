@@ -364,7 +364,7 @@ function core.step()
   local mouse_moved = false
   local mouse = { x = 0, y = 0, dx = 0, dy = 0 }
 
-  for type, a,b,c,d in system.poll_event do
+  for type, a,b,c,d in system.poll_event() do
     if type == "mousemoved" then
       mouse_moved = true
       mouse.x, mouse.y = a, b
@@ -382,7 +382,6 @@ function core.step()
   end
 
   local width, height = renderer.get_size()
-
   -- update
   core.root_view.size.x, core.root_view.size.y = width, height
   core.root_view:update()
@@ -449,7 +448,8 @@ end)
 
 
 function core.run()
-  while true do
+
+  -- while true do
     core.frame_start = system.get_time()
     local did_redraw = core.step()
     run_threads()
@@ -458,7 +458,7 @@ function core.run()
     end
     local elapsed = system.get_time() - core.frame_start
     system.sleep(math.max(0, 1 / config.fps - elapsed))
-  end
+  -- end
 end
 
 

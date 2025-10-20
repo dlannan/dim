@@ -51,25 +51,32 @@ system = {
 	event_queue 		= {}
 }
 
-system.poll_event         = function() 
-	local i = 0
-	return function()
-		i = i + 1
-		local ev = system.event_queue[i]
-		if ev then
-			return ev.type, ev.a, ev.b, ev.c, ev.d
-		else
-			return nil
-		end
-	end
+system.push_event = function( event )
+
+	tinsert(system.event_queue, event)
 end
+
+
+system.poll_event = function()
+    local i = 0
+    local events = system.event_queue
+    -- The iterator function to be called by 'for' with state and current index
+    return function(_, lastIndex)
+        local nextIndex = (lastIndex or 0) + 1
+        local ev = events[nextIndex]
+        if ev then
+            return nextIndex, ev.type, ev.a, ev.b, ev.c, ev.d
+        end
+        return nil
+    end, nil, 0
+end
+
 
 system.wait_event         = function(timeout) 
 	-- blocking: wait for event, simplified with coroutine or a condition var
-	local ticker = 0
-	while #system.event_queue == 0 and ticker < timeout do
-		ffi.C.Sleep(1)
-		ticker = ticker + 1
+	local ticker_end = os.clock() + timeout
+	while #system.event_queue == 0 and os.clock() < ticker_end do
+		-- ffi.C.Sleep(1)
 	end
 	return system.poll_event()
 end
@@ -111,7 +118,8 @@ system.absolute_path      = function(path)
 end
 
 system.get_file_info      = function(path) 
-    return { modified=0, size=0, type="file" } 
+	return dirtools.get_fileinfo(path)
+    -- return { modified=0, size=0, type="file" } 
 end
 
 system.get_clipboard      = function() 
@@ -123,11 +131,11 @@ system.set_clipboard      = function(text)
 end
 
 system.get_time           = function() 
-    return 0 
+    return os.clock()
 end
 
 system.sleep              = function(seconds) 
-    ffi.C.Sleep(seconds) 
+    ffi.C.Sleep(seconds * 1000) 
 end
 
 system.exec               = function(cmd) 
