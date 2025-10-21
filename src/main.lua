@@ -35,7 +35,7 @@ print(EXEFILE)
 require("src.system")
 require("src.renderer")
 
-local core
+local core = nil
 
 -- --------------------------------------------------------------------------------------
 local shell32   = ffi.load("shell32")
@@ -73,8 +73,7 @@ print("Display: "..width .. " x ".. height)
 
 local function ErrorCheck(status, err)
     if(status == false) then 
-        print(status)
-        print(err)
+        print("[Error] ", err)
         print(debug.traceback())
         os.exit()
     end
@@ -151,8 +150,6 @@ local function input(event)
         sapp.sapp_show_mouse(false)
     elseif event.type == sapp.SAPP_EVENTTYPE_MOUSE_LEAVE then 
         sapp.sapp_show_mouse(true)
-    else 
-        nk.snk_handle_event(event)
     end  
 
     if event.type == sapp.SAPP_EVENTTYPE_MOUSE_DOWN or
@@ -213,6 +210,8 @@ local function input(event)
             a = key, b = char, c = mods, d = -1
         })    
     end
+
+    nk.snk_handle_event(event)
 end
 
 -- -----------------------------------------------------------------------------------------
@@ -232,9 +231,9 @@ end
 local winrect       = ffi.new("struct nk_rect[1]", {{0, 0, 1000, 600}})
 local function core_run(ctx)
 
-    winrect[0].w = sapp.sapp_width()
+    -- winrect[0].w = sapp.sapp_width()
     winrect[0].h = sapp.sapp_height()
-    local window_flags =  bit.bor(nk.NK_WINDOW_NO_SCROLLBAR, nk.NK_WINDOW_MINIMIZABLE) 
+    local window_flags =  bit.bor(nk.NK_WINDOW_NO_SCROLLBAR, nk.NK_WINDOW_SCALABLE, nk.NK_WINDOW_MINIMIZABLE, nk.NK_WINDOW_MOVABLE) 
     if (nk.nk_begin(ctx, "Dim", winrect[0], window_flags) == true) then
         core.run()
     end
@@ -243,6 +242,7 @@ local function core_run(ctx)
 end
 
 -- --------------------------------------------------------------------------------------
+local core_ready = nil 
 
 local function frame()
 
@@ -259,7 +259,9 @@ local function frame()
     if(core == nil) then     
         ErrorCheck( pcall( core_init ) )
         nk.nk_style_show_cursor(ctx)   
-    else
+        core_ready = true
+    end 
+    if(core_ready) then 
         ErrorCheck( pcall( core_run, ctx ) )
     end
 
