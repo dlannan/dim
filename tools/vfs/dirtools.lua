@@ -485,40 +485,116 @@ dirtools.init = function( base_path )
 end
 
 ---------------------------------------------------------------------------------------
+-- Windows - dear god. Wheres ls when you need it.
+if ffi.os == "Windows" then
+
+ffi.cdef[[
+typedef unsigned long DWORD;
+typedef int BOOL;
+typedef const char* LPCSTR;
+
+typedef struct {
+    DWORD dwLowDateTime;
+    DWORD dwHighDateTime;
+} FILETIME;
+
+typedef struct {
+    DWORD dwFileAttributes;
+    FILETIME ftCreationTime;
+    FILETIME ftLastAccessTime;
+    FILETIME ftLastWriteTime;
+    DWORD nFileSizeHigh;
+    DWORD nFileSizeLow;
+} WIN32_FILE_ATTRIBUTE_DATA;
+    
+BOOL GetFileAttributesExA(LPCSTR lpFileName, int fInfoLevelId, void *lpFileInformation);
+BOOL FileTimeToSystemTime(const FILETIME *ft, void *st);
+
+struct SYSTEMTIME {
+    unsigned short wYear, wMonth, wDayOfWeek, wDay, wHour, wMinute, wSecond, wMilliseconds;
+};
+]]
+
+local INVALID_FILE_ATTRIBUTES = 0xFFFFFFFF
+local FILE_ATTRIBUTE_DIRECTORY = 0x10
+local FILE_ATTRIBUTE_ARCHIVE   = 0x20
+
+local function filetime_to_string(ft)
+    local st = ffi.new("struct SYSTEMTIME")
+    ffi.C.FileTimeToSystemTime(ft, st)
+    return string.format("%04d-%02d-%02d %02d:%02d:%02d",
+        st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond)
+end
+    
+dirtools.get_fileinfo = function(path)
+
+    -- Remove trailing backslash unless it's a root path like "C:\"
+    if #path > 3 then
+        path = path:gsub("\\+$", "")
+    end
+
+    local data = ffi.new("WIN32_FILE_ATTRIBUTE_DATA")
+    local result = ffi.C.GetFileAttributesExA(path, 0, data)
+    if result == 0 then
+        return nil, "not found"
+    end
+
+    local attrs = data.dwFileAttributes or 0
+    local is_dir = bit.band(attrs, FILE_ATTRIBUTE_DIRECTORY) ~= 0
+    local is_archive = bit.band(attrs, FILE_ATTRIBUTE_ARCHIVE) ~= 0
+
+    local size = 0
+    if not is_dir then
+        size = tonumber(ffi.cast("uint64_t", data.nFileSizeHigh) * 0x100000000 + data.nFileSizeLow)
+    end
+
+    local mod_time = filetime_to_string(data.ftLastWriteTime)
+    local type_str = "file"
+    if(is_dir == true) then type_str = "dir" end
+
+    return {
+        path = path,
+        size = size,
+        type = type_str,
+        modified = mod_time,
+        is_dir = is_dir,
+        is_archive = is_archive,
+    }
+end
+
+      
+---------------------------------------------------------------------------------------
+-- Linux and OSX
+else
 
 dirtools.get_fileinfo = function( file_path )
     
-    local cmd = string.format('for %%I in ("%s") do @echo %%~zI %%~tI %%~aI', file_path)
+    -- -c lets you specify a custom format string for easy parsing
+    local cmd = string.format("stat -c '%%F|%%s|%%y' %q", path)
     local f = io.popen(cmd)
     local out = f:read("*a")
     f:close()
-
     out = out:gsub("[\r\n]+", "")
-    local size, mod, attrs = out:match("^(.-) (.+) (.+)$")
-    if size == nil then return nil, "not found" end
+    local type_str, size, modified = out:match("^(.-)|(%d+)|(.+)$")
+    if not type_str then return nil, "not found" end
 
-    -- Determine type from attributes
-    local is_dir = attrs:find("d") ~= nil
-    local is_archive = attrs:find("a") ~= nil
-    local is_readonly = attrs:find("r") ~= nil
-    local is_hidden = attrs:find("h") ~= nil
-
-    local filetype = "file"
-    if(is_dir) then filetype = "dir" end
-
-    -- print(file_path, size, mod, filetype)
+    -- Normalize type
+    local is_dir = type_str:find("directory") ~= nil
+    local is_file = type_str:find("file") ~= nil
+    local is_link = type_str:find("symbolic link") ~= nil
 
     return {
-        path = file_path,
-        size = tonumber(size) or 0,
-        modified = mod,        -- "MM/DD/YYYY HH:MM"
-        attrs = attrs,         -- raw attributes like "d-----"
-        type = filetype,
-        archive = is_archive,
-        readonly = is_readonly,
-        hidden = is_hidden,
+        path = path,
+        type = type_str,     -- human-readable type, e.g. "regular file"
+        size = tonumber(size),
+        modified = modified, -- e.g. "2025-10-20 22:33:14.000000000 +1030"
+        is_dir = is_dir,
+        is_file = is_file,
+        is_link = is_link,
     }
 end
+    
+end    
 
 ---------------------------------------------------------------------------------------
 

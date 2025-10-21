@@ -76,7 +76,7 @@ system.wait_event         = function(timeout)
 	-- blocking: wait for event, simplified with coroutine or a condition var
 	local ticker_end = os.clock() + timeout
 	while #system.event_queue == 0 and os.clock() < ticker_end do
-		-- ffi.C.Sleep(1)
+		ffi.C.Sleep(1)
 	end
 	return system.poll_event()
 end
