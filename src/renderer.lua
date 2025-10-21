@@ -3,6 +3,8 @@ local stb           = require("stb")
 local nk            = sg
 
 local utils         = require("lua.utils")
+local rencache      = require("src.rencache")
+-- require("src.nuklear")
 
 local ffi           = require("ffi")
 
@@ -20,18 +22,18 @@ local function checkstring(val)
         return val
     elseif t == "number" then
         return tostring(val)
+    elseif t == "cdata" then 
+        return ffi.string(val)
     else
         error("bad argument: string or number expected, got " .. t, 2)
     end
 end
   
-
 -- --------------------------------------------------------------------------------------
 
 renderer = {
     ctx             = nil,
-    offx            = 0,
-    offy            = 0,
+    all_fonts       = {},
 }
 
 renderer.font = {
@@ -47,6 +49,22 @@ local fonts     = {}
 
 local master_img_width = ffi.new("int[1]", 2048)
 local master_img_height = ffi.new("int[1]", 2048)   
+
+-- --------------------------------------------------------------------------------------
+
+local function adjust_glyph(font_handle, unicode, width) 
+    
+    local font = ffi.cast("struct nk_font *", font_handle.ptr)
+    local g = font.glyphs[unicode]
+    g.xadvance = width
+end
+
+local function get_glyph_xadvance(font_handle, unicode) 
+    
+    local font = ffi.cast("struct nk_font *", font_handle.ptr)
+    local g = font.glyphs[unicode]
+    return g.xadvance
+end
 
 -- --------------------------------------------------------------------------------------
 
@@ -114,19 +132,27 @@ local function load_font(font_path, font_size)
     -- cfg.coord_type = nk.NK_COORD_PIXEL
 
     image, new_font = font_loader(atlas, font_path, font_size)
-    local new_font_tbl = { tab_width = 4, font = new_font, path = font_path, size = font_size, cfg = nil }
-    tinsert(fonts, new_font_tbl)
-
     image = nk.nk_font_atlas_bake(atlas, master_img_width, master_img_height, nk.NK_FONT_ATLAS_RGBA32)
 
-    print(master_img_width[0], master_img_height[0], 4)
     local nk_img = font_atlas_img(image, true)
     nk.nk_font_atlas_end(atlas, nk_img, nil)
     nk.nk_font_atlas_cleanup(atlas)
    
     nk.nk_style_load_all_cursors(ctx, atlas[0].cursors)
     nk.nk_style_set_font(ctx, new_font.handle)
+
+    local tab_size = get_glyph_xadvance(new_font.handle.userdata, 9)
+    -- print(master_img_width[0], master_img_height[0], tab_size)
+    local new_font_tbl = { tab_width = tab_size, font = new_font, path = font_path, size = font_size, cfg = nil }
+    tinsert(fonts, new_font_tbl)
+
     return new_font_tbl
+end
+
+-- --------------------------------------------------------------------------------------
+
+renderer.get_font = function( font_id )
+    return renderer.all_fonts[font_id]
 end
 
 -- --------------------------------------------------------------------------------------
@@ -134,9 +160,16 @@ end
 renderer.font.load = function(path, size)
     local new_font = load_font(path, size)
     if(new_font == nil) then return nil end
-    new_font.set_tab_width = function(self, width) return self.tab_width end
+    new_font.set_tab_width = function(self, width) 
+        if(width == self.tab_width) then return end
+        adjust_glyph( self.font.handle.userdata, 9, width )
+        self.tab_width = width
+    end
+    new_font.get_tab_width = function(self, width)
+        return self.tab_width 
+    end
     new_font.get_width = function(self, text) 
-        local text = tostring(text)
+        local text = checkstring(text)
         return self.font.handle.width(self.font.handle.userdata, self.font.handle.height, text, #text)
     end
     new_font.get_height = function(self) return self.font.handle.height end
@@ -144,71 +177,57 @@ renderer.font.load = function(path, size)
     new_font.set_size = function(self, size) self.size = size end
     new_font.get_path = function(self) return self.path end
     new_font.get_handle = function(self) return self.font.handle end
+
+    local font_id = #renderer.all_fonts+1
+    new_font.get_id = function(self) return font_id end
+
+    tinsert(renderer.all_fonts, new_font)
     return setmetatable(new_font, { __index = new_font })
 end      
 
 -- --------------------------------------------------------------------------------------
 
-renderer.show_debug     = function(...) 
-
+renderer.show_debug     = function(enable) 
+    -- rencache.rencache_show_debug(enable)
 end
 
 -- --------------------------------------------------------------------------------------
 
 renderer.get_size       = function() 
-    local r = nk.nk_window_get_content_region(renderer.ctx)
-    return r.w, r.h
+    return nuklear_renderer.get_size()
 end
 
 -- --------------------------------------------------------------------------------------
 -- Not really needed
 renderer.begin_frame    = function()
-
+    -- rencache.rencache_begin_frame()
 end
 
 -- --------------------------------------------------------------------------------------
 -- Hrm.. needed?
 renderer.end_frame      = function() 
-
+    -- rencache.rencache_end_frame()
 end
 
 -- --------------------------------------------------------------------------------------
 
 renderer.set_clip_rect  = function(x, y, w, h) 
-    local canvas = nk.nk_window_get_canvas(renderer.ctx)
-    local r = nk.nk_window_get_content_region(renderer.ctx)
-    local rect = nk.nk_rect(x + r.x, y + r.y, w, h)
-    nk.nk_push_scissor(canvas, rect)
+    nuklear_renderer.set_clip_rect(x, y, w, h)
+    -- rencache.rencache_set_clip_rect(x, y, w, h)
 end
 
 -- --------------------------------------------------------------------------------------
 
 renderer.draw_rect      = function(x, y, w, h, color) 
-    local canvas = nk.nk_window_get_canvas(renderer.ctx)
-    local r = nk.nk_window_get_content_region(renderer.ctx)
-    local ncol = nk.nk_rgba(color[1], color[2], color[3], color[4])
-    -- print(x, y, w, h)
-    -- nk.nk_layout_space_begin(renderer.ctx, nk.NK_STATIC, r.w, 1)
-    -- nk.nk_layout_space_push(renderer.ctx, r)
-    nk.nk_fill_rect(canvas, nk.nk_rect(x + r.x, y + r.y, w, h), 0, ncol)
-    -- nk.nk_layout_space_end(renderer.ctx)
+    nuklear_renderer.draw_rect(x, y, w, h, color)
+    -- rencache.rencache_draw_rect(x, y, w, h, color)
 end
 
 -- --------------------------------------------------------------------------------------
 
 renderer.draw_text      = function(font, text, x, y, color) 
-    local canvas = nk.nk_window_get_canvas(renderer.ctx)
-    local hcolor = nk.nk_rgba(color[1], color[2], color[3], color[4])
-    local r = nk.nk_window_get_content_region(renderer.ctx)
-    local rect = nk.nk_rect(x + r.x, y + r.y, 1000, 100)
-    local w = font:get_width(text)
-    local font_handle = font.font.handle
-    local text = checkstring(text)
-    -- nk.nk_layout_space_begin(renderer.ctx, nk.NK_STATIC, r.w, 1)
-    -- nk.nk_layout_space_push(renderer.ctx, r)
-    nk.nk_draw_text(canvas, rect, text, #text, font_handle, hcolor, hcolor)
-    -- nk.nk_layout_space_end(renderer.ctx)
-    return w
+    return nuklear_renderer.draw_text(font, text, x, y, color)
+    -- return rencache.rencache_draw_text(font, text, x, y, color)
 end
   
 -- --------------------------------------------------------------------------------------

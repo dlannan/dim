@@ -275,6 +275,90 @@ end
 
 -- --------------------------------------------------------------------------------------
 
+dirtools.get_absolute_path = function( path )
+
+    if(ffi.os == "Windows") then 
+        -- Escape quotes and backslashes
+        local safe_path = path:gsub('"', '\\"')
+
+        -- Try pushd directly (assumes it's a directory)
+        local cmd = string.format('cmd /C "pushd \"%s\" && cd && popd" 2>nul', safe_path)
+
+        local handle = io.popen(cmd)
+        local output = handle:read("*a")
+        handle:close()
+
+        -- Trim whitespace
+        output = output:match("^%s*(.-)%s*$")
+
+        -- If pushd worked, it's a directory
+        if output and output ~= "" then
+            return output
+        end
+
+        -- Try resolving parent dir and appending the filename (assuming it's a file)
+        local parent, filename = path:match("^(.*)[\\/](.+)$")
+        if not parent or not filename then
+            -- No parent path — maybe it's just a filename in the current dir
+            local cwd = io.popen("cd"):read("*l")
+            return cwd .. "\\" .. path
+        end
+
+        -- Try resolving parent dir
+        local safe_parent = parent:gsub('"', '\\"')
+        local cmd2 = string.format('cmd /C "pushd \"%s\" && cd && popd" 2>nul', safe_parent)
+
+        local handle2 = io.popen(cmd2)
+        local abs_parent = handle2:read("*a")
+        handle2:close()
+
+        abs_parent = abs_parent:match("^%s*(.-)%s*$")
+
+        if abs_parent and abs_parent ~= "" then
+            return abs_parent .. "\\" .. filename
+        end
+
+        -- Fallback: return original path
+        return path
+
+    else 
+        -- Try realpath directly (file or directory)
+        local handle = io.popen(string.format('realpath "%s" 2>/dev/null', path))
+        local abs_path = handle:read("*a")
+        handle:close()
+
+        abs_path = abs_path and abs_path:match("^%s*(.-)%s*$")
+
+        if abs_path and abs_path ~= "" then
+            return abs_path
+        end
+
+        -- If that failed, try resolving parent dir and appending filename
+        local parent, filename = path:match("^(.*)/([^/]+)$")
+        if not parent or not filename then
+            -- No slashes — assume it's a file in current directory
+            local cwd = io.popen("pwd"):read("*l")
+            return cwd .. "/" .. path
+        end
+
+        -- Resolve parent dir
+        local h2 = io.popen(string.format('realpath "%s" 2>/dev/null', parent))
+        local abs_parent = h2:read("*a")
+        h2:close()
+
+        abs_parent = abs_parent and abs_parent:match("^%s*(.-)%s*$")
+
+        if abs_parent and abs_parent ~= "" then
+            return abs_parent .. "/" .. filename
+        end
+
+        -- Fallback: return original path
+        return path
+    end
+end 
+
+-- --------------------------------------------------------------------------------------
+
 dirtools.get_folderslist = function(path, cache_update)
 
     -- Check path first. If its a drive on windows then no caching
@@ -487,114 +571,93 @@ end
 ---------------------------------------------------------------------------------------
 -- Windows - dear god. Wheres ls when you need it.
 if ffi.os == "Windows" then
-
-ffi.cdef[[
-typedef unsigned long DWORD;
-typedef int BOOL;
-typedef const char* LPCSTR;
-
-typedef struct {
-    DWORD dwLowDateTime;
-    DWORD dwHighDateTime;
-} FILETIME;
-
-typedef struct {
-    DWORD dwFileAttributes;
-    FILETIME ftCreationTime;
-    FILETIME ftLastAccessTime;
-    FILETIME ftLastWriteTime;
-    DWORD nFileSizeHigh;
-    DWORD nFileSizeLow;
-} WIN32_FILE_ATTRIBUTE_DATA;
     
-BOOL GetFileAttributesExA(LPCSTR lpFileName, int fInfoLevelId, void *lpFileInformation);
-BOOL FileTimeToSystemTime(const FILETIME *ft, void *st);
+-- Windows needs _stat, Linux/macOS uses stat
+ffi.cdef[[
+typedef uint64_t __time64_t;
 
-struct SYSTEMTIME {
-    unsigned short wYear, wMonth, wDayOfWeek, wDay, wHour, wMinute, wSecond, wMilliseconds;
+typedef unsigned int    _dev_t;
+typedef unsigned short  _ino_t;
+typedef unsigned short  _mode_t;
+
+struct __stat64
+{
+    _dev_t         st_dev;
+    _ino_t         st_ino;
+    _mode_t        st_mode;
+    short          st_nlink;
+    short          st_uid;
+    short          st_gid;
+    _dev_t         st_rdev;
+    uint64_t       st_size;
+    __time64_t     st_atime;
+    __time64_t     st_mtime;
+    __time64_t     st_ctime;
 };
+
+int _stat64(const char *path, struct __stat64 *buf);
 ]]
 
-local INVALID_FILE_ATTRIBUTES = 0xFFFFFFFF
-local FILE_ATTRIBUTE_DIRECTORY = 0x10
-local FILE_ATTRIBUTE_ARCHIVE   = 0x20
+else
+ffi.cdef[[
+    typedef long time_t;
 
-local function filetime_to_string(ft)
-    local st = ffi.new("struct SYSTEMTIME")
-    ffi.C.FileTimeToSystemTime(ft, st)
-    return string.format("%04d-%02d-%02d %02d:%02d:%02d",
-        st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond)
+    struct stat {
+        unsigned long st_dev;
+        unsigned long st_ino;
+        unsigned long st_nlink;
+        unsigned int st_mode;
+        unsigned int st_uid;
+        unsigned int st_gid;
+        unsigned long st_rdev;
+        long st_size;
+        time_t st_atime;
+        time_t st_mtime;
+        time_t st_ctime;
+    };
+
+    int stat(const char* path, struct stat* buf);
+]]
 end
     
 dirtools.get_fileinfo = function(path)
 
-    -- Remove trailing backslash unless it's a root path like "C:\"
-    if #path > 3 then
-        path = path:gsub("\\+$", "")
+    local buf
+    if ffi.os == "Windows" then
+        buf = ffi.new("struct __stat64[1]")
+        if ffi.C._stat64(path, buf) ~= 0 then
+            return nil, "File not found or inaccessible"
+        end
+    else
+        buf = ffi.new("struct stat[1]")
+        if ffi.C.stat(path, buf) ~= 0 then
+            return nil, "File not found or inaccessible"
+        end
     end
-
-    local data = ffi.new("WIN32_FILE_ATTRIBUTE_DATA")
-    local result = ffi.C.GetFileAttributesExA(path, 0, data)
-    if result == 0 then
-        return nil, "not found"
-    end
-
-    local attrs = data.dwFileAttributes or 0
-    local is_dir = bit.band(attrs, FILE_ATTRIBUTE_DIRECTORY) ~= 0
-    local is_archive = bit.band(attrs, FILE_ATTRIBUTE_ARCHIVE) ~= 0
-
-    local size = 0
-    if not is_dir then
-        size = tonumber(ffi.cast("uint64_t", data.nFileSizeHigh) * 0x100000000 + data.nFileSizeLow)
-    end
-
-    local mod_time = filetime_to_string(data.ftLastWriteTime)
-    local type_str = "file"
-    if(is_dir == true) then type_str = "dir" end
-
-    return {
-        path = path,
-        size = size,
-        type = type_str,
-        modified = mod_time,
-        is_dir = is_dir,
-        is_archive = is_archive,
-    }
-end
-
-      
----------------------------------------------------------------------------------------
--- Linux and OSX
-else
-
-dirtools.get_fileinfo = function( file_path )
     
-    -- -c lets you specify a custom format string for easy parsing
-    local cmd = string.format("stat -c '%%F|%%s|%%y' %q", path)
-    local f = io.popen(cmd)
-    local out = f:read("*a")
-    f:close()
-    out = out:gsub("[\r\n]+", "")
-    local type_str, size, modified = out:match("^(.-)|(%d+)|(.+)$")
-    if not type_str then return nil, "not found" end
-
-    -- Normalize type
-    local is_dir = type_str:find("directory") ~= nil
-    local is_file = type_str:find("file") ~= nil
-    local is_link = type_str:find("symbolic link") ~= nil
-
-    return {
+    local info = {
+        size = tonumber(buf[0].st_size),
+        modified = tonumber(buf[0].st_mtime),
+        type = nil,
         path = path,
-        type = type_str,     -- human-readable type, e.g. "regular file"
-        size = tonumber(size),
-        modified = modified, -- e.g. "2025-10-20 22:33:14.000000000 +1030"
-        is_dir = is_dir,
-        is_file = is_file,
-        is_link = is_link,
     }
-end
     
-end    
+    -- Check type using st_mode bits
+    local S_IFDIR = 0x4000
+    local S_IFREG = 0x8000
+    local mode = tonumber(buf[0].st_mode)
+    
+    if bit.band(mode, S_IFDIR) == S_IFDIR then
+        info.type = "dir"
+    elseif bit.band(mode, S_IFREG) == S_IFREG then
+        info.type = "file"
+    else
+        info.type = "other"
+    end
+    
+    -- print(info.size, info.path, info.type, mode)
+    return info
+end
 
 ---------------------------------------------------------------------------------------
 
