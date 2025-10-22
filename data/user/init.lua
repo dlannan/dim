@@ -5,7 +5,7 @@ local keymap = require "core.keymap"
 local config = require "core.config"
 local style = require "core.style"
 
-config.theme_name = "atlas" -- name of the theme
+config.theme_name = "edge-dark" -- name of the theme
 
 -- light theme:
 -- require "user.colors.summer"
