@@ -76,8 +76,8 @@ local key_map = {
     [sapp.SAPP_KEYCODE_GRAVE_ACCENT]     = "~",
     [sapp.SAPP_KEYCODE_INSERT]           = "insert",
     [sapp.SAPP_KEYCODE_DELETE]           = "delete",
-    [sapp.SAPP_KEYCODE_PAGE_UP]          = "page up",
-    [sapp.SAPP_KEYCODE_PAGE_DOWN]        = "page down",
+    [sapp.SAPP_KEYCODE_PAGE_UP]          = "pageup",
+    [sapp.SAPP_KEYCODE_PAGE_DOWN]        = "pagedown",
     [sapp.SAPP_KEYCODE_HOME]             = "home",
     [sapp.SAPP_KEYCODE_END]              = "end",
 }
