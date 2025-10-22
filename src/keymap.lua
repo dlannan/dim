@@ -162,11 +162,23 @@ local function process_inputs(event)
     elseif eventtype == sapp.SAPP_EVENTTYPE_UNFOCUSED then
         app_has_focus = false
     elseif eventtype == sapp.SAPP_EVENTTYPE_MOUSE_ENTER then 
-        print("Enter...")
         sapp.sapp_show_mouse(false)
+        renderer.ctx.style.cursor_visible = nk.nk_true
+        local w         = sapp.sapp_widthf()
+        local h         = sapp.sapp_heightf()   
+        system_push_event({
+            type = LITE_EVENT[eventtype],
+            a = w, b = h, c = nil, d = nil
+        })
     elseif eventtype == sapp.SAPP_EVENTTYPE_MOUSE_LEAVE then 
-        print("Leave...")
         sapp.sapp_show_mouse(true)
+        renderer.ctx.style.cursor_visible = nk.nk_false
+        local w         = sapp.sapp_widthf()
+        local h         = sapp.sapp_heightf()   
+        system_push_event({
+            type = LITE_EVENT[eventtype],
+            a = w, b = h, c = nil, d = nil
+        })
     end  
 
     if eventtype == sapp.SAPP_EVENTTYPE_MOUSE_DOWN then
