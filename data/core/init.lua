@@ -364,7 +364,8 @@ function core.step()
   local mouse_moved = false
   local mouse = { x = 0, y = 0, dx = 0, dy = 0 }
 
-  for type, a,b,c,d in system.poll_event() do
+  for k, type, a,b,c,d in system.poll_event() do
+    -- print(type, a, b, c, d)
     if type == "mousemoved" then
       mouse_moved = true
       mouse.x, mouse.y = a, b
