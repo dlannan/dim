@@ -22,29 +22,16 @@ local function find(string, field)
 end
 
 -- Override the Doc loader - if its a png.. then load it, and make a png Image Viewer for it.
+local OriginalDocLoad = Doc.load
+
 Doc.load = function(self, filename)
   if ( find(filename, "files") ) then 
+    print("-------->> LOADING PNG")
     local fp = assert( io.open(filename, "rb") )
-    self.image = 
 
     fp:close()
   else
-    local fp = assert( io.open(filename, "rb") )
-    self:reset()
-    self.filename = filename
-    self.lines = {}
-    for line in fp:lines() do
-      if line:byte(-1) == 13 then
-        line = line:sub(1, -2)
-        self.crlf = true
-      end
-      table.insert(self.lines, line .. "\n")
-    end
-    if #self.lines == 0 then
-      table.insert(self.lines, "\n")
-    end
-    fp:close()
-    self:reset_syntax()
+    OriginalDocLoad(self, filename)
   end
 end
 
