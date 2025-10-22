@@ -111,81 +111,90 @@ end
 app_has_focus = false 
 
 LITE_EVENT = {}
-LITE_EVENT[sapp.SAPP_EVENTTYPE_CHAR]        = "inputtext"
+LITE_EVENT[sapp.SAPP_EVENTTYPE_CHAR]            = "inputtext"
     
-LITE_EVENT[sapp.SAPP_EVENTTYPE_KEY_DOWN]    = "keypressed"
-LITE_EVENT[sapp.SAPP_EVENTTYPE_KEY_UP]      = "keyreleased"
+LITE_EVENT[sapp.SAPP_EVENTTYPE_KEY_DOWN]        = "keypressed"
+LITE_EVENT[sapp.SAPP_EVENTTYPE_KEY_UP]          = "keyreleased"
 
-LITE_EVENT[sapp.SAPP_EVENTTYPE_MOUSE_DOWN]  = "mousepressed"
-LITE_EVENT[sapp.SAPP_EVENTTYPE_MOUSE_UP]    = "mousereleased"
+LITE_EVENT[sapp.SAPP_EVENTTYPE_MOUSE_DOWN]      = "mousepressed"
+LITE_EVENT[sapp.SAPP_EVENTTYPE_MOUSE_UP]        = "mousereleased"
 
-LITE_EVENT[sapp.SAPP_EVENTTYPE_MOUSE_MOVE]  = "mousemoved"
-LITE_EVENT[sapp.SAPP_EVENTTYPE_MOUSE_SCROLL] = "mousewheel"
+LITE_EVENT[sapp.SAPP_EVENTTYPE_MOUSE_MOVE]      = "mousemoved"
+LITE_EVENT[sapp.SAPP_EVENTTYPE_MOUSE_SCROLL]    = "mousewheel"
 
 LITE_KEYMODS = {}
 
-LITE_KEYMODS[sapp.SAPP_KEYCODE_LEFT_SHIFT]      = ""
-LITE_KEYMODS[sapp.SAPP_KEYCODE_LEFT_CONTROL]    = ""
-LITE_KEYMODS[sapp.SAPP_KEYCODE_LEFT_ALT]        = ""
-LITE_KEYMODS[sapp.SAPP_KEYCODE_LEFT_SUPER]      = ""
+LITE_KEYMODS[sapp.SAPP_KEYCODE_LEFT_SHIFT]      = "left shift"
+LITE_KEYMODS[sapp.SAPP_KEYCODE_LEFT_CONTROL]    = "left ctrl"
+LITE_KEYMODS[sapp.SAPP_KEYCODE_LEFT_ALT]        = "left alt"
+LITE_KEYMODS[sapp.SAPP_KEYCODE_LEFT_SUPER]      = "left super"
 
-LITE_KEYMODS[sapp.SAPP_KEYCODE_RIGHT_SHIFT]     = ""
-LITE_KEYMODS[sapp.SAPP_KEYCODE_RIGHT_CONTROL]   = ""
-LITE_KEYMODS[sapp.SAPP_KEYCODE_RIGHT_ALT]       = ""
-LITE_KEYMODS[sapp.SAPP_KEYCODE_RIGHT_SUPER]     = ""
+LITE_KEYMODS[sapp.SAPP_KEYCODE_RIGHT_SHIFT]     = "right shift"
+LITE_KEYMODS[sapp.SAPP_KEYCODE_RIGHT_CONTROL]   = "right ctrl"
+LITE_KEYMODS[sapp.SAPP_KEYCODE_RIGHT_ALT]       = "right alt"
+LITE_KEYMODS[sapp.SAPP_KEYCODE_RIGHT_SUPER]     = "right super"
 
+LITE_BUTTONS = {}
+
+LITE_BUTTONS[sapp.SAPP_MOUSEBUTTON_LEFT]        = "left"
+LITE_BUTTONS[sapp.SAPP_MOUSEBUTTON_RIGHT]       = "right"
+LITE_BUTTONS[sapp.SAPP_MOUSEBUTTON_MIDDLE]      = "middle"
 
 local function input(event) 
 
+    local eventtype = tonumber(event.type)
+    print(LITE_EVENT[event.type], event.type)
+    local r = renderer.rect
+
     -- Only kick things off once the window is ready.
-    if(event.type == sapp.SAPP_EVENTTYPE_RESIZED) then 
+    if(eventtype == sapp.SAPP_EVENTTYPE_RESIZED) then 
         local w         = sapp.sapp_widthf()
         local h         = sapp.sapp_heightf()   
         -- core resize?
-    elseif event.type == sapp.SAPP_EVENTTYPE_FOCUSED then
+    elseif eventtype == sapp.SAPP_EVENTTYPE_FOCUSED then
         app_has_focus = true
-    elseif event.type == sapp.SAPP_EVENTTYPE_UNFOCUSED then
+    elseif eventtype == sapp.SAPP_EVENTTYPE_UNFOCUSED then
         app_has_focus = false
-    elseif event.type == sapp.SAPP_EVENTTYPE_MOUSE_ENTER then 
+    elseif eventtype == sapp.SAPP_EVENTTYPE_MOUSE_ENTER then 
         sapp.sapp_show_mouse(false)
-    elseif event.type == sapp.SAPP_EVENTTYPE_MOUSE_LEAVE then 
+    elseif eventtype == sapp.SAPP_EVENTTYPE_MOUSE_LEAVE then 
         sapp.sapp_show_mouse(true)
     end  
 
-    if event.type == sapp.SAPP_EVENTTYPE_MOUSE_DOWN or
-        event.type == sapp.SAPP_EVENTTYPE_MOUSE_UP then
+    if eventtype == sapp.SAPP_EVENTTYPE_MOUSE_DOWN or
+        eventtype == sapp.SAPP_EVENTTYPE_MOUSE_UP then
 
         local x, y = event.mouse_x, event.mouse_y
-        local button = event.mouse_button
+        local button = LITE_BUTTONS[event.mouse_button]
         system.push_event({
             type = LITE_EVENT[event.type],
-            a = button, b = x, c = y, d = -1
+            a = button, b = x-r.x, c = y-r.y, d = -1
         })    
 
-    elseif event.type == sapp.SAPP_EVENTTYPE_MOUSE_MOVE then
+    elseif eventtype == sapp.SAPP_EVENTTYPE_MOUSE_MOVE then
     
         local x, y = event.mouse_x, event.mouse_y
         local dx, dy = event.mouse_dx, event.mouse_dy
     
         -- print("Mouse event at", x, y, "delta", dx, dy, "button", button)
         system.push_event({
-            type = LITE_EVENT[event.type],
-            a = x, b = y, c = dx, d = dy
+            type = LITE_EVENT[eventtype],
+            a = x-r.x, b = y-r.y, c = dx, d = dy
         })    
 
-    elseif event.type == sapp.SAPP_EVENTTYPE_MOUSE_SCROLL then
+    elseif eventtype == sapp.SAPP_EVENTTYPE_MOUSE_SCROLL then
     
         local x, y = event.mouse_x, event.mouse_y
         local dx, dy = event.scroll_x, event.scroll_y
     
         -- print("Mouse event at", x, y, "delta", dx, dy, "button", button)
         system.push_event({
-            type = LITE_EVENT[event.type],
-            a = dx, b = dy, c = x, d = y
+            type = LITE_EVENT[eventtype],
+            a = dx, b = dy, c = x-r.x, d = y-r.y
         })    
 
-    elseif event.type == sapp.SAPP_EVENTTYPE_KEY_DOWN or
-        event.type == sapp.SAPP_EVENTTYPE_KEY_UP then
+    elseif eventtype == sapp.SAPP_EVENTTYPE_KEY_DOWN or
+        eventtype == sapp.SAPP_EVENTTYPE_KEY_UP then
     
         local key = event.key_code
         local char = event.char_code
@@ -195,18 +204,18 @@ local function input(event)
         if(mods == nil) then mods = key end
 
         system.push_event({
-            type = LITE_EVENT[event.type],
+            type = LITE_EVENT[eventtype],
             a = mods, b = char, c = mods, d = -1
         })    
 
-    elseif event.type == sapp.SAPP_EVENTTYPE_CHAR then
+    elseif eventtype == sapp.SAPP_EVENTTYPE_CHAR then
 
         local key = event.key_code
         local char = event.char_code
         local mods = event.modifiers
     
         system.push_event({
-            type = LITE_EVENT[event.type],
+            type = LITE_EVENT[eventtype],
             a = key, b = char, c = mods, d = -1
         })    
     end
@@ -235,6 +244,7 @@ local function core_run(ctx)
     winrect[0].h = sapp.sapp_height()
     local window_flags =  bit.bor(nk.NK_WINDOW_NO_SCROLLBAR, nk.NK_WINDOW_SCALABLE, nk.NK_WINDOW_MINIMIZABLE, nk.NK_WINDOW_MOVABLE) 
     if (nk.nk_begin(ctx, "Dim", winrect[0], window_flags) == true) then
+        renderer.rect = nk.nk_window_get_content_region(ctx)
         core.run()
     end
     nk.nk_end(ctx)
