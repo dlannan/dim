@@ -249,6 +249,7 @@ local function process_inputs(event)
 
     elseif eventtype == sapp.SAPP_EVENTTYPE_CHAR then
 
+        local key = tonumber(event.key_code)
         local char = string.char(event.char_code)
         local mods = tonumber(event.modifiers)
 
