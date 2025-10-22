@@ -84,7 +84,7 @@ local key_map = {
 
 -- --------------------------------------------------------------------------------------
 local LITE_EVENT = {}
-LITE_EVENT[sapp.SAPP_EVENTTYPE_CHAR]            = "inputtext"
+LITE_EVENT[sapp.SAPP_EVENTTYPE_CHAR]            = "textinput"
     
 LITE_EVENT[sapp.SAPP_EVENTTYPE_KEY_DOWN]        = "keypressed"
 LITE_EVENT[sapp.SAPP_EVENTTYPE_KEY_UP]          = "keyreleased"
@@ -224,7 +224,6 @@ local function process_inputs(event)
     elseif eventtype == sapp.SAPP_EVENTTYPE_KEY_UP then
 
         local key = tonumber(event.key_code)
-        local char = event.char_code
         local mods = tonumber(event.modifiers)
 
         mods = LITE_KEYMODS[key]
@@ -238,7 +237,6 @@ local function process_inputs(event)
     elseif eventtype == sapp.SAPP_EVENTTYPE_KEY_DOWN then
 
         local key = tonumber(event.key_code)
-        local char = event.char_code
         local mods = tonumber(event.modifiers)
 
         mods = LITE_KEYMODS[key]
@@ -251,12 +249,11 @@ local function process_inputs(event)
 
     elseif eventtype == sapp.SAPP_EVENTTYPE_CHAR then
 
-        local key = tonumber(event.key_code)
-        local char = event.char_code
+        local char = string.char(event.char_code)
         local mods = tonumber(event.modifiers)
 
         mods = LITE_KEYMODS[key]
-        if(mods == nil) then mods = sapp_key_to_name(key) end
+        if(mods == nil) then mods = char end
 
         system_push_event({
             type = LITE_EVENT[eventtype],
