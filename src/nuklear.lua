@@ -25,15 +25,15 @@ nuklear_renderer = {}
 -- --------------------------------------------------------------------------------------
 
 nuklear_renderer.get_size       = function() 
-    local r = nk.nk_window_get_content_region(renderer.ctx)
+    local r = renderer.rect
     -- print("get_size", r.w, r.h)
-    return r.w, r.h
+    return r.w, r.h 
 end
 
 -- --------------------------------------------------------------------------------------
 
 nuklear_renderer.set_clip_rect  = function(x, y, w, h) 
-    local canvas = nk.nk_window_get_canvas(renderer.ctx)
+    local canvas = renderer.canvas
     local r = renderer.rect
     local rect = nk.nk_rect(x + r.x, y + r.y, w, h)
     -- print("set_clip_rect", rect.x, rect.y, rect.w, rect.h)
@@ -43,7 +43,7 @@ end
 -- --------------------------------------------------------------------------------------
 
 nuklear_renderer.draw_rect      = function(x, y, w, h, color) 
-    local canvas = nk.nk_window_get_canvas(renderer.ctx)
+    local canvas = renderer.canvas
     local r = renderer.rect
     -- local ncol = nk.nk_rgba(color.r, color.g, color.b, color.a)
     local ncol = nk.nk_rgba(color[1], color[2], color[3], color[4])
@@ -57,7 +57,7 @@ end
 -- --------------------------------------------------------------------------------------
 
 nuklear_renderer.draw_text      = function(font, text, x, y, color) 
-    local canvas = nk.nk_window_get_canvas(renderer.ctx)
+    local canvas = renderer.canvas
     -- local hcolor = nk.nk_rgba(color.r, color.g, color.b, color.a)
     local hcolor = nk.nk_rgba(color[1], color[2], color[3], color[4])
     local r = renderer.rect

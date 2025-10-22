@@ -358,7 +358,7 @@ function core.on_event(type, ...)
 end
 
 
-function core.step()
+function core.step(width, height)
   -- handle events
   local did_keymap = false
   local mouse_moved = false
@@ -385,11 +385,11 @@ function core.step()
     core.try(core.on_event, "mousemoved", mouse.x, mouse.y, mouse.dx, mouse.dy)
   end
 
-  local width, height = renderer.get_size()
+  -- local width, height = renderer.get_size()
   -- update
   core.root_view.size.x, core.root_view.size.y = width, height
   core.root_view:update()
-  if not core.redraw then 
+  if not core.redraw then return false end
   core.redraw = false
 
   -- close unreferenced docs
@@ -408,14 +408,17 @@ function core.step()
     system.set_window_title(title)
     core.window_title = title
   end
-  end
+  return true 
+end
+
+core.render = function()
   -- draw
+  local width, height = renderer.get_size()
   renderer.begin_frame()
   core.clip_rect_stack[1] = { 0, 0, width, height }
   renderer.set_clip_rect(table.unpack(core.clip_rect_stack[1]))
   core.root_view:draw()
   renderer.end_frame()
-  return core.redraw
 end
 
 
@@ -451,18 +454,19 @@ local run_threads = coroutine.wrap(function()
 end)
 
 
-function core.run()
+function core.run(width, height)
 
   -- while true do
     core.frame_start = system.get_time()
-    local did_redraw = core.step()
+    local did_redraw = core.step(width, height)
     run_threads()
     -- if not did_redraw and not system.window_has_focus() then
     --   system.wait_event(0.25)
     -- end
     local elapsed = system.get_time() - core.frame_start
-    system.sleep(math.max(0, 1 / config.fps - elapsed))
-    return true
+    -- system.sleep(math.max(0, 1 / config.fps - elapsed))
+    system.events_clear()
+    return did_redraw
   -- end
 end
 
