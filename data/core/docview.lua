@@ -145,7 +145,7 @@ function DocView:get_x_offset_col(line, x)
   local text = self.doc.lines[line]
 
   local xoffset, last_i, i = 0, 1, 1
-  for char in common.utf8_chars(text) do
+  for _, char in common.utf8_chars(text) do
     local w = self:get_font():get_width(char)
     if xoffset >= x then
       return (xoffset - x > w / 2) and last_i or i

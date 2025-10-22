@@ -1,5 +1,5 @@
+local utf8    = require("lua.utf8")
 local common = {}
-
 
 function common.is_utf8_cont(char)
   local byte = char:byte()
@@ -8,9 +8,17 @@ end
 
 
 function common.utf8_chars(text)
-  return text:gmatch("[\0-\x7f\xc2-\xf4][\x80-\xbf]*")
-end
-
+  local i = 1
+  local _, buf, len = utf8.tobuf(text)
+  return function()
+    if i <= #text then
+      local c, b
+      local start = i
+      i, c, b = utf8.next(buf, len, i)
+      return i, string.sub(text, start, i)
+    end
+  end
+end 
 
 function common.clamp(n, lo, hi)
   return math.max(math.min(n, hi), lo)
