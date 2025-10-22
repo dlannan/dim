@@ -50,7 +50,6 @@ end
 
 system = {
 	event_queue 		= {}, -- Back buffer events are always collected in.
-	event_list 			= {}, -- processing buffer that is used to operate on
 }
 
 -- --------------------------------------------------------------------------------------
@@ -74,14 +73,13 @@ end
 -- --------------------------------------------------------------------------------------
 -- This is a double buffered event queue in case events come in while processing
 system.events_buffer = function()
-	system.event_list = {}
-	if(#system.event_queue == 0) then return system.event_list end
+	local tmp = {}
 	for i, ev in ipairs(system.event_queue) do
-		tinsert(system.event_list, ev)
+		tinsert(tmp, ev)
 		ev.processed = true 
-	end
+	end 
 	system.events_clear()
-	return system.event_list
+	return tmp
 end 
 
 -- --------------------------------------------------------------------------------------
@@ -183,6 +181,7 @@ end
 -- --------------------------------------------------------------------------------------
 
 system.exec               = function(cmd) 
+	cmd = string.format("cmd /c \"%s\"", cmd)
     local fh = io.popen(cmd, "r")
 	local results = ""
 	if(fh) then 
