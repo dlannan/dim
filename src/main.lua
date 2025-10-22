@@ -134,7 +134,7 @@ local function core_run(ctx)
 
     winrect[0].w = sapp.sapp_width()
     winrect[0].h = sapp.sapp_height()
-    local window_flags =  bit.bor(nk.NK_WINDOW_NO_INPUT, nk.NK_WINDOW_NO_SCROLLBAR, nk.NK_WINDOW_MINIMIZABLE, nk.NK_WINDOW_BACKGROUND) 
+    local window_flags =  bit.bor(nk.NK_WINDOW_NO_INPUT, nk.NK_WINDOW_NO_SCROLLBAR, nk.NK_WINDOW_BACKGROUND) 
     if (nk.nk_begin(ctx, "Dim", winrect[0], window_flags) == true) then
         renderer.canvas = nk.nk_window_get_canvas(ctx) 
         renderer.rect = nk.nk_window_get_content_region(ctx)
