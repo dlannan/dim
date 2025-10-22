@@ -358,7 +358,7 @@ function core.on_event(type, ...)
 end
 
 
-function core.step(width, height)
+function core.step()
   -- handle events
   local did_keymap = false
   local mouse_moved = false
@@ -385,7 +385,7 @@ function core.step(width, height)
     core.try(core.on_event, "mousemoved", mouse.x, mouse.y, mouse.dx, mouse.dy)
   end
 
-  -- local width, height = renderer.get_size()
+  local width, height = renderer.get_size()
   -- update
   core.root_view.size.x, core.root_view.size.y = width, height
   core.root_view:update()
@@ -454,11 +454,11 @@ local run_threads = coroutine.wrap(function()
 end)
 
 
-function core.run(width, height)
+function core.run()
 
   -- while true do
     core.frame_start = system.get_time()
-    local did_redraw = core.step(width, height)
+    local did_redraw = core.step()
     run_threads()
     -- if not did_redraw and not system.window_has_focus() then
     --   system.wait_event(0.25)
