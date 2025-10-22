@@ -9,6 +9,7 @@ local nk          = sg
 local ffi         = require("ffi")
 
 local tinsert     = table.insert
+local tremove 	  = table.remove
 
 -- --------------------------------------------------------------------------------------
 
@@ -48,31 +49,40 @@ end
 -- --------------------------------------------------------------------------------------
 
 system = {
-	event_queue 		= {}
+	event_queue 		= {}, -- Back buffer events are always collected in.
+	event_list 			= {}, -- processing buffer that is used to operate on
 }
 
 -- --------------------------------------------------------------------------------------
 
-system.push_event = function( event )
+system.push_event = function( ev )
 
-	tinsert(system.event_queue, event)
+	-- print(ev.type, ev.a, ev.b, ev.c, ev.d)
+	tinsert(system.event_queue, ev)
 end
 
 -- --------------------------------------------------------------------------------------
 
-system.poll_event = function()
-    local i = 0
-    local events = system.event_queue
-    -- The iterator function to be called by 'for' with state and current index
-    return function(_, lastIndex)
-        local nextIndex = (lastIndex or 0) + 1
-        local ev = events[nextIndex]
-        if ev then
-            return nextIndex, ev.type, ev.a, ev.b, ev.c, ev.d
-        end
-        return nil
-    end, nil, 0
+system.events_clear = function()
+	for i = #system.event_queue, 1, -1 do
+		if system.event_queue[i].processed == true then
+			tremove(system.event_queue, i)
+		end
+	end
 end
+
+-- --------------------------------------------------------------------------------------
+-- This is a double buffered event queue in case events come in while processing
+system.events_buffer = function()
+	system.event_list = {}
+	if(#system.event_queue == 0) then return system.event_list end
+	for i, ev in ipairs(system.event_queue) do
+		tinsert(system.event_list, ev)
+		ev.processed = true 
+	end
+	system.events_clear()
+	return system.event_list
+end 
 
 -- --------------------------------------------------------------------------------------
 
@@ -80,9 +90,7 @@ system.wait_event         = function(timeout)
 	-- blocking: wait for event, simplified with coroutine or a condition var
 	local ticker_end = os.clock() + timeout
 	while #system.event_queue == 0 and os.clock() < ticker_end do
-		-- ffi.C.Sleep(1)
 	end
-	return system.poll_event()
 end
 
 -- --------------------------------------------------------------------------------------
@@ -138,7 +146,6 @@ end
 
 system.absolute_path      = function(path) 
     local abspath = dirtools.get_absolute_path(path)
-	print(path, abspath)
 	return abspath
 end
 

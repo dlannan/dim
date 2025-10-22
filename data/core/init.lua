@@ -364,20 +364,23 @@ function core.step()
   local mouse_moved = false
   local mouse = { x = 0, y = 0, dx = 0, dy = 0 }
 
-  for k, type, a,b,c,d in system.poll_event() do
-    -- print(type, a, b, c, d)
-    if type == "mousemoved" then
+  local copy_events = system.events_buffer()
+  for k, ev in ipairs(copy_events) do
+    local ptype, a, b, c, d = ev.type, ev.a, ev.b, ev.c, ev.d
+    -- print(ptype, a, b, c, d)
+    if ptype == "mousemoved" then
       mouse_moved = true
       mouse.x, mouse.y = a, b
       mouse.dx, mouse.dy = mouse.dx + c, mouse.dy + d
-    elseif type == "textinput" and did_keymap then
+    elseif ptype == "textinput" and did_keymap then
       did_keymap = false
     else
-      local _, res = core.try(core.on_event, type, a, b, c, d)
+      local _, res = core.try(core.on_event, ptype, a, b, c, d)
       did_keymap = res or did_keymap
     end
     core.redraw = true
   end
+
   if mouse_moved then
     core.try(core.on_event, "mousemoved", mouse.x, mouse.y, mouse.dx, mouse.dy)
   end
@@ -386,7 +389,7 @@ function core.step()
   -- update
   core.root_view.size.x, core.root_view.size.y = width, height
   core.root_view:update()
-  if not core.redraw then return false end
+  if not core.redraw then 
   core.redraw = false
 
   -- close unreferenced docs
@@ -405,14 +408,14 @@ function core.step()
     system.set_window_title(title)
     core.window_title = title
   end
-
+  end
   -- draw
   renderer.begin_frame()
   core.clip_rect_stack[1] = { 0, 0, width, height }
   renderer.set_clip_rect(table.unpack(core.clip_rect_stack[1]))
   core.root_view:draw()
   renderer.end_frame()
-  return true
+  return core.redraw
 end
 
 
@@ -454,11 +457,12 @@ function core.run()
     core.frame_start = system.get_time()
     local did_redraw = core.step()
     run_threads()
-    if not did_redraw and not system.window_has_focus() then
-      system.wait_event(0.25)
-    end
+    -- if not did_redraw and not system.window_has_focus() then
+    --   system.wait_event(0.25)
+    -- end
     local elapsed = system.get_time() - core.frame_start
     system.sleep(math.max(0, 1 / config.fps - elapsed))
+    return true
   -- end
 end
 
