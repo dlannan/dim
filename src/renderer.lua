@@ -231,3 +231,17 @@ renderer.draw_text      = function(font, text, x, y, color)
 end
   
 -- --------------------------------------------------------------------------------------
+
+renderer.load_image      = function(filename) 
+    return nuklear_renderer.load_image(filename) 
+    -- return rencache.rencache_draw_text(font, text, x, y, color)
+end
+  
+-- --------------------------------------------------------------------------------------
+
+renderer.draw_image      = function(image, x, y, w, h) 
+    return nuklear_renderer.draw_image(image, x, y, w, h) 
+    -- return rencache.rencache_draw_text(font, text, x, y, color)
+end
+  
+-- --------------------------------------------------------------------------------------
