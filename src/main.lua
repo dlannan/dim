@@ -183,6 +183,9 @@ local function frame()
     pass[0].swapchain = slib.sglue_swapchain()
     sg.sg_begin_pass(pass)
     nk.snk_render(sapp.sapp_width(), sapp.sapp_height())
+
+    -- // Render 3D view rects here - will get rects from the docviews.
+
     sg.sg_end_pass()
     sg.sg_commit()
     -- Display frame stats in console.
