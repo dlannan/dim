@@ -42,3 +42,18 @@ Note: There are slight variances in these versions vs the original sokol (like b
 
 The intended use for this will be in the sokol-luajit editor (Thunc). It will allow the easy editing, loading, saving of game engine scripts. Debugging should also be able to be added (future goal).
 
+## Sokol-luajit 
+
+A luajit + ffi + sokol + nuklear + (some other nice libs) framework providing a rapid development framework for making applications, games or in my case sims.
+
+https://github/dlannan/sokol-luajit/
+
+This is all MIT. Use however you would like. I have a discord that is not very busy :) but if you want to communicate its there.
+
+I have a number of applications being developed with this framework (including dim). Many are in my repositories. I hope to be making simulation games with the framework in 2026 - main recreations of M1A1 Tank Platoon, F16 Combat Pilot, F15 Strike Eagle and some others. 
+
+My initial F18 Interceptor homage can be played here (its in production atm with release date now looking like Jan 2026).
+
+https://bukkat.itch.io/f18
+
+The code for this will be use in future games made with Thunc (all luajit).
