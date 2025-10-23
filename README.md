@@ -1,14 +1,16 @@
 # dim
-lite text editor running from sokol-luajit
+not so lite 
 
-23-10-2025 Updates already:
+A lite based text editor running from sokol-luajit + nuklear.
+
+[ 23-10-2025 Updates already ]:
 
 - Its working. Most (if not all?) of lite's operations are working. Theres a couple of system calls that result in "File Not Found" in the console - this is due to .. and . being included in the file list. Will fix. 
 - Added an image view plugin (see pic below)
 - Adding a gltf 3D viewer as well - this will be needed for Thunc.
 - Added an image interface to renderer (load and draw - will add save maybe. Not sure I want image editing). 
 
-[<img src="media/2025-10-23_13-58.png">] 
+<img src="media/2025-10-23_13-58.png">
 
 More features/plugins incoming - a lua debugger, a project workspace (think like vscode ish), extension/plugin handling (able to enable/disable in workspace), some embedding features needed for Thunc.
 
