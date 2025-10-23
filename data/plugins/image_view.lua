@@ -25,6 +25,7 @@ local original_doc_load = Doc.load
 Doc.load = function(self, filename)
   if ( find(filename, "files") ) then 
     self.image = renderer.load_image(filename)
+    self.filename = filename
   else
     original_doc_load(self, filename)
   end
