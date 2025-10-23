@@ -26,9 +26,10 @@ local OriginalDocLoad = Doc.load
 
 Doc.load = function(self, filename)
   if ( find(filename, "files") ) then 
-    print("-------->> LOADING PNG")
+    print("-------->> LOADING PNG", filename)
     local fp = assert( io.open(filename, "rb") )
-
+    if(fp == niul) then return end
+    self.image = fp:read("*a")
     fp:close()
   else
     OriginalDocLoad(self, filename)
