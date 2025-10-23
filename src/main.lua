@@ -213,6 +213,16 @@ local function cleanup()
 end
 
 -- --------------------------------------------------------------------------------------
+local i16,icon16 = renderer.load_image("data/icons/dim_icon_cool_16x16.png")
+local i32,icon32 = renderer.load_image("data/icons/dim_icon_cool_32x32.png")
+local i64,icon64 = renderer.load_image("data/icons/dim_icon_cool_64x64.png")
+local icon_desc = ffi.new("sapp_icon_desc", {
+    images = {
+        { width = 16, height = 16, pixels = { ptr=icon16[0].data.subimage[0][0].ptr, size=icon16[0].data.subimage[0][0].size } },
+        { width = 32, height = 32, pixels = { ptr=icon32[0].data.subimage[0][0].ptr, size=icon32[0].data.subimage[0][0].size } },
+        { width = 64, height = 64, pixels = { ptr=icon64[0].data.subimage[0][0].ptr, size=icon64[0].data.subimage[0][0].size } },
+    }
+})
 
 local app_desc = ffi.new("sapp_desc[1]")
 app_desc[0].init_cb         = init
@@ -224,7 +234,7 @@ app_desc[0].height          = height
 app_desc[0].high_dpi        = true
 app_desc[0].window_title    = "Dim"
 app_desc[0].fullscreen      = false
--- app_desc[0].icon.sokol_default = true 
+app_desc[0].icon            = icon_desc
 
 app_desc[0].enable_clipboard = true
 app_desc[0].ios_keyboard_resizes_canvas = false

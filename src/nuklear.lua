@@ -102,6 +102,7 @@ nuklear_renderer.load_image = function(filename)
     sg_img_desc[0].data.subimage[0][0].ptr = data
     sg_img_desc[0].data.subimage[0][0].size = x[0] * y[0] * n[0]
 
+    if(sg.sg_isvalid() == false) then return nil, sg_img_desc end
     local new_img = sg.sg_make_image(sg_img_desc)
 
     -- // create a sokol-nuklear image object which associates an sg_image with an sg_sampler

@@ -460,11 +460,12 @@ function core.run()
     core.frame_start = system.get_time()
     local did_redraw = core.step()
     run_threads()
+    -- Removed this because the render loop is running this.
     -- if not did_redraw and not system.window_has_focus() then
     --   system.wait_event(0.25)
     -- end
     local elapsed = system.get_time() - core.frame_start
-    -- system.sleep(math.max(0, 1 / config.fps - elapsed))
+    system.sleep(math.max(0, 1 / config.fps - elapsed))
     system.events_clear()
     return did_redraw
   -- end
