@@ -233,7 +233,8 @@ end
 -- --------------------------------------------------------------------------------------
 
 renderer.load_image      = function(filename) 
-    return nuklear_renderer.load_image(filename) 
+    local img, img_info = nuklear_renderer.load_image(filename) 
+    return img, img_info
     -- return rencache.rencache_draw_text(font, text, x, y, color)
 end
   

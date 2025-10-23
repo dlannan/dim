@@ -112,7 +112,7 @@ nuklear_renderer.load_image = function(filename)
     local nk_img = nk.nk_image_handle(nk_hnd);
 
     stb.stbi_image_free(data)
-    return nk_img
+    return nk_img, sg_img_desc
 end
 
 -- --------------------------------------------------------------------------------------

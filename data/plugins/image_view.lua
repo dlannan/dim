@@ -24,8 +24,13 @@ local original_doc_load = Doc.load
 
 Doc.load = function(self, filename)
   if ( find(filename, "files") ) then 
-    self.image = renderer.load_image(filename)
-    self.filename = filename
+    local image, image_info = renderer.load_image(filename)
+    if(image == nil) then 
+      original_doc_load(self, filename)
+    else
+      self.image = { nk_image = image, info = image_info, zoom = 1.0 }
+      self.filename = filename
+    end
   else
     original_doc_load(self, filename)
   end
@@ -36,9 +41,44 @@ local original_docview_draw = DocView.draw
 DocView.draw = function(self)
   if(self.doc.image) then 
     self:draw_background(style.background)
+    -- Work out aspect for image so it is always centered and correct aspect view
+    local img = self.doc.image
+    local image_aspect = img.info[0].width / img.info[0].height
+    local doc_width,  doc_height = self.size.x * img.zoom, self.size.y * img.zoom
+    local doc_aspect = doc_width / doc_height
+    local scaled_width, scaled_height
+
+    -- If the image is wider than the document
+    if image_aspect > doc_aspect then
+        -- Scale by height to preserve aspect ratio
+        scaled_height = doc_height
+        scaled_width = scaled_height * image_aspect
+    else
+        -- If the image is taller or has the same aspect ratio, scale by width
+        scaled_width = doc_width
+        scaled_height = scaled_width / image_aspect
+    end
+
+    if scaled_width > doc_width then
+      scaled_width = doc_width
+      scaled_height = scaled_width / image_aspect
+    elseif scaled_height > doc_height then
+      scaled_height = doc_height
+      scaled_width = scaled_height * image_aspect
+    end
+
     local x, y = self.position.x, self.position.y
-    local w, h = self.size.x, self.size.y
-    renderer.draw_image(self.doc.image, x, y, w, h)
+
+    if scaled_width < doc_width then
+        -- Center horizontally if the image is smaller than the document width
+        x = (doc_width - scaled_width) / 2 + self.position.x
+    end
+
+    if scaled_height < doc_height then
+        -- Center vertically if the image is smaller than the document height
+        y = (doc_height - scaled_height) / 2 + self.position.x
+    end       
+    renderer.draw_image(img.nk_image, x, y, scaled_width, scaled_height)
   else
     original_docview_draw(self)
   end
