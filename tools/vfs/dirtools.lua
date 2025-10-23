@@ -33,9 +33,9 @@ local tconcat   = table.concat
 ---------------------------------------------------------------------------------------
 
 
-local allfolders_cmd = [[dir /ON /AD /B "%s"]]
+local allfolders_cmd = [[dir /ON /AD /B "%s" 2>nul]]
 if(ffi.os ~= "Windows") then allfolders_cmd = [[ls -p "%s" | grep /]] end
-local allfiles_cmd = [[dir /ON /A-D /B "%s"]]
+local allfiles_cmd = [[dir /ON /A-D /B "%s" 2>nul]]
 if(ffi.os ~= "Windows") then allfiles_cmd = [[ls -p "%s" | grep -v /]] end
 
 -- --------------------------------------------------------------------------------------
@@ -46,6 +46,22 @@ local list_cache = {}
 local sep = "\\"
 if(ffi.os ~= "Windows") then sep = "/" end
 dirtools.sep = sep
+dirtools.sep2 = sep..sep
+
+---------------------------------------------------------------------------------------
+-- Why didnt I have this before.. uggh
+local function run_popen( cmd, callback, readstr )
+
+    local fh = io.popen(cmd, readstr or "r")
+    if(fh and callback) then 
+        local res = callback(fh)
+        fh:close() 
+        return res
+    else
+        print("[Error] dirtools.run_popen "..tostring(cmd)) 
+    end
+    return nil
+end
 
 ---------------------------------------------------------------------------------------
 
@@ -124,10 +140,8 @@ dirtools.get_drives = function()
     if(ffi.os == "Windows") then 
 
         local cmd = "fsutil fsinfo drives"
-        local fh = io.popen(cmd, "r")
-        if(fh) then 
+        run_popen(cmd, function(fh)
             local data = fh:read("*a")
-            fh:close() 
             if(string.match(data, "Drives: ")) then 
                 data = string.sub(data, 10, -1)
                 for f in string.gmatch(data, "([^%s]+)") do 
@@ -135,13 +149,12 @@ dirtools.get_drives = function()
                     tinsert(drives, f)
                 end
             end
-        end
+        end)
     else 
         -- Note: Add more -t <filetype> to support different file system mounts
         local cmd = "df -h -t ext4 --output=target" 
 
-        local fh = io.popen(cmd, "r")
-        if(fh) then 
+        run_popen(cmd, function(fh)
             local data = fh:read("*a")
             local count = 0
             for f in string.gmatch(data, "(.-)\n") do 
@@ -153,8 +166,7 @@ dirtools.get_drives = function()
                 end 
                 count = count + 1
             end
-            fh:close()
-        end
+        end)
     end
     return drives
 end
@@ -179,15 +191,13 @@ if(ffi.os == "Windows") then
 
         if(path == nil) then return nil end 
 
-        local fh = io.popen([[attrib "]]..path..[["]], "r")
-        if(fh) then 
+        run_popen([[attrib "]]..path..[["]], function(fh)
             local res = fh:read("*a")
             local fileattr = string.sub(res, 1, 20)
             fileattr = string.gsub(fileattr, " ", "")
-            fh:close()
             if(string.match(res, "^File not found")) then return nil end
             return (#fileattr == 0)
-        end
+        end)
         return nil
     end
 else
@@ -195,13 +205,11 @@ else
 
         if(path == nil) then return nil end 
 
-        local fh = io.popen("file "..path, "r")
-        if(fh) then 
+        run_popen("file "..path, "r", function(fh)
             local res = fh:read("*a")
             local folder = string.match(res, ".-: directory$")
-            fh:close()
             return (folder ~= nil)
-        end
+        end)
         return nil 
     end
 end
@@ -214,16 +222,11 @@ dirtools.make_folder = function(folderpath)
     if(found == nil) then 
         local cmd = [[mkdir -f "]]..folderpath..[["]]
         if(ffi.os == "Windows") then cmd = [[mkdir "]]..folderpath..[["]] end
-        local fh = io.popen(cmd, "r")
-        if(fh) then 
+        run_popen(cmd, function(fh)
             local data = fh:read("*a")
-            fh:close() 
             log_info(data)
             return true
-        else 
-            log_error("Cannot make folder: "..folderpath)
-            return nil
-        end
+        end)
     else
         log_info("Folder already exists: "..folderpath)
     end
@@ -247,12 +250,14 @@ dirtools.get_app_path = function( expected_root_folder )
 
     local base_dir = "."
     if(ffi.os == "Windows") then 
-        local cmdh = io.popen("cd", "r")
-        if(cmdh) then base_dir = cmdh:read("*a"); cmdh:close() end
+        base_dir = run_popen("cd", function(cmdh)
+            return cmdh:read("*a")
+        end)
         base_dir = string.gsub(base_dir, "\n", "")
     else 
-        local cmdh = io.popen("pwd", "r")
-        if(cmdh) then base_dir = cmdh:read("*a"); cmdh:close() end
+        base_dir = run_popen("pwd", function(cmdh)
+            return cmdh:read("*a")
+        end)
         base_dir = string.gsub(base_dir, "\n", "")
     end
 
@@ -275,57 +280,38 @@ end
 
 -- --------------------------------------------------------------------------------------
 
-dirtools.get_absolute_path = function( path )
+dirtools.get_absolute_path = function( relative_path )
 
     if(ffi.os == "Windows") then 
-        -- Escape quotes and backslashes
-        local safe_path = path:gsub('"', '\\"')
 
-        -- Try pushd directly (assumes it's a directory)
-        local cmd = string.format('cmd /C "pushd \"%s\" && cd && popd" 2>nul', safe_path)
+        ffi.cdef[[
+            uint32_t GetFullPathNameA(
+                const char *lpFileName, 
+                uint32_t nBufferLength, 
+                char *lpBuffer, 
+                char **lpFilePart
+            );
+        ]]
 
-        local handle = io.popen(cmd)
-        local output = handle:read("*a")
-        handle:close()
+        -- Convert the string to a wide-character (UTF-16) string for Windows API compatibility
+        local path = ffi.new("char[?]", #relative_path + 1)
+        ffi.fill(path, 0, #relative_path + 1)
+        ffi.copy(path, relative_path)
 
-        -- Trim whitespace
-        output = output:match("^%s*(.-)%s*$")
+        -- Allocate buffer for the result (Windows typically expects a 260-char buffer for file paths)
+        local buffer = ffi.new("char[260]")
 
-        -- If pushd worked, it's a directory
-        if output and output ~= "" then
-            return output
-        end
-
-        -- Try resolving parent dir and appending the filename (assuming it's a file)
-        local parent, filename = path:match("^(.*)[\\/](.+)$")
-        if not parent or not filename then
-            -- No parent path — maybe it's just a filename in the current dir
-            local cwd = io.popen("cd"):read("*l")
-            return cwd .. "\\" .. path
-        end
-
-        -- Try resolving parent dir
-        local safe_parent = parent:gsub('"', '\\"')
-        local cmd2 = string.format('cmd /C "pushd \"%s\" && cd && popd" 2>nul', safe_parent)
-
-        local handle2 = io.popen(cmd2)
-        local abs_parent = handle2:read("*a")
-        handle2:close()
-
-        abs_parent = abs_parent:match("^%s*(.-)%s*$")
-
-        if abs_parent and abs_parent ~= "" then
-            return abs_parent .. "\\" .. filename
-        end
-
-        -- Fallback: return original path
-        return path
-
+        -- Call GetFullPathNameW
+        local result_len = ffi.C.GetFullPathNameA(path, 260, buffer, nil)
+        -- Return the absolute path as a Lua string
+        return ffi.string(buffer, result_len)  -- Since it's UTF-16, multiply length by 2
+        
     else 
         -- Try realpath directly (file or directory)
-        local handle = io.popen(string.format('realpath "%s" 2>/dev/null', path))
-        local abs_path = handle:read("*a")
-        handle:close()
+        local abs_path = nil
+        run_open(string.format('realpath "%s" 2>/dev/null', path), function(handle)
+            abs_path = handle:read("*a")
+        end)
 
         abs_path = abs_path and abs_path:match("^%s*(.-)%s*$")
 
@@ -337,14 +323,16 @@ dirtools.get_absolute_path = function( path )
         local parent, filename = path:match("^(.*)/([^/]+)$")
         if not parent or not filename then
             -- No slashes — assume it's a file in current directory
-            local cwd = io.popen("pwd"):read("*l")
+            local cwd = run_popen("pwd" , function(fh)
+                return fh:read("*l")
+            end)
             return cwd .. "/" .. path
         end
 
         -- Resolve parent dir
-        local h2 = io.popen(string.format('realpath "%s" 2>/dev/null', parent))
-        local abs_parent = h2:read("*a")
-        h2:close()
+        local abs_parent = run_popen(string.format('realpath "%s" 2>/dev/null', parent), function(h2)
+            return h2:read("*a")
+        end)
 
         abs_parent = abs_parent and abs_parent:match("^%s*(.-)%s*$")
 
@@ -374,16 +362,11 @@ dirtools.get_folderslist = function(path, cache_update)
     local files             = {}
     table.insert(files, 1, { name = ".." })
     
-    local res = ""
     -- Fill with temp file list of dir /b 
-    local fh = io.popen(string.format(allfolders_cmd, path), "r")
-    if(fh) then 
-        res = fh:read("*a")
-        fh:close()
-    else 
-        log_error("dirtools.get_folderslist bad path: "..tostring(path))
-        return files
-    end
+    local res = run_popen(string.format(allfolders_cmd, path), "r", function(fh)
+        return fh:read("*a")
+    end)
+    if(res == nil) then return files end
 
     for f in string.gmatch(res, "(.-)\n") do 
         local newfile = { name = ffi.string(f), folder = true }
@@ -414,38 +397,59 @@ dirtools.get_dirlist = function(path, cache_update, extfilter)
     local files = dirtools.get_folderslist(path, cache_update)
 
     -- Add the files to the list.
-    local res = ""
     -- Fill with temp file list of dir /b 
-    local fh = io.popen(string.format(allfiles_cmd, path), "r")
-    if(fh) then 
+    local res = run_popen(string.format(allfiles_cmd, path), function(fh)
         res = fh:read("*a")
-        fh:close()
         if(#res == 0) then 
             list_cache[path] = files
-            return files        
+            return nil
         end
-    else 
-        log_error("dirtools.get_dirlist bad path: "..tostring(path))
-        return {}        
-    end
+        return res
+    end)
+    if(res == nil) then return files end 
 
     for f in string.gmatch(res, "(.-)\n") do 
-        -- Only match with filter on end of filename
-        local add_file = true
-        if(extfilter) then 
-            add_file = string.match(f, extfilter.."$")
-        end
-        if(add_file) then 
-            local newfile = { name = ffi.string(f), folder = nil }
-            newfile.select = ffi.new("int[1]")
-            newfile.select[0] = 0
-            table.insert(files, newfile) 
+        if(not string.match(f, "File Not Found")) then  
+            -- Only match with filter on end of filename
+            local add_file = true
+            if(extfilter) then 
+                add_file = string.match(f, extfilter.."$")
+            end
+            if(add_file) then 
+                local newfile = { name = ffi.string(f), folder = nil }
+                newfile.select = ffi.new("int[1]")
+                newfile.select[0] = 0
+                table.insert(files, newfile) 
+            end
         end
     end    
 
     list_cache[path] = files
     return files
 end
+
+---------------------------------------------------------------------------------------
+
+dirtools.get_dir_names = function(path)
+    local filelist = {}
+    local res = run_popen(string.format(allfolders_cmd, path), function(fh)
+        return fh:read("*a")
+    end)
+    if(res) then 
+        for f in string.gmatch(res, "(.-)\n") do 
+            tinsert(filelist, f) 
+        end
+    end
+    local res = run_popen(string.format(allfiles_cmd, path), function(fh)
+        return fh:read("*a")
+    end)
+    if(res) then 
+        for f in string.gmatch(res, "(.-)\n") do 
+            tinsert(filelist, f)
+        end
+    end
+    return filelist
+end 
 
 ---------------------------------------------------------------------------------------
 dirtools.path_match = function(list, path)
@@ -468,26 +472,18 @@ end
 ------------------------------------------------------------------------------------------------------------
 
 local function windows_dir( folder )
-	local result = nil
-	local f = io.popen("dir /AD /b \""..tostring(folder).."\"")
-	if f then
-		result = f:read("*a")
-	else
-		log_error("failed to read - "..tostring(folder))
-	end
+	local result = run_popen("dir /AD /b \""..tostring(folder).."\"", function(f)
+		return f:read("*a")
+    end)
 	return result
 end
 
 ------------------------------------------------------------------------------------------------------------
 
 local function unix_dir( folder )
-	local result = nil
-	local f = io.popen("ls -d -A -G -N -1 * \""..tostring(folder).."\"")
-	if f then
-		result = f:read("*a")
-	else
-		log_error("failed to read - "..tostring(folder))
-	end
+	local result = run_popen("ls -d -A -G -N -1 * \""..tostring(folder).."\"", function(f)
+		return f:read("*a")
+	end)
 	return result
 end
 
@@ -539,9 +535,9 @@ end
 ---------------------------------------------------------------------------------------
 
 dirtools.fileparts = function( path )
-
-    return string.match(path, "(.-)([^\\/]-([^%.]+))$")
+    return string.match(path, "^(.-[\\/])([^\\/]-)%.([^\\/]+)$")
 end
+
 
 ---------------------------------------------------------------------------------------
 dirtools.change_folder = function( path, child )
@@ -626,12 +622,14 @@ dirtools.get_fileinfo = function(path)
     if ffi.os == "Windows" then
         buf = ffi.new("struct __stat64[1]")
         if ffi.C._stat64(path, buf) ~= 0 then
-            return nil, "File not found or inaccessible"
+            print("[Error] dirtools.get_fileinfo | File not found or inaccessible: ", path)
+            return nil 
         end
     else
         buf = ffi.new("struct stat[1]")
         if ffi.C.stat(path, buf) ~= 0 then
-            return nil, "File not found or inaccessible"
+            print("[Error] dirtools.get_fileinfo | File not found or inaccessible: ", path)
+            return nil
         end
     end
     

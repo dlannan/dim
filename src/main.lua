@@ -1,8 +1,7 @@
 
 -- -----------------------------------------------------------------------------------------
 
-local dirtools  = require("tools.vfs.dirtools")
-dirtools.init("dim")
+local dirtools  = require("tools.vfs.dirtools").init("dim")
 
 --_G.SOKOL_DLL    = "sokol_debug_dll"
 local sapp      = require("sokol_app")
@@ -28,18 +27,21 @@ VERSION     = "1.11"
 PLATFORM    = ffi.os.." "..ffi.arch
 SCALE       = sapp.sapp_dpi_scale()
 -- This is kinda a fake runner name for the timebeing. Not sure if its really needed.
-EXEFILE     = dirtools.get_app_path()..dirtools.sep.."runner.exe"
+APPPATH     = dirtools.get_app_path()
+EXEFILE     = string.format("%s%s", APPPATH, dirtools.sep)
 
 -- --------------------------------------------------------------------------------------
 -- Load in the methods lites registers for rendering and io and such.
 require("src.system")
 require("src.renderer")
+require("src.threed")
 
 local core = nil
 
 -- --------------------------------------------------------------------------------------
 local shell32   = ffi.load("shell32")
 
+-- TODO: Need equivalents for OSX and Linux - probably should go in a systems utils.
 ffi.cdef[[
     void Sleep(uint32_t ms);
     void *  ShellExecuteA(const void * hwnd, const char * lpOperation, const char * lpFile, const char * lpParameters, char* lpDirectory, int nShowCmd);
@@ -49,6 +51,7 @@ ffi.cdef[[
 local SW_MAXIMIZE = 3
 
 -- --------------------------------------------------------------------------------------
+-- To use luajits internal profiler - can be useful to find hotspots.
 local enabled_profile   = arg[1] == "-profile"
 local profile           = nil
 if(enabled_profile) then 
@@ -127,7 +130,8 @@ local function core_init(ctx)
 end
 
 -- -----------------------------------------------------------------------------------------
-
+-- This is global too. But I dont think it needs to be. There are some potential 
+--     nk callbacks that might need it to be, so its here like this for the time being.
 winrect         = ffi.new("struct nk_rect[1]", {{0, 0, 1000, 600}})
 
 local function core_run(ctx)
@@ -145,6 +149,7 @@ local function core_run(ctx)
 end
 
 -- --------------------------------------------------------------------------------------
+-- Simple init flag. Core init needs some rendering, so the frame has to be running.
 local core_ready = nil 
 
 local function frame()
@@ -156,14 +161,21 @@ local function frame()
 
     local dt = sapp.sapp_frame_duration()
 
+    -- This is a little messy. I had to split core run into run and render.
+    -- The reason is I need to _know_ if lite needs to be rendered or not.
+    -- If it doesnt, then we dont clear the buffer and nothing is drawn with core_run.
+    -- Thus the last nuklear buffer is continued to be shown.
     local did_draw = true
     if(core) then 
         did_draw = core.run(w, h)
     end
 
     local clearflag = 0
-    if(did_draw == false) then clearflag = 1 end 
-
+    if(did_draw == false) then 
+        clearflag = 1 
+    else 
+        threed_renderer.queue = {}
+    end 
     local ctx = nk.snk_new_frame(clearflag)
     renderer.ctx    = ctx 
 
@@ -185,6 +197,7 @@ local function frame()
     nk.snk_render(sapp.sapp_width(), sapp.sapp_height())
 
     -- // Render 3D view rects here - will get rects from the docviews.
+    threed_renderer.render_rects(did_draw)
 
     sg.sg_end_pass()
     sg.sg_commit()

@@ -43,15 +43,10 @@ DocView.draw = function(self)
     self:draw_background(style.background)
     -- Work out aspect for image so it is always centered and correct aspect view
     local model = self.doc.model
-    local image_aspect = img.info[0].width / img.info[0].height
     local doc_size = self.size
     local doc_pos = self.position
 
-    local doc_width,  doc_height = doc_size.x * img.zoom, doc_size.y * img.zoom
-    local doc_aspect = doc_width / doc_height
-    local scaled_width, scaled_height
-
-    renderer.draw_model(model, x, y)
+    renderer.draw_model(model, doc_pos.x, doc_pos.y, doc_size.x, doc_size.y)
   else
     original_docview_draw(self)
   end

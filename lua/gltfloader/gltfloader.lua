@@ -6,14 +6,14 @@ local tinsert = table.insert
 
 local ffi 			= require("ffi")
 
-local gameobject	= require("engine.states.gameobjects.gameobject")
+local gameobject	= require("lua.engine.gameobject")
 
-local geom 			= require("libs.gltfloader.geometry-utils")
-local imageutils 	= require("libs.gltfloader.image-utils")
+local geom 			= require("lua.gltfloader.geometry-utils")
+local imageutils 	= require("lua.gltfloader.image-utils")
 
-local b64 			= require("utils.base64")
-local utils			= require("utils.utils")
-local gltf      	= require("libs.gltfloader.gltf")
+local b64 			= require("lua.base64")
+local utils			= require("lua.utils")
+local gltf      	= require("lua.gltfloader.gltf")
 local hmm      		= require("hmm")
 
 ------------------------------------------------------------------------------------------------------------
@@ -374,15 +374,16 @@ function gltfloader:load_gltf( assetfilename, asset, disableaabb )
 	local valid = string.match(assetfilename, ".+%."..asset.format)
 	assert(valid)
 
-	local basepath = assetfilename:match("(.*/)")
+	local basepath = assetfilename:match("(.*[\\/])")
+
 	
 	-- Parse using geomext 
 	local model = gltf.new( assetfilename )
 	model.basepath = basepath
 
-	if(model.animations) then 
-		ozzanim.loadgltf( "--file="..assetfilename )
-	end
+	-- if(model.animations) then 
+	-- 	ozzanim.loadgltf( "--file="..assetfilename )
+	-- end
 	
 	if(asset.format == "gltf" or asset.format == "glb") then 
 		asset.go = gameobject.create( nil, asset.name )

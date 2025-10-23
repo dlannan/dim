@@ -1,7 +1,7 @@
 
-local struct = require("utils.struct")
-local utils = require("utils.utils")
-local json = require("utils.json")
+local struct = require("lua.struct")
+local utils = require("lua.utils")
+local json = require("lua.json")
 
 local gltf = {}
 gltf.componentTypes = {               -- (little endian)
@@ -14,7 +14,7 @@ gltf.componentTypes = {               -- (little endian)
 }
 
 -- local json = require("cjson")
-local base64 = require("utils.base64")
+local base64 = require("lua.base64")
 
 local function unescapePercent(str)
 	return (str:gsub("%%(%x%x)", function(x) return string.char(tonumber(x, 16)) end))

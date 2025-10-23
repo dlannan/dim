@@ -246,3 +246,17 @@ renderer.draw_image      = function(image, x, y, w, h)
 end
   
 -- --------------------------------------------------------------------------------------
+
+renderer.load_model      = function(filename) 
+    return threed_renderer.load_model(filename) 
+    -- return rencache.rencache_draw_text(font, text, x, y, color)
+end
+
+-- --------------------------------------------------------------------------------------
+
+renderer.draw_model      = function(model, x, y, w, h) 
+
+    return threed_renderer.draw_model(model, x, y, w, h)
+end 
+
+-- --------------------------------------------------------------------------------------
