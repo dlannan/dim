@@ -44,7 +44,10 @@ DocView.draw = function(self)
     -- Work out aspect for image so it is always centered and correct aspect view
     local img = self.doc.image
     local image_aspect = img.info[0].width / img.info[0].height
-    local doc_width,  doc_height = self.size.x * img.zoom, self.size.y * img.zoom
+    local doc_size = self.size
+    local doc_pos = self.position
+
+    local doc_width,  doc_height = doc_size.x * img.zoom, doc_size.y * img.zoom
     local doc_aspect = doc_width / doc_height
     local scaled_width, scaled_height
 
@@ -67,17 +70,14 @@ DocView.draw = function(self)
       scaled_width = scaled_height * image_aspect
     end
 
-    local x, y = self.position.x, self.position.y
-
+    local x, y = doc_pos.x, doc_pos.y
     if scaled_width < doc_width then
-        -- Center horizontally if the image is smaller than the document width
-        x = (doc_width - scaled_width) / 2 + self.position.x
+        x = (doc_width - scaled_width) / 2 + doc_pos.x
+    end
+    if scaled_height < doc_height then
+        y = (doc_height - scaled_height) / 2 + doc_pos.y
     end
 
-    if scaled_height < doc_height then
-        -- Center vertically if the image is smaller than the document height
-        y = (doc_height - scaled_height) / 2 + self.position.x
-    end       
     renderer.draw_image(img.nk_image, x, y, scaled_width, scaled_height)
   else
     original_docview_draw(self)
