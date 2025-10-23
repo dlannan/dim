@@ -1,6 +1,7 @@
 
-local stb           = require("stb")
 local nk            = sg
+local stb           = require("stb")
+
 local ffi           = require("ffi")
 
 -- --------------------------------------------------------------------------------------
@@ -17,7 +18,7 @@ local function checkstring(val)
         error("bad argument: string or number expected, got " .. t, 2)
     end
 end
-  
+
 -- --------------------------------------------------------------------------------------
 
 nuklear_renderer = {}
@@ -78,4 +79,51 @@ nuklear_renderer.draw_text      = function(font, text, x, y, color)
     return w + x, h
 end
   
+-- --------------------------------------------------------------------------------------
+
+nuklear_renderer.load_image = function(filename)
+
+    local x = ffi.new("int[1]", {0})
+    local y = ffi.new("int[1]", {0})
+    local n = ffi.new("int[1]", {4})
+    local data = stb.stbi_load(filename, x, y, nil, 4)
+    if (data == nil) then error("[STB]: failed to load image: "..filename); return nil end
+
+    print("Image Loaded: "..filename.."      Width: "..x[0].."  Height: "..y[0].."  Channels: "..n[0])
+
+    local pixformat =  sg.SG_PIXELFORMAT_RGBA8
+
+    local sg_img_desc = ffi.new("sg_image_desc[1]")
+    sg_img_desc[0].width = x[0]
+    sg_img_desc[0].height = y[0]
+    sg_img_desc[0].pixel_format = pixformat
+    sg_img_desc[0].sample_count = 1
+    
+    sg_img_desc[0].data.subimage[0][0].ptr = data
+    sg_img_desc[0].data.subimage[0][0].size = x[0] * y[0] * n[0]
+
+    local new_img = sg.sg_make_image(sg_img_desc)
+
+    -- // create a sokol-nuklear image object which associates an sg_image with an sg_sampler
+    local img_desc = ffi.new("snk_image_desc_t[1]")
+    img_desc[0].image = new_img
+    local snk_img = nk.snk_make_image(img_desc)
+    local nk_hnd = nk.snk_nkhandle(snk_img)
+    local nk_img = nk.nk_image_handle(nk_hnd);
+
+    stb.stbi_image_free(data)
+    return nk_img
+end
+
+-- --------------------------------------------------------------------------------------
+
+nuklear_renderer.draw_image = function(img, x, y, w, h, color)
+    color = color or {0xff, 0xff, 0xff, 0xff}
+    local canvas = renderer.canvas
+    local r = renderer.rect
+    local rect = nk.nk_rect(x+r.x, y+r.y, w, h)
+    local icolor = nk.nk_rgba(color[1], color[2], color[3], color[4])
+    nk.nk_draw_image(canvas, rect, img, icolor )
+end
+
 -- --------------------------------------------------------------------------------------
