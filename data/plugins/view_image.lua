@@ -3,11 +3,13 @@ local style = require "core.style"
 local common = require "core.common"
 local Doc = require "core.doc"
 local DocView = require "core.docview"
+local StatusView = require "core.statusview"
 
 local syntax = require "core.syntax"
 
 local images = {
   files = { "%.png$", "%.jpg$", "%.jpeg$", "%.tga$", "%.gif$" },
+  file_types = { "png", "jpg", "jpeg", "tga", "gif" },
 }
 
 local function find(string, field)
@@ -23,12 +25,13 @@ end
 local original_doc_load = Doc.load
 
 Doc.load = function(self, filename)
-  if ( find(filename, "files") ) then 
+  local idx = find(filename, "files")
+  if ( idx ) then 
     local image, image_info = renderer.load_image(filename)
     if(image == nil) then 
       original_doc_load(self, filename)
     else
-      self.image = { nk_image = image, info = image_info, zoom = 1.0 }
+      self.image = { nk_image = image, info = image_info, zoom = 1.0, itype = images.file_types[idx] }
       self.filename = filename
     end
   else
@@ -82,4 +85,36 @@ DocView.draw = function(self)
   else
     original_docview_draw(self)
   end
+end
+
+local get_items = StatusView.get_items
+
+function StatusView:get_items()
+  local dv = core.active_view
+  if(not dv.doc) then 
+    return get_items(self)
+  end
+
+  local img = dv.doc.image
+
+  if not img then
+    return get_items(self)
+  end
+  local left, right = get_items(self)
+
+  local itype, w, h = img.itype, img.info[0].width, img.info[0].height
+
+  local t = {
+    style.font, style.dim, self.separator2,
+    style.text, itype,
+    style.font, style.dim, " > ",
+    style.text, w,
+    style.text, " x ",
+    style.text, h
+  }
+  for _, item in ipairs(t) do
+    table.insert(right, item)
+  end
+
+  return left, right
 end

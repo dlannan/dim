@@ -9,7 +9,7 @@ local tremove 	= table.remove
 
 local ffi 		= require("ffi")
 local utils 	= require("lua.utils")
-local meshes	= require("engine.states.geometry.meshes")
+local meshes	= require("lua.geometry.meshes")
 
 ------------------------------------------------------------------------------------------------------------
 

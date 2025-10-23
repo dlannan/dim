@@ -130,19 +130,14 @@ end
 -- --------------------------------------------------------------------------------------
 
 system.list_dir           = function(path) 
-    local files = dirtools.get_dirlist(path, true)
-    local results = {}
-    for i, file in pairs(files) do 
-		if(file.name ~= ".." and file.name ~= ".") then 
-			tinsert(results, file.name) 
-		end
-	end
-    return results
+	-- print("list_dir", path)
+    return dirtools.get_dir_names(path)
 end
 
 -- --------------------------------------------------------------------------------------
 
 system.absolute_path      = function(path) 
+	-- print("absolute_path")
     local abspath = dirtools.get_absolute_path(path)
 	return abspath
 end
@@ -182,6 +177,7 @@ end
 
 system.exec               = function(cmd) 
 	cmd = string.format("cmd /c \"%s\"", cmd)
+	print(cmd)
     local fh = io.popen(cmd, "r")
 	local results = ""
 	if(fh) then 
