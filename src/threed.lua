@@ -14,6 +14,13 @@ local tremove       = table.remove
 
 -- --------------------------------------------------------------------------------------
 
+threed_renderer     = {
+    queue   = {},
+}
+
+
+-- --------------------------------------------------------------------------------------
+
 ffi.cdef[[
 /* application state */
 typedef struct state {
@@ -25,9 +32,92 @@ typedef struct state {
 
 -- --------------------------------------------------------------------------------------
 
-threed_renderer     = {
-    queue   = {},
-}
+local shc       = require("tools.shader_compiler.shc_compile").init( "dim", true )
+local shader    = shc.compile("lua/engine/cube_simple.glsl")
+
+local state = ffi.new("state[1]")
+local sg_range = ffi.new("sg_range[1]")
+local binding = ffi.new("sg_bindings[1]", {})
+
+-- --------------------------------------------------------------------------------------
+
+local function make_cube()
+
+    local vertices = ffi.new("float[168]", {
+        -1.0, -1.0, -1.0,   1.0, 0.0, 0.0, 1.0,
+         1.0, -1.0, -1.0,   1.0, 0.0, 0.0, 1.0,
+         1.0,  1.0, -1.0,   1.0, 0.0, 0.0, 1.0,
+        -1.0,  1.0, -1.0,   1.0, 0.0, 0.0, 1.0,
+
+        -1.0, -1.0,  1.0,   0.0, 1.0, 0.0, 1.0,
+         1.0, -1.0,  1.0,   0.0, 1.0, 0.0, 1.0,
+         1.0,  1.0,  1.0,   0.0, 1.0, 0.0, 1.0,
+        -1.0,  1.0,  1.0,   0.0, 1.0, 0.0, 1.0,
+
+        -1.0, -1.0, -1.0,   0.0, 0.0, 1.0, 1.0,
+        -1.0,  1.0, -1.0,   0.0, 0.0, 1.0, 1.0,
+        -1.0,  1.0,  1.0,   0.0, 0.0, 1.0, 1.0,
+        -1.0, -1.0,  1.0,   0.0, 0.0, 1.0, 1.0,
+
+        1.0, -1.0, -1.0,    1.0, 0.5, 0.0, 1.0,
+        1.0,  1.0, -1.0,    1.0, 0.5, 0.0, 1.0,
+        1.0,  1.0,  1.0,    1.0, 0.5, 0.0, 1.0,
+        1.0, -1.0,  1.0,    1.0, 0.5, 0.0, 1.0,
+
+        -1.0, -1.0, -1.0,   0.0, 0.5, 1.0, 1.0,
+        -1.0, -1.0,  1.0,   0.0, 0.5, 1.0, 1.0,
+         1.0, -1.0,  1.0,   0.0, 0.5, 1.0, 1.0,
+         1.0, -1.0, -1.0,   0.0, 0.5, 1.0, 1.0,
+
+        -1.0,  1.0, -1.0,   1.0, 0.0, 0.5, 1.0,
+        -1.0,  1.0,  1.0,   1.0, 0.0, 0.5, 1.0,
+         1.0,  1.0,  1.0,   1.0, 0.0, 0.5, 1.0,
+         1.0,  1.0, -1.0,   1.0, 0.0, 0.5, 1.0
+    }) 
+    
+    local buffer_desc           = ffi.new("sg_buffer_desc[1]")
+    buffer_desc[0].data.ptr     = vertices
+    buffer_desc[0].data.size    = ffi.sizeof(vertices)
+    buffer_desc[0].label        = "cube-vertices"
+    local vbuf = sg.sg_make_buffer(buffer_desc)
+
+    local indices = ffi.new("uint16_t[36]", {
+        0, 1, 2,  0, 2, 3,
+        6, 5, 4,  7, 6, 4,
+        8, 9, 10,  8, 10, 11,
+        14, 13, 12,  15, 14, 12,
+        16, 17, 18,  16, 18, 19,
+        22, 21, 20,  23, 22, 20
+    })
+
+    local ibuffer_desc          = ffi.new("sg_buffer_desc[1]", {})
+    ibuffer_desc[0].type        = sg.SG_BUFFERTYPE_INDEXBUFFER
+    ibuffer_desc[0].data.ptr    = indices
+    ibuffer_desc[0].data.size   = ffi.sizeof(indices) 
+    ibuffer_desc[0].label       = "cube-indices"
+    local ibuf = sg.sg_make_buffer(ibuffer_desc)
+
+    local shd = sg.sg_make_shader(shader)
+
+    local pipe_desc = ffi.new("sg_pipeline_desc[1]", {})
+    pipe_desc[0].layout.buffers[0].stride = 28
+    pipe_desc[0].layout.attrs[0].format = sg.SG_VERTEXFORMAT_FLOAT3
+    pipe_desc[0].layout.attrs[1].format = sg.SG_VERTEXFORMAT_FLOAT4
+    pipe_desc[0].shader         = shd    
+    pipe_desc[0].index_type     = sg.SG_INDEXTYPE_UINT16
+    pipe_desc[0].cull_mode      = sg.SG_CULLMODE_BACK
+    pipe_desc[0].depth.write_enabled = true
+    pipe_desc[0].depth.compare  = sg.SG_COMPAREFUNC_LESS_EQUAL
+    pipe_desc[0].label          = "cube-pipeline"
+    state[0].pip = sg.sg_make_pipeline(pipe_desc)
+
+    binding[0].vertex_buffers[0] = vbuf
+    binding[0].index_buffer     = ibuf
+    state[0].bind               = binding
+end
+
+
+-- --------------------------------------------------------------------------------------
 
 local function load_gltf(filename)
 
@@ -69,7 +159,7 @@ end
 local function render_model( model_rect )
 
     model_rect.state = model_rect.state or ffi.new("state[1]")
-    state = model_rect.state
+    -- state = model_rect.state
 
     local w, h      = model_rect.w, model_rect.h
     local t         = (sapp.sapp_frame_duration() * 60.0)
@@ -102,6 +192,7 @@ end
 
 threed_renderer.load_model = function(filename)
 
+    make_cube()
     return load_gltf(filename)
 end
 

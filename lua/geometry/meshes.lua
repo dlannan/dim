@@ -19,8 +19,8 @@ local tinsert   = table.insert
 
 -- --------------------------------------------------------------------------------------
 -- The nice way to take a glsl shader and load, compile and return a shader description
-local shc       = require("tools.shader_compiler.shc_compile").init( "dim", true )
-local shader    = shc.compile("lua/engine/cube_simple.glsl")
+-- local shc       = require("tools.shader_compiler.shc_compile").init( "dim", true )
+-- local shader    = shc.compile("lua/engine/cube_simple.glsl")
 
 -- ----------------------------------------------------------------------------------------
 
