@@ -11,16 +11,15 @@
 
 -- These are created as buffers and can be used as needed. 
 
-local ffi       = require("ffi")
+local ffi           = require("ffi")
 
-local utils     = require("lua.utils")
+local utils         = require("lua.utils")
 
-local tinsert   = table.insert
+local tinsert       = table.insert
 
 -- --------------------------------------------------------------------------------------
--- The nice way to take a glsl shader and load, compile and return a shader description
--- local shc       = require("tools.shader_compiler.shc_compile").init( "dim", true )
--- local shader    = shc.compile("lua/engine/cube_simple.glsl")
+
+local shc       = require("tools.shader_compiler.shc_compile").init( "dim", false )
 
 -- ----------------------------------------------------------------------------------------
 
@@ -243,7 +242,7 @@ end
 
 -- ----------------------------------------------------------------------------------------
 -- Model makes a pipeline 
-mesh.model     = function(name, mesh, material)
+mesh.state     = function(name, mesh, material)
 
     -- Stores material with mesh - this should be an index
     mesh.material = material
@@ -259,19 +258,22 @@ mesh.model     = function(name, mesh, material)
         if(mesh.depth.write_enabled) then pipe_desc[0].depth.write_enabled = mesh.depth.write_enabled end
         if(mesh.depth.compare) then pipe_desc[0].depth.compare = mesh.depth.compare end
     end
+    -- pipe_desc[0].index_type     = sg.SG_INDEXTYPE_UINT16
+    -- pipe_desc[0].cull_mode      = sg.SG_CULLMODE_BACK
+    -- pipe_desc[0].depth.write_enabled = true
+    -- pipe_desc[0].depth.compare  = sg.SG_COMPAREFUNC_LESS_EQUAL
+
     pipe_desc[0].label                  = name.."-pipeline"
     local pipeline = sg.sg_make_pipeline(pipe_desc)
     
-    local bindings = ffi.new("sg_bindings[1]", {})
-    bindings[0].vertex_buffers[0]       = mesh.vbuf
-    if(mesh.ibuf) then bindings[0].index_buffer = mesh.ibuf end
+    local binding = ffi.new("sg_bindings[1]", {})
+    binding[0].vertex_buffers[0]       = mesh.vbuf
+    if(mesh.ibuf) then binding[0].index_buffer = mesh.ibuf end
 
-    local model = {
+    return {
         pip     = pipeline,
-        bind    = bindings
+        bind    = binding,
     }
-
-    return model
 end 
 
 -- ----------------------------------------------------------------------------------------

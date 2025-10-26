@@ -3,6 +3,8 @@ local utils 	= require("lua.utils")
 local hmm       = require("hmm")
 local ffi 		= require("ffi")
 
+local geom 		= require("lua.gltfloader.geometry-utils")
+
 -- --------------------------------------------------------------------------------------------------------
 -- Internal storage for a mesh gameobject
 --
@@ -142,6 +144,14 @@ gameobject.set_parent = function( id, parent )
 	assert(parent < gameobject.count and parent >= 0)
 	gameobject.all_gameobjects[id].parent = parent
 end
+
+-- --------------------------------------------------------------------------------------------------------
+
+gameobject.get_mesh = function(id)
+	assert(id < gameobject.count and id >= 0)
+	local go = gameobject.all_gameobjects[id]
+	return geom:GetMesh(ffi.string(go.name))
+end 
 
 -- --------------------------------------------------------------------------------------------------------
 

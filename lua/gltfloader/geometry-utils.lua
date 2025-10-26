@@ -70,6 +70,13 @@ end
 
 ------------------------------------------------------------------------------------------------------------
 
+function geom:GetMesh(goname)
+
+	return self.meshes[goname]
+end
+
+------------------------------------------------------------------------------------------------------------
+
 function geom:GenerateCube(goname, sz, d )
 
 	geom:New(goname, 1.0)
@@ -179,7 +186,7 @@ function geom:GenerateCube(goname, sz, d )
 		end
 	end
 
-	geom:makeMesh( goname, indices, verts, uvs, normals )
+	return geom:makeMesh( goname, indices, verts, uvs, normals )
 end
 
 ------------------------------------------------------------------------------------------------------------
@@ -198,7 +205,7 @@ function geom:GeneratePlane( goname, sx, sy, uvMult, offx, offy )
 	local uvs		= { 0.0, 0.0, uvMult, 0.0, uvMult, uvMult, 0.0, uvMult }
 	local normals	= { 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0 }
 
-	geom:makeMesh( goname, indices, verts, uvs, normals )
+	return geom:makeMesh( goname, indices, verts, uvs, normals )
 end
 
 
@@ -325,7 +332,7 @@ function geom:GenerateSphere( goname, sz, d, inverted )
 -- 	gSphereCount = gSphereCount + 1;    
 -- 	self.node:AddBlock(sphere, name, "byt3dMesh")
 -- 
-	geom:makeMesh( goname, indices, verts, uvs, normals )
+	return geom:makeMesh( goname, indices, verts, uvs, normals )
 end
 
 -- ------------------------------------------------------------------------------------------------------------

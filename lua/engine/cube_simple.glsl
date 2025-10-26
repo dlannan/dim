@@ -11,8 +11,8 @@ in vec4 color0;
 out vec4 color;
 
 void main() {
-    gl_Position = mvp * position;
     color = color0;
+    gl_Position = mvp * position;
 }
 @end
 
