@@ -161,6 +161,8 @@ local function frame()
 
     local dt = sapp.sapp_frame_duration()
 
+    threed_renderer.load_models()
+
     -- This is a little messy. I had to split core run into run and render.
     -- The reason is I need to _know_ if lite needs to be rendered or not.
     -- If it doesnt, then we dont clear the buffer and nothing is drawn with core_run.
@@ -171,11 +173,9 @@ local function frame()
     end
 
     local clearflag = 0
-    if(did_draw == false) then 
-        clearflag = 1 
-    else 
-        threed_renderer.queue = {}
-    end 
+    if(did_draw == false) then clearflag = 1 end 
+    if(did_draw == true) then threed_renderer.render_queue = {} end 
+
     local ctx = nk.snk_new_frame(clearflag)
     renderer.ctx    = ctx 
 
@@ -197,10 +197,11 @@ local function frame()
     nk.snk_render(sapp.sapp_width(), sapp.sapp_height())
 
     -- // Render 3D view rects here - will get rects from the docviews.
-    threed_renderer.render_rects(did_draw)
+    threed_renderer.render_rects(t, did_draw)
 
     sg.sg_end_pass()
     sg.sg_commit()
+
     -- Display frame stats in console.
     -- hutils.show_stats()
 end

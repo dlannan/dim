@@ -9,6 +9,7 @@ local ffi 			= require("ffi")
 local gameobject	= require("lua.engine.gameobject")
 
 local geom 			= require("lua.gltfloader.geometry-utils")
+local meshes 		= require("lua.geometry.meshes")
 local imageutils 	= require("lua.gltfloader.image-utils")
 
 local b64 			= require("lua.base64")
@@ -120,12 +121,13 @@ end
 -- Combine AABB's of model with primitives. 
 local function calcAABB( gltfobj, aabbmin, aabbmax )
 	gltfobj.aabb = gltfobj.aabb or { min = hmm.HMM_Vec3(0,0,0), max = hmm.HMM_Vec3(0,0,0) }
-	if( aabbmin[1] < gltfobj.aabb.min.x ) then gltfobj.aabb.min.x = aabbmin[1] end
-	if( aabbmin[2] < gltfobj.aabb.min.y ) then gltfobj.aabb.min.y = aabbmin[2] end
-	if( aabbmin[3] < gltfobj.aabb.min.z ) then gltfobj.aabb.min.z = aabbmin[3] end
-	if( aabbmax[1] > gltfobj.aabb.max.x ) then gltfobj.aabb.max.x = aabbmax[1] end
-	if( aabbmax[2] > gltfobj.aabb.max.y ) then gltfobj.aabb.max.y = aabbmax[2] end
-	if( aabbmax[3] > gltfobj.aabb.max.z ) then gltfobj.aabb.max.z = aabbmax[3] end
+	gltfobj.aabb.min.x = math.min(gltfobj.aabb.min.x, aabbmin[1])
+	gltfobj.aabb.min.y = math.min(gltfobj.aabb.min.y, aabbmin[2])
+	gltfobj.aabb.min.z = math.min(gltfobj.aabb.min.z, aabbmin[3])
+
+	gltfobj.aabb.max.x = math.max(gltfobj.aabb.max.x, aabbmax[1])
+	gltfobj.aabb.max.y = math.max(gltfobj.aabb.max.y, aabbmax[2])
+	gltfobj.aabb.max.z = math.max(gltfobj.aabb.max.z, aabbmax[3])
 end
 
 ------------------------------------------------------------------------------------------------------------
@@ -168,14 +170,22 @@ function gltfloader:processdata( gltfobj, gochildname, thisnode, parent )
 				indices = ffi.new("uint32_t[?]", acc_idx.count)
 				ffi.copy(indices, ffi.string(index_buffer_data), acc_idx.count * 4)
 				-- geomextension.setdataintstotable( 0, , index_buffer_data, indices)
+				print("[Warning] 32 bit index buffer")
 			elseif(acc_idx.componentType == 5123 or acc_idx.componentType == 5122) then 
 				indices = ffi.new("uint16_t[?]", acc_idx.count)
 				ffi.copy(indices, ffi.string(index_buffer_data), acc_idx.count * 2)
 				-- geomextension.setdatashortstotable( 0, acc_idx.count * 2, index_buffer_data, indices)
 			elseif(acc_idx.componentType == 5120 or acc_idx.componentType == 5121) then 
-				indices = ffi.new("uint8_t[?]", acc_idx.count)
-				ffi.copy(indices, ffi.string(index_buffer_data), acc_idx.count)
+				-- indices = ffi.new("uint8_t[?]", acc_idx.count)
+				-- ffi.copy(indices, ffi.string(index_buffer_data), acc_idx.count)
+				local src = ffi.cast("uint8_t*", ffi.string(index_buffer_data))
+				indices = ffi.new("uint16_t[?]", acc_idx.count)
+				for i = 0, acc_idx.count - 1 do
+					indices[i] = src[i]
+				end
+
 				-- geomextension.setdatabytestotable( 0, acc_idx.count, index_buffer_data, indices)
+				print("[Warning] 8 bit index buffer")
 			else 
 				print("[Error] Unhandled componentType: "..acc_idx.componentType)
 			end
@@ -259,7 +269,8 @@ function gltfloader:processdata( gltfobj, gochildname, thisnode, parent )
 		prim.primmesh = primmesh
 		
 		if(indices) then 
-			geom:makeMesh( primmesh, indices, verts, uvs, normals, aabb )
+			prim.mesh_buffers = geom:makeMesh( primmesh, indices, verts, uvs, normals, aabb )
+			prim.mesh_buffers.count = acc_idx.count
 		end
 
 		-- go.set_rotation(vmath.quat(), primgo)
@@ -291,7 +302,6 @@ function gltfloader:makeNodeMeshes( gltfobj, parent, node )
 	thisnode.goname = gochildname
 	
 	--print("Name:", gomeshname)	
-	
 	if(thisnode.mesh) then 
 		
 		-- Temp.. 
@@ -332,9 +342,7 @@ function gltfloader:loadimages( gltfobj, primmesh, bcolor, tid )
 		elseif(bcolor.texture.source.bufferView) then
 			-- print("TID: "..tid.."   "..bcolor.texture.source.name.."  "..bcolor.texture.source.mimeType)
 			local stringbuffer = bcolor.texture.source.bufferView:get()
-			local pnginfo = utils.getpngheader(stringbuffer)
-			-- local bytes, w, h = png.decode_rgba(stringbuffer, false)
-			pnginfo.type = "rgba"
+			imageutils.loadimagebuffer(primmesh.mesh, stringbuffer, tid )
 
 			-- imageutils.defoldbufferimage(primmesh.mesh, bytes, pnginfo, tid )		
 		end
@@ -390,7 +398,7 @@ function gltfloader:load_gltf( assetfilename, asset, disableaabb )
 
 		self:load( model, model.scenes[1], asset.go, asset.name)
 
-		--		local mesh, scene = gltf:load(assetfilename, asset.go, asset.name)
+		-- local mesh, scene = gltf:load(assetfilename, asset.go, asset.name)
 		-- go.set_position(vmath.vector3(0, -999999, 0), asset.go)
 	end
 
@@ -399,6 +407,38 @@ function gltfloader:load_gltf( assetfilename, asset, disableaabb )
 	else 
 		print("[Error] Model has no aabb: "..assetfilename)
 	end
+	
+	local states 	  = {}
+	-- TODO: DOdgy override for a material atm. Will change.
+    local material    = meshes.material(asset.go, "lua/engine/cube_simple.glsl")
+	local prims       = {}
+
+	-- Collect meshes together for rendering
+	gltfloader:run_nodes(model, function(model, thisnode)
+		if(thisnode.mesh) then 
+			if(thisnode.mesh.primitives) then 
+				for i, prim in ipairs(thisnode.mesh.primitives) do 
+					if(prims[prim.primname] == nil) then 
+            			prims[prim.primname] = { 
+							index_count = prim.mesh_buffers.count,
+							node = thisnode, prim = prim, 
+							mesh = prim.mesh_buffers 
+						}
+					end
+				end 
+			end
+		end
+	end)
+
+	for k, prim in pairs(prims) do 
+		-- local geom_mesh = geom:GetMesh(prim.prim.primmesh)
+		local state_tbl = meshes.state(prim.node.goname, prim.mesh, material)
+		local state = { pip = state_tbl.pip, bind = state_tbl.bind, count = prim.index_count }
+		tinsert(states, state)
+	end
+
+	model.states_tbl = states
+
 	return model
 end
 

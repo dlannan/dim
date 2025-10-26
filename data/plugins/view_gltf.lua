@@ -28,8 +28,8 @@ Doc.load = function(self, filename)
     if(gltf == nil) then 
       original_doc_load(self, filename)
     else
-      self.model = { model = gltf, model_type = "gltf", scale = 1.0 }
-      self.filename = filename
+      self.model = gltf
+      self.model.scale = 1.0
     end
   else
     original_doc_load(self, filename)
