@@ -120,7 +120,10 @@ end
 ------------------------------------------------------------------------------------------------------------
 -- Combine AABB's of model with primitives. 
 local function calcAABB( gltfobj, aabbmin, aabbmax )
-	gltfobj.aabb = gltfobj.aabb or { min = hmm.HMM_Vec3(0,0,0), max = hmm.HMM_Vec3(0,0,0) }
+	gltfobj.aabb = gltfobj.aabb or { 
+		min = hmm.HMM_Vec3(math.huge,math.huge,math.huge), 
+		max = hmm.HMM_Vec3(-math.huge,-math.huge,-math.huge) 
+	}
 	gltfobj.aabb.min.x = math.min(gltfobj.aabb.min.x, aabbmin[1])
 	gltfobj.aabb.min.y = math.min(gltfobj.aabb.min.y, aabbmin[2])
 	gltfobj.aabb.min.z = math.min(gltfobj.aabb.min.z, aabbmin[3])
@@ -161,6 +164,8 @@ function gltfloader:processdata( gltfobj, gochildname, thisnode, parent )
 		local acc_idx = prim.indices
 		local indices = nil
 		
+		local itype = sg.SG_INDEXTYPE_UINT16
+
 		if(acc_idx) then 
 			local bv = acc_idx.bufferView
 			local index_buffer_data = bv:get()
@@ -170,20 +175,19 @@ function gltfloader:processdata( gltfobj, gochildname, thisnode, parent )
 				indices = ffi.new("uint32_t[?]", acc_idx.count)
 				ffi.copy(indices, ffi.string(index_buffer_data), acc_idx.count * 4)
 				-- geomextension.setdataintstotable( 0, , index_buffer_data, indices)
+				itype = sg.SG_INDEXTYPE_UINT32
 				print("[Warning] 32 bit index buffer")
 			elseif(acc_idx.componentType == 5123 or acc_idx.componentType == 5122) then 
 				indices = ffi.new("uint16_t[?]", acc_idx.count)
 				ffi.copy(indices, ffi.string(index_buffer_data), acc_idx.count * 2)
 				-- geomextension.setdatashortstotable( 0, acc_idx.count * 2, index_buffer_data, indices)
 			elseif(acc_idx.componentType == 5120 or acc_idx.componentType == 5121) then 
-				-- indices = ffi.new("uint8_t[?]", acc_idx.count)
-				-- ffi.copy(indices, ffi.string(index_buffer_data), acc_idx.count)
-				local src = ffi.cast("uint8_t*", ffi.string(index_buffer_data))
 				indices = ffi.new("uint16_t[?]", acc_idx.count)
-				for i = 0, acc_idx.count - 1 do
-					indices[i] = src[i]
+				local ptr = ffi.cast("uint8_t *", ffi.string(index_buffer_data))
+				for i=0, acc_idx.count-1 do 
+					indices[i] = ptr[i]
 				end
-
+				itype = sg.SG_INDEXTYPE_UINT16
 				-- geomextension.setdatabytestotable( 0, acc_idx.count, index_buffer_data, indices)
 				print("[Warning] 8 bit index buffer")
 			else 
@@ -269,8 +273,17 @@ function gltfloader:processdata( gltfobj, gochildname, thisnode, parent )
 		prim.primmesh = primmesh
 		
 		if(indices) then 
-			prim.mesh_buffers = geom:makeMesh( primmesh, indices, verts, uvs, normals, aabb )
-			prim.mesh_buffers.count = acc_idx.count
+
+			local primdata = {
+				itype = itype, 
+				icount = acc_idx.count,
+				indices = indices, 
+				verts = verts, 
+				uvs = uvs, 
+				normals = normals, 
+				aabb = aabb,
+			}
+			prim.mesh_buffers = geom:makeMesh( primmesh, primdata )
 		end
 
 		-- go.set_rotation(vmath.quat(), primgo)

@@ -20,7 +20,15 @@ local geom = {
 }
 ------------------------------------------------------------------------------------------------------------
 -- AABB param is a table with siz values (min.max) like: { 0, 0, 0, 1, 1, 1 }
-function geom:makeMesh( goname, indices, verts, uvs, normals, aabb )
+function geom:makeMesh( goname, primdata )
+
+	local itype = primdata.itype
+	local icount = primdata.icount
+	local indices = primdata.indices
+	local verts = primdata.verts
+	local uvs = primdata.uvs
+	local normals = primdata.normals
+	local aabb = primdata.aabb
 
 	if(verts == nil) then
 		print("[Error geom:makeMesh] No valid vertices?")
@@ -29,6 +37,8 @@ function geom:makeMesh( goname, indices, verts, uvs, normals, aabb )
 	if(type(goname) == "cdata") then goname = ffi.string(goname) end
 
 	local buffers 	= {}
+	buffers.itype = itype
+	buffers.icount = icount
 	buffers.vertices = verts
 
 	if(indices) then 
@@ -48,7 +58,7 @@ function geom:makeMesh( goname, indices, verts, uvs, normals, aabb )
 	end
 
 	-- Fill out some manual defaults in the buffs
-    buffs.index_type = sg.SG_INDEXTYPE_UINT16
+    -- buffs.index_type = itype
     buffs.cullmode = sg.SG_CULLMODE_BACK
     buffs.depth.write_enabled = true
     buffs.depth.compare = sg.SG_COMPAREFUNC_LESS_EQUAL
@@ -56,6 +66,8 @@ function geom:makeMesh( goname, indices, verts, uvs, normals, aabb )
 	local mesh = meshes.make_mesh(goname, {buffs})
 	geom.meshes[goname] = mesh
 	geom.ctr = geom.ctr + 1
+
+	mesh.count = icount
 
 	return mesh
 end

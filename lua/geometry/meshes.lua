@@ -90,8 +90,8 @@ mesh.create_buffer     = function(name, buffers)
     }
 
     if(buffers.indices) then 
-        buffs.icount = ffi.sizeof(buffers.indices) / ffi.sizeof("uint16_t")
-        buffs.index_type = sg.SG_INDEXTYPE_UINT16
+        buffs.icount = buffers.icount
+        buffs.index_type = buffers.itype
     end
 
     local uvptr = nil
