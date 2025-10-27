@@ -832,95 +832,69 @@ typedef struct cgltf_data
 	cgltf_file_options file;
 } cgltf_data;
 
+cgltf_result cgltf_parse(
+		const cgltf_options* options,
+		const void* data,
+		cgltf_size size,
+		cgltf_data** out_data);
 
-/*
- * -- jsmn.h start --
- * Source: https://github.com/zserge/jsmn
- * License: MIT
- */
-typedef enum {
-	JSMN_UNDEFINED = 0,
-	JSMN_OBJECT = 1,
-	JSMN_ARRAY = 2,
-	JSMN_STRING = 3,
-	JSMN_PRIMITIVE = 4
-} jsmntype_t;
-enum jsmnerr {
-	/* Not enough tokens were provided */
-	JSMN_ERROR_NOMEM = -1,
-	/* Invalid character inside JSON string */
-	JSMN_ERROR_INVAL = -2,
-	/* The string is not a full JSON packet, more bytes expected */
-	JSMN_ERROR_PART = -3
-};
-typedef struct {
-	jsmntype_t type;
-	ptrdiff_t start;
-	ptrdiff_t end;
-	int size;
-#ifdef JSMN_PARENT_LINKS
-	int parent;
-#endif
-} jsmntok_t;
-typedef struct {
-	size_t pos; /* offset in the JSON string */
-	unsigned int toknext; /* next token to allocate */
-	int toksuper; /* superior token node, e.g parent object or array */
-} jsmn_parser;
-static void jsmn_init(jsmn_parser *parser);
-static int jsmn_parse(jsmn_parser *parser, const char *js, size_t len, jsmntok_t *tokens, size_t num_tokens);
-/*
- * -- jsmn.h end --
- */
+cgltf_result cgltf_parse_file(
+		const cgltf_options* options,
+		const char* path,
+		cgltf_data** out_data);
 
+cgltf_result cgltf_load_buffers(
+		const cgltf_options* options,
+		cgltf_data* data,
+		const char* gltf_path);
 
-#define GlbHeaderSize 12
-#define GlbChunkHeaderSize 8
-static const uint32_t GlbVersion = 2;
-static const uint32_t GlbMagic = 0x46546C67;
-static const uint32_t GlbMagicJsonChunk = 0x4E4F534A;
-static const uint32_t GlbMagicBinChunk = 0x004E4942;
-#define CGLTF_CONSTS
+cgltf_result cgltf_load_buffer_base64(const cgltf_options* options, cgltf_size size, const char* base64, void** out_data);
 
-#ifndef CGLTF_MALLOC
-#define CGLTF_MALLOC(size) malloc(size)
-#endif
-#ifndef CGLTF_FREE
-#define CGLTF_FREE(ptr) free(ptr)
-#endif
-#ifndef CGLTF_ATOI
-#define CGLTF_ATOI(str) atoi(str)
-#endif
-#ifndef CGLTF_ATOF
-#define CGLTF_ATOF(str) atof(str)
-#endif
-#ifndef CGLTF_ATOLL
-#define CGLTF_ATOLL(str) atoll(str)
-#endif
-#ifndef CGLTF_VALIDATE_ENABLE_ASSERTS
-#define CGLTF_VALIDATE_ENABLE_ASSERTS 0
-#endif
+cgltf_size cgltf_decode_string(char* string);
+cgltf_size cgltf_decode_uri(char* uri);
+
+cgltf_result cgltf_validate(cgltf_data* data);
+
+void cgltf_free(cgltf_data* data);
+
+void cgltf_node_transform_local(const cgltf_node* node, cgltf_float* out_matrix);
+void cgltf_node_transform_world(const cgltf_node* node, cgltf_float* out_matrix);
+
+const uint8_t* cgltf_buffer_view_data(const cgltf_buffer_view* view);
+
+const cgltf_accessor* cgltf_find_accessor(const cgltf_primitive* prim, cgltf_attribute_type type, cgltf_int index);
+
+cgltf_bool cgltf_accessor_read_float(const cgltf_accessor* accessor, cgltf_size index, cgltf_float* out, cgltf_size element_size);
+cgltf_bool cgltf_accessor_read_uint(const cgltf_accessor* accessor, cgltf_size index, cgltf_uint* out, cgltf_size element_size);
+cgltf_size cgltf_accessor_read_index(const cgltf_accessor* accessor, cgltf_size index);
+
+cgltf_size cgltf_num_components(cgltf_type type);
+cgltf_size cgltf_component_size(cgltf_component_type component_type);
+cgltf_size cgltf_calc_size(cgltf_type type, cgltf_component_type component_type);
+
+cgltf_size cgltf_accessor_unpack_floats(const cgltf_accessor* accessor, cgltf_float* out, cgltf_size float_count);
+cgltf_size cgltf_accessor_unpack_indices(const cgltf_accessor* accessor, void* out, cgltf_size out_component_size, cgltf_size index_count);
+
+/* this function is deprecated and will be removed in the future; use cgltf_extras::data instead */
+cgltf_result cgltf_copy_extras_json(const cgltf_data* data, const cgltf_extras* extras, char* dest, cgltf_size* dest_size);
+
+cgltf_size cgltf_mesh_index(const cgltf_data* data, const cgltf_mesh* object);
+cgltf_size cgltf_material_index(const cgltf_data* data, const cgltf_material* object);
+cgltf_size cgltf_accessor_index(const cgltf_data* data, const cgltf_accessor* object);
+cgltf_size cgltf_buffer_view_index(const cgltf_data* data, const cgltf_buffer_view* object);
+cgltf_size cgltf_buffer_index(const cgltf_data* data, const cgltf_buffer* object);
+cgltf_size cgltf_image_index(const cgltf_data* data, const cgltf_image* object);
+cgltf_size cgltf_texture_index(const cgltf_data* data, const cgltf_texture* object);
+cgltf_size cgltf_sampler_index(const cgltf_data* data, const cgltf_sampler* object);
+cgltf_size cgltf_skin_index(const cgltf_data* data, const cgltf_skin* object);
+cgltf_size cgltf_camera_index(const cgltf_data* data, const cgltf_camera* object);
+cgltf_size cgltf_light_index(const cgltf_data* data, const cgltf_light* object);
+cgltf_size cgltf_node_index(const cgltf_data* data, const cgltf_node* object);
+cgltf_size cgltf_scene_index(const cgltf_data* data, const cgltf_scene* object);
+cgltf_size cgltf_animation_index(const cgltf_data* data, const cgltf_animation* object);
+cgltf_size cgltf_animation_sampler_index(const cgltf_animation* animation, const cgltf_animation_sampler* object);
+cgltf_size cgltf_animation_channel_index(const cgltf_animation* animation, const cgltf_animation_channel* object);
 
 
-/* cgltf is distributed under MIT license:
- *
- * Copyright (c) 2018-2021 Johannes Kuhlmann
-
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
-
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
-
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- */
+cgltf_result cgltf_write_file(const cgltf_options* options, const char* path, const cgltf_data* data);
+cgltf_size cgltf_write(const cgltf_options* options, char* buffer, cgltf_size size, const cgltf_data* data);

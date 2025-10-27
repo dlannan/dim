@@ -14,8 +14,16 @@ local imageutils 	= require("lua.gltfloader.image-utils")
 
 local b64 			= require("lua.base64")
 local utils			= require("lua.utils")
-local gltf      	= require("lua.gltfloader.gltf")
+local cgltf      	= require("ffi.sokol.cgltf")
 local hmm      		= require("hmm")
+
+-- load lcpp (ffi.cdef wrapper turned on per default)
+local lcpp 			= require("tools.lcpp")
+
+-- just use LuaJIT ffi and lcpp together
+ffi.cdef([[
+#include "lua/engine/include/cgltf-sapp.h" 
+]])
 
 ------------------------------------------------------------------------------------------------------------
 
@@ -25,29 +33,6 @@ local gltfloader = {
 	curr_factory 	= nil,
 	temp_meshes 	= {},
 }
-
-------------------------------------------------------------------------------------------------------------
-
-function gltfloader:setpool( meshpoolpath, nummeshes )
-
-	-- Make a list of valid meshes
-	for i=1, nummeshes do 
-		local mpath = meshpoolpath..string.format("%03d", i)..".mesh"
-		tinsert(gltfloader.temp_meshes, { path=mpath, used=false, go=nil } )
-	end
-end 
-
-------------------------------------------------------------------------------------------------------------
--- Get a free temp mesh, nil if none available
-function gltfloader:getfreetemp()
-	for k,v in pairs(gltfloader.temp_meshes) do 
-		if(v.used == false) then 
-			v.used = true 
-			return v 
-		end 
-	end 
-	return nil
-end
 
 ------------------------------------------------------------------------------------------------------------
 
@@ -396,6 +381,15 @@ function gltfloader:load_gltf( assetfilename, asset, disableaabb )
 	assert(valid)
 
 	local basepath = assetfilename:match("(.*[\\/])")
+
+	local options = ffi.new("cgltf_options[1]", {})
+	local data = ffi.new("cgltf_data *[1]", {nil})
+	local result = cgltf.cgltf_parse_file(options, assetfilename, data);
+	if (result == cgltf.cgltf_result_success) then
+	
+		-- /* TODO make awesome stuff */
+		cgltf.cgltf_free(data)
+	end
 
 	
 	-- Parse using geomext 
