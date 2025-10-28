@@ -240,8 +240,8 @@ end
   
 -- --------------------------------------------------------------------------------------
 
-renderer.load_image_buffer = function(name, buf, no_ui) 
-    local img, img_info = nuklear_renderer.load_image_buffer(name, buf, no_ui) 
+renderer.load_image_buffer = function(name, buf, bufsize, no_ui) 
+    local img, img_info = nuklear_renderer.load_image_buffer(name, buf, bufsize, no_ui) 
     return img, img_info
     -- return rencache.rencache_draw_text(font, text, x, y, color)
 end

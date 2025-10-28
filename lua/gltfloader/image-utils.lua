@@ -36,14 +36,14 @@ end
 
 -------------------------------------------------------------------------------------------------
 
-function loadimagebuffer(goname, buf, tid )
+function loadimagebuffer(goname, buf, bufsize, tid )
 
 	if(buf == nil) then 
 		print("[Image Load Error] imagebuffer is nil.") 
 		return nil
 	end
 
-	local img, info, data = renderer.load_image_buffer(goname, buf, true)	
+	local img, info, data = renderer.load_image_buffer(goname, buf, bufsize, true)	
 	if(info == nil) then 
 		print("[Image Load Error] Cannot load image buffer: "..goname) 
 		return nil
@@ -63,6 +63,7 @@ end
 -------------------------------------------------------------------------------------------------
 
 imageutils.loadimage 	= loadimage
+imageutils.loadimagebuffer = loadimagebuffer
 imageutils.bufferimage 	= bufferimage
 imageutils.defoldbufferimage 	= defoldbufferimage
 
