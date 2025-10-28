@@ -17,14 +17,6 @@ local utils			= require("lua.utils")
 local cgltf      	= require("ffi.sokol.cgltf")
 local hmm      		= require("hmm")
 
--- load lcpp (ffi.cdef wrapper turned on per default)
-local lcpp 			= require("tools.lcpp")
-
--- just use LuaJIT ffi and lcpp together
-ffi.cdef([[
-#include "lua/engine/include/cgltf-sapp.h" 
-]])
-
 ------------------------------------------------------------------------------------------------------------
 
 local gltfloader = {
@@ -347,6 +339,97 @@ function gltfloader:loadimages( gltfobj, primmesh, bcolor, tid )
 	end
 end
 
+------------------------------------------------------------------------------------------------------------
+-- // parse the GLTF buffer definitions and start loading buffer blobs
+function gltf_parse_buffers(model)
+	
+	local options = ffi.new("cgltf_options[1]", {})
+	local result = cgltf.cgltf_load_buffers( options, model.data[0], model.filename)
+	if(result ~= cgltf.cgltf_result_success) then 
+		print("[Error] gltf_parse_buffers: cannot load buffers")
+		return nil
+	end
+
+	-- Buffer views and buffers are now loaded ok. Ready for parsing.
+end	
+
+-- --------------------------------------------------------------------------------------------------------
+-- Load images using our utils.
+function gltf_parse_images(model)
+
+	model.images = {}
+	local image_count = tonumber(model.data[0].images_count)
+	for i=0, image_count -1 do 
+		local img = model.data[0].images[i]
+		local image = nil
+		local imagename = ffi.string(img.name)
+		if(img.uri ~= nil) then 
+			local filepath = gltfobj.basepath..ffi.string(img.uri)
+			image = imageutils.loadimage(imagename, filepath, i )
+		else 
+			local bv = img.buffer_view		
+			local bufptr = nil
+			if(bv[0].data ~= nil) then 
+				bufptr = ffi.cast("uint8_t *", bv[0].data)
+			else
+				bufptr = cgltf.cgltf_buffer_view_data(bv)
+			end
+			image = imageutils.loadimagebuffer(imagename, bufptr, bv[0].size, i )
+		end
+		tinsert(model.images, image)
+		collectgarbage("collect")
+	end
+end
+
+-- --------------------------------------------------------------------------------------------------------
+
+function gltf_parse_materials(model)
+
+	model.materials = {}
+	local gltf = model.data[0]
+	local num_materials =  tonumber(gltf.materials_count)
+    for i = 0, num_materials - 1 do
+        local gltf_mat = gltf.materials[i]
+        local scene_mat = {}
+        scene_mat.is_metallic = gltf_mat.has_pbr_metallic_roughness
+        if (scene_mat.is_metallic == 1) then
+            local src = gltf_mat.pbr_metallic_roughness
+            scene_mat.base_color = {
+				src.base_color_factor[0], src.base_color_factor[1], src.base_color_factor[2], src.base_color_factor[3],
+			}
+			scene_mat.metallic_factor = src.metallic_factor
+			scene_mat.roughness_factor = src.roughness_factor
+			scene_mat.emissive_factor = {
+				gltf_mat.emissive_factor[0], gltf_mat.emissive_factor[1], gltf_mat.emissive_factor[2],
+			}
+
+            scene_mat.images = {
+                base_color = cgltf.cgltf_texture_index(gltf, src.base_color_texture.texture),
+                metallic_roughness = cgltf.cgltf_texture_index(gltf, src.metallic_roughness_texture.texture),
+                normal = cgltf.cgltf_texture_index(gltf, gltf_mat.normal_texture.texture),
+                occlusion = cgltf.cgltf_texture_index(gltf, gltf_mat.occlusion_texture.texture),
+                emissive = cgltf.cgltf_texture_index(gltf, gltf_mat.emissive_texture.texture)
+            }
+        end 
+		tinsert(model.materials, scene_mat)
+	end
+
+end
+
+-- --------------------------------------------------------------------------------------------------------
+
+function gltf_parse_meshes(model)
+
+
+end
+
+-- --------------------------------------------------------------------------------------------------------
+
+function gltf_parse_nodes(model)
+
+
+end
+
 -- --------------------------------------------------------------------------------------------------------
 -- A new loader method using a new loader from here: https://github.com/leonardus/lua-gltf
 function gltfloader:load( model, scene, pobj, meshname )
@@ -366,7 +449,10 @@ function gltfloader:load( model, scene, pobj, meshname )
 	for n, node in ipairs(scene.nodes) do
 		self:makeNodeMeshes( model, pobj, node)
 	end
-	
+
+	-- This will free cgltf's own memory (we dont need it now)
+	-- model.data = nil
+
 	return pobj
 end
 
@@ -376,25 +462,38 @@ end
 function gltfloader:load_gltf( assetfilename, asset, disableaabb )
 
 	-- Check for gltf - only support this at the moment. 
-	print(assetfilename)
 	local valid = string.match(assetfilename, ".+%."..asset.format)
 	assert(valid)
 
 	local basepath = assetfilename:match("(.*[\\/])")
+	
+	-- Parse using geomext 
 
 	local options = ffi.new("cgltf_options[1]", {})
 	local data = ffi.new("cgltf_data *[1]", {nil})
-	local result = cgltf.cgltf_parse_file(options, assetfilename, data);
+	local result = cgltf.cgltf_parse_file(options, assetfilename, data)
 	if (result == cgltf.cgltf_result_success) then
 	
-		-- /* TODO make awesome stuff */
-		cgltf.cgltf_free(data)
+		-- Handle autodestruction when data is made nil
+		ffi.gc(data, function(d)
+			if d[0] ~= nil then cgltf.cgltf_free(d[0]); d[0] = nil end
+		end)
+		print("[Info] gltf loaded: ", assetfilename)
+	else 
+		print("[Error] Unable to load gltf: ", assetfilename)
 	end
 
-	
-	-- Parse using geomext 
-	local model = gltf.new( assetfilename )
-	model.basepath = basepath
+	local model = {
+		filename = assetfilename,
+		basepath = basepath,
+		data = data,
+	}
+
+	gltf_parse_buffers(model)
+	gltf_parse_images(model)
+	gltf_parse_materials(model)
+	gltf_parse_meshes(model)
+	gltf_parse_nodes(model)
 
 	-- if(model.animations) then 
 	-- 	ozzanim.loadgltf( "--file="..assetfilename )
@@ -403,7 +502,7 @@ function gltfloader:load_gltf( assetfilename, asset, disableaabb )
 	if(asset.format == "gltf" or asset.format == "glb") then 
 		asset.go = gameobject.create( nil, asset.name )
 
-		self:load( model, model.scenes[1], asset.go, asset.name)
+		self:load( model, asset.go, asset.name)
 
 		-- local mesh, scene = gltf:load(assetfilename, asset.go, asset.name)
 		-- go.set_position(vmath.vector3(0, -999999, 0), asset.go)

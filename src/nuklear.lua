@@ -120,15 +120,19 @@ end
 
 -- --------------------------------------------------------------------------------------
 
-nuklear_renderer.load_image_buffer = function( name, buf, no_ui )
+nuklear_renderer.load_image_buffer = function( name, buf, bufsize, no_ui )
 
+    name = name or "image"
     local x = ffi.new("int[1]", {0})
     local y = ffi.new("int[1]", {0})
     local n = ffi.new("int[1]", {4})
-    local data = stb.stbi_load_from_memory(buf, #buf, x, y, n, 4)
-    if (data == nil) then error("[STB]: failed to load image: "..filename); return nil end
+    local data = stb.stbi_load_from_memory(buf, bufsize, x, y, n, 4)
+    if (data == nil) then 
+        print("[STB]: failed to load image: ", name)
+        return nil, nil 
+    end
     print("Original channels in file:", n[0])
-    print("Image Buffer Loaded: "..filename.."      Width: "..x[0].."  Height: "..y[0].."  Channels: "..n[0])
+    print("Image Buffer Loaded: "..name.."      Width: "..x[0].."  Height: "..y[0].."  Channels: "..n[0])
 
     local pixformat =  sg.SG_PIXELFORMAT_RGBA8
 
