@@ -354,35 +354,36 @@ function gltf_parse_buffers(model)
 end	
 
 -- --------------------------------------------------------------------------------------------------------
-
+-- This creates a world transform for each node. Not sure I like this (was copied from sokol cgltf example)
 local function build_transform_for_gltf_node(gltf, node) 
-    parent_tform = mat44_identity()
-    if (node.parent) then
+    local parent_tform = hmm.HMM_Mat4()
+    if (node.parent ~= nil) then
         parent_tform = build_transform_for_gltf_node(gltf, node.parent)
 	end
-    if (node.has_matrix) then
+    if (node.has_matrix == true) then
         -- // needs testing, not sure if the element order is correct
-        tform = *(mat44_t*)node.matrix -- this is a float ptr x 16 or 12
-        return tform
+        tform = ffi.new("hmm_mat4[1]") -- this is a float ptr x 16 or 12
+		ffi.copy(tform, node.matrix, 16 * ffi.sizeof("float"))
+        return tform[0]
     else 
-        local mat44_t translate = mat44_identity()
-        local mat44_t rotate = mat44_identity()
-        local mat44_t scale = mat44_identity()
-        if (node.has_translation) then
-            translate = mat44_translation(node.translation[0], node.translation[1], node.translation[2])
+        local translate = hmm.HMM_Mat4()
+        local rotate = hmm.HMM_Mat4()
+        local scale = hmm.HMM_Mat4()
+        if (node.has_translation == true) then
+            translate = hmm.HMM_Translate(node.translation[0], node.translation[1], node.translation[2])
 		end
-        if (node.has_rotation) then
-            rotate = mat44_from_quat(vec4(node.rotation[0], node.rotation[1], node.rotation[2], node.rotation[3]))
+        if (node.has_rotation == true) then
+            rotate = hmm.HMM_QuaternionToMat4(hmm.HMM_Quaternion(node.rotation[0], node.rotation[1], node.rotation[2], node.rotation[3]))
 		end
-        if (node.has_scale) then
-            scale = mat44_scaling(node.scale[0], node.scale[1], node.scale[2])
+        if (node.has_scale == true) then
+            scale = hmm.HMM_Scale(node.scale[0], node.scale[1], node.scale[2])
 		end
         -- // NOTE: not sure if the multiplication order is correct
-        return vm_mul(vm_mul(translate, vm_mul(rotate, scale)), parent_tform)
+        return hmm.HMM_MultiplyMat4(hmm.HMM_MultiplyMat4(translate, hmm.HMM_MultiplyMat4(rotate, scale)), parent_tform)
     end
 end
 
--- --------------------------------------------------------------------------------------------------------
+-- ----------hmm.----------------------------------------------------------------------------------------------
 
 local function get_addr(ptr, off)
 	off = off or 0
@@ -403,7 +404,7 @@ function gltf_parse_images(model)
 		local image = nil
 		local imagename = ffi.string(img.name)
 		if(img.uri ~= nil) then 
-			local filepath = gltfobj.basepath..ffi.string(img.uri)
+			local filepath = model.basepath..ffi.string(img.uri)
 			image = imageutils.loadimage(imagename, filepath, i )
 		else 
 			local bv = img.buffer_view		
@@ -507,13 +508,14 @@ function gltf_parse_nodes(model)
 	model.scene.nodes = {}
 	local gltf = model.data[0]
 
-	model.scene.nodes_count  = gltf[0].nodes_count
+	model.scene.nodes_count  = tonumber(gltf[0].nodes_count)
 	for node_index = 0, model.scene.nodes_count-1 do
         local gltf_node = gltf.nodes[node_index]
         -- // ignore nodes without mesh, those are not relevant since we
         -- // bake the transform hierarchy into per-node world space transforms
-        if (gltf_node.mesh) then 
+        if (gltf_node.mesh ~= nil) then 
             local node = {}
+			node.name = ffi.string(gltf_node.name or "")
             node.mesh = gltf_node.mesh
             node.transform = build_transform_for_gltf_node(gltf, gltf_node)
 			tinsert(model.scene.nodes, node)
@@ -593,7 +595,7 @@ function gltfloader:load_gltf( assetfilename, asset, disableaabb )
 	if(asset.format == "gltf" or asset.format == "glb") then 
 		asset.go = gameobject.create( nil, asset.name )
 
-		self:load( model, asset.go, asset.name)
+		self:load( model, model.scene, asset.go, asset.name)
 
 		-- local mesh, scene = gltf:load(assetfilename, asset.go, asset.name)
 		-- go.set_position(vmath.vector3(0, -999999, 0), asset.go)
