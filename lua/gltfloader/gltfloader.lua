@@ -354,13 +354,52 @@ function gltf_parse_buffers(model)
 end	
 
 -- --------------------------------------------------------------------------------------------------------
+
+local function build_transform_for_gltf_node(gltf, node) 
+    parent_tform = mat44_identity()
+    if (node.parent) then
+        parent_tform = build_transform_for_gltf_node(gltf, node.parent)
+	end
+    if (node.has_matrix) then
+        -- // needs testing, not sure if the element order is correct
+        tform = *(mat44_t*)node.matrix -- this is a float ptr x 16 or 12
+        return tform
+    else 
+        local mat44_t translate = mat44_identity()
+        local mat44_t rotate = mat44_identity()
+        local mat44_t scale = mat44_identity()
+        if (node.has_translation) then
+            translate = mat44_translation(node.translation[0], node.translation[1], node.translation[2])
+		end
+        if (node.has_rotation) then
+            rotate = mat44_from_quat(vec4(node.rotation[0], node.rotation[1], node.rotation[2], node.rotation[3]))
+		end
+        if (node.has_scale) then
+            scale = mat44_scaling(node.scale[0], node.scale[1], node.scale[2])
+		end
+        -- // NOTE: not sure if the multiplication order is correct
+        return vm_mul(vm_mul(translate, vm_mul(rotate, scale)), parent_tform)
+    end
+end
+
+-- --------------------------------------------------------------------------------------------------------
+
+local function get_addr(ptr, off)
+	off = off or 0
+	return tostring(ffi.cast("uintptr_t", ptr) + off)
+end
+
+-- --------------------------------------------------------------------------------------------------------
 -- Load images using our utils.
 function gltf_parse_images(model)
 
+	local image_map = {}
 	model.images = {}
 	local image_count = tonumber(model.data[0].images_count)
 	for i=0, image_count -1 do 
 		local img = model.data[0].images[i]
+		local addr = get_addr(model.data[0].images, i)
+		image_map[addr] = #model.images + 1
 		local image = nil
 		local imagename = ffi.string(img.name)
 		if(img.uri ~= nil) then 
@@ -379,6 +418,18 @@ function gltf_parse_images(model)
 		tinsert(model.images, image)
 		collectgarbage("collect")
 	end
+
+	-- Loade images into texture slots! 
+	model.textures = {}
+	model.textures_map = {}
+	for i = 0, tonumber(model.data[0].textures_count)-1 do
+    	local tex = model.data[0].textures[i]
+		local img_id = image_map[get_addr(tex.image, 0)]
+		local tex_img = model.images[img_id]
+		local texaddr = get_addr(model.data[0].textures, i)
+		model.textures_map[texaddr] = tex_img
+    	tinsert(model.textures, tex_img)
+	end	
 end
 
 -- --------------------------------------------------------------------------------------------------------
@@ -386,6 +437,7 @@ end
 function gltf_parse_materials(model)
 
 	model.materials = {}
+	model.materials_map = {}
 	local gltf = model.data[0]
 	local num_materials =  tonumber(gltf.materials_count)
     for i = 0, num_materials - 1 do
@@ -404,13 +456,14 @@ function gltf_parse_materials(model)
 			}
 
             scene_mat.images = {
-                base_color = cgltf.cgltf_texture_index(gltf, src.base_color_texture.texture),
-                metallic_roughness = cgltf.cgltf_texture_index(gltf, src.metallic_roughness_texture.texture),
-                normal = cgltf.cgltf_texture_index(gltf, gltf_mat.normal_texture.texture),
-                occlusion = cgltf.cgltf_texture_index(gltf, gltf_mat.occlusion_texture.texture),
-                emissive = cgltf.cgltf_texture_index(gltf, gltf_mat.emissive_texture.texture)
+                base_color = model.textures_map[get_addr(src.base_color_texture.texture, 0)],
+                metallic_roughness = model.textures_map[get_addr(src.metallic_roughness_texture.texture,0)],
+                normal = model.textures_map[get_addr(gltf_mat.normal_texture.texture, 0)],
+                occlusion = model.textures_map[get_addr(gltf_mat.occlusion_texture.texture, 0)],
+                emissive = model.textures_map[get_addr(gltf_mat.emissive_texture.texture, 0)]
             }
         end 
+		model.materials_map[ get_addr(gltf.materials, i)] = scene_mat
 		tinsert(model.materials, scene_mat)
 	end
 
@@ -420,14 +473,52 @@ end
 
 function gltf_parse_meshes(model)
 
+	model.scene = {}
+	model.scene.meshes = {}
+	local gltf = model.data[0]
 
+    model.scene.num_meshes = tonumber(gltf.meshes_count)
+    for mesh_index = 0, model.scene.num_meshes-1 do
+        local gltf_mesh = gltf.meshes[mesh_index]
+
+		local mesh = { primitives = {} }
+        mesh.first_primitive = 1
+        mesh.num_primitives = tonumber(gltf_mesh.primitives_count)
+        for prim_index = 0,  mesh.num_primitives-1 do
+            local gltf_prim = gltf_mesh.primitives[prim_index]
+			local mat_handle = get_addr(gltf_prim.material)
+            local prim = {
+				prim = gltf_prim,
+				material = model.materials_map[mat_handle],
+				indices = gltf_prim.indices,
+				type = gltf_prim.type,
+				attribs = gltf_prim.attributes,
+			}
+			tinsert( mesh.primitives, prim )
+        end 
+		tinsert( model.scene.meshes, mesh )
+    end
 end
 
 -- --------------------------------------------------------------------------------------------------------
 
 function gltf_parse_nodes(model)
 
+	model.scene.nodes = {}
+	local gltf = model.data[0]
 
+	model.scene.nodes_count  = gltf[0].nodes_count
+	for node_index = 0, model.scene.nodes_count-1 do
+        local gltf_node = gltf.nodes[node_index]
+        -- // ignore nodes without mesh, those are not relevant since we
+        -- // bake the transform hierarchy into per-node world space transforms
+        if (gltf_node.mesh) then 
+            local node = {}
+            node.mesh = gltf_node.mesh
+            node.transform = build_transform_for_gltf_node(gltf, gltf_node)
+			tinsert(model.scene.nodes, node)
+		end
+    end
 end
 
 -- --------------------------------------------------------------------------------------------------------
