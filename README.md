@@ -3,6 +3,24 @@ not so lite
 
 A lite based text editor running from sokol-luajit + nuklear.
 
+[ 30-10-2025 Updates ]:
+
+The 3D viewer is almost done. A basic 3D rendering system has been added (a 3D engine of sorts).
+<img src="media/2025-10-30_20-56.png">
+
+I expect to have some nice features for this:
+- Selectable "up axis" for different model spaces.
+- Information on the model (tris/polys, materials, texture counts)
+- Ability to manually zoom and spin on the Up axis. 
+- Maybe a PBR shader to support some nice rendering. 
+
+I still need to fix:
+- Texture coord mapping
+- Color component on colored only polys
+- Alpha transparency and cut-out.
+
+Overall very happy with progress. Will finish up the 3D viewer sections in the next couple of days and move onto framework/project management tools and build tools.
+
 [ 23-10-2025 Updates already ]:
 
 - Its working. Most (if not all?) of lite's operations are working. Theres a couple of system calls that result in "File Not Found" in the console - this is due to .. and . being included in the file list. Will fix. 

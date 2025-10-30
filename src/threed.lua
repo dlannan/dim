@@ -230,6 +230,7 @@ local function load_gltf(filename)
 end    
 
 -- --------------------------------------------------------------------------------------
+local CAM_DISTANCE  = 6.0 
 
 local function render_model( t, model_rect )
 
@@ -240,6 +241,10 @@ local function render_model( t, model_rect )
     local maxy = aabb.max.y - aabb.min.y
     local maxz = aabb.max.z - aabb.min.z
     local maxsize = math.sqrt( maxx * maxx + maxy * maxy + maxz * maxz)
+    local sc = CAM_DISTANCE * 0.65 / maxsize
+
+    local offset = hmm.HMM_Vec3(aabb.min.x + maxx * 0.5, aabb.min.y + maxy * 0.5, aabb.min.z + maxz * 0.5)
+    offset.x, offset.y, offset.z = offset.x * sc, offset.y * sc, offset.x * sc
 
     for i, state_data in ipairs(all_states) do 
 
@@ -251,7 +256,7 @@ local function render_model( t, model_rect )
         local w, h      = model_rect.w, model_rect.h
 
         local proj      = hmm.HMM_Perspective(60.0, w/h, 0.01, 10.0)
-        local view      = hmm.HMM_LookAt(hmm.HMM_Vec3(0.0, 1.5, 6.0), hmm.HMM_Vec3(0.0, 0.0, 0.0), hmm.HMM_Vec3(0.0, 1.0, 0.0))
+        local view      = hmm.HMM_LookAt(hmm.HMM_Vec3(0.0, offset.y + 1.5, CAM_DISTANCE), hmm.HMM_Vec3(0.0, offset.y, 0.0), hmm.HMM_Vec3(0.0, 1.0, 0.0))
         local view_proj = hmm.HMM_MultiplyMat4(proj, view)
         state.rx        = 0.0
         state.ry        = state.ry + 1.0 * t
@@ -260,7 +265,6 @@ local function render_model( t, model_rect )
         local rym       = hmm.HMM_Rotate(state.ry, hmm.HMM_Vec3(0.0, 1.0, 0.0))
         local model     = hmm.HMM_MultiplyMat4(rxm, rym)
 
-        local sc = 3.0 / maxsize
         local scaler    = hmm.HMM_Scale(hmm.HMM_Vec3(sc, sc, sc))
         local model     = hmm.HMM_MultiplyMat4(model, scaler)
         local mvp       = hmm.HMM_MultiplyMat4(view_proj, model)
@@ -270,9 +274,10 @@ local function render_model( t, model_rect )
 
         local vs_params = ffi.new("vs_params_t[1]")
         vs_params[0].mvp    = mvp
+        vs_params[0].base_color_factor = ffi.new("float [4]", {1.0, 1.0, 1.0, 1.0 } )
         model_rect.sg_range[0].ptr     = vs_params
         model_rect.sg_range[0].size    = ffi.sizeof(vs_params[0])
-        sg.sg_apply_uniforms(0,  model_rect.sg_range)
+        sg.sg_apply_uniforms(sg.SG_SHADERSTAGE_VS,  model_rect.sg_range)
 
         sg.sg_apply_viewport(model_rect.x, model_rect.y, model_rect.w, model_rect.h, true)
         sg.sg_apply_scissor_rect(model_rect.x, model_rect.y, model_rect.w, model_rect.h, true)
