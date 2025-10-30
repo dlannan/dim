@@ -53,10 +53,6 @@ function geom:makeMesh( goname, primdata )
 	
 	local buffs =  meshes.create_buffer(goname, buffers)
 
-	if(aabb) then 
-		buffs.aabb = aabb
-	end
-
 	-- Fill out some manual defaults in the buffs
     -- buffs.index_type = itype
     buffs.cullmode = sg.SG_CULLMODE_BACK

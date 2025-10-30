@@ -101,13 +101,13 @@ local function calcAABB( aabb, aabbmin, aabbmax )
 		min = hmm.HMM_Vec3(math.huge,math.huge,math.huge), 
 		max = hmm.HMM_Vec3(-math.huge,-math.huge,-math.huge) 
 	}
-	aabb.min.x = math.min(aabb.min.x, aabbmin[0])
-	aabb.min.y = math.min(aabb.min.y, aabbmin[1])
-	aabb.min.z = math.min(aabb.min.z, aabbmin[2])
+	aabb.min.x = math.min(aabb.min.x, aabbmin.x)
+	aabb.min.y = math.min(aabb.min.y, aabbmin.y)
+	aabb.min.z = math.min(aabb.min.z, aabbmin.z)
 
-	aabb.max.x = math.max(aabb.max.x, aabbmax[0])
-	aabb.max.y = math.max(aabb.max.y, aabbmax[1])
-	aabb.max.z = math.max(aabb.max.z, aabbmax[2])
+	aabb.max.x = math.max(aabb.max.x, aabbmax.x)
+	aabb.max.y = math.max(aabb.max.y, aabbmax.y)
+	aabb.max.z = math.max(aabb.max.z, aabbmax.z)
 	return aabb
 end
 
@@ -153,7 +153,7 @@ function gltfloader:processdata( gltfobj, gochildname, thisnode, parent )
 			-- Indices specific - this is default dataset for gltf (I think)
 			if(ctype == cgltf.cgltf_component_type_r_32u) then 
 				indices = ffi.new("uint32_t[?]", acc_idx.count)
-				ffi.copy(indices, ffi.string(index_buffer_data), acc_idx.count * 4)
+				ffi.copy(indices, index_buffer_data, acc_idx.count * 4)
 				-- geomextension.setdataintstotable( 0, , index_buffer_data, indices)
 				itype = sg.SG_INDEXTYPE_UINT32
 				print("[Warning] 32 bit index buffer")
@@ -161,11 +161,11 @@ function gltfloader:processdata( gltfobj, gochildname, thisnode, parent )
 				print("TODO: Support float buffers")
 			elseif(ctype == cgltf.cgltf_component_type_r_16u or ctype == cgltf.cgltf_component_type_r_16) then 
 				indices = ffi.new("uint16_t[?]", acc_idx.count)
-				ffi.copy(indices, ffi.string(index_buffer_data), acc_idx.count * 2)
+				ffi.copy(indices, index_buffer_data, acc_idx.count * 2)
 				-- geomextension.setdatashortstotable( 0, acc_idx.count * 2, index_buffer_data, indices)
 			elseif(ctype == cgltf.cgltf_component_type_r_8u or ctype == cgltf.cgltf_component_type_r_8) then 
 				indices = ffi.new("uint16_t[?]", acc_idx.count)
-				local ptr = ffi.cast("uint8_t *", ffi.string(index_buffer_data))
+				local ptr = index_buffer_data
 				local acount = tonumber(acc_idx.count)
 				for i=0, acount-1 do 
 					indices[i] = ptr[i]
@@ -201,11 +201,9 @@ function gltfloader:processdata( gltfobj, gochildname, thisnode, parent )
 
 			-- geomextension.setdataindexfloatstotable( buffer_data, verts, indices, 3)
 			local pos_acc = pos_attrib.data
-			-- aabb = { 
-			-- 	pos_acc.min[0], pos_acc.min[1], pos_acc.min[2], 
-			-- 	pos_acc.max[0], pos_acc.max[1], pos_acc.max[2] 
-			-- }
-			aabb = calcAABB( aabb, pos_acc.min, pos_acc.max )
+			local pmin = hmm.HMM_Vec3(pos_acc.min[0], pos_acc.min[1], pos_acc.min[2])
+			local pmax = hmm.HMM_Vec3(pos_acc.max[0], pos_acc.max[1], pos_acc.max[2]) 
+			aabb = calcAABB( aabb, pmin, pmax )
 		end
 
 		-- Get uvs accessor
@@ -260,15 +258,19 @@ function gltfloader:processdata( gltfobj, gochildname, thisnode, parent )
 
 			local primdata = {
 				itype = itype, 
-				icount = acc_idx.count,
+				icount = tonumber(acc_idx.count),
 				indices = indices, 
 				verts = verts, 
 				uvs = uvs, 
 				normals = normals, 
-				aabb = aabb,
 			}
 			prim.mesh_buffers = geom:makeMesh( primmesh, primdata )
+			print("Added mesh buffer", prim.primmesh)
+		else 
+			print("Non index buffers?", prim.primmesh)
 		end
+
+		prim.aabb = aabb
 
 		-- go.set_rotation(vmath.quat(), primgo)
 		-- go.set_position(vmath.vector3(0,0,0), primgo)
@@ -318,8 +320,10 @@ function gltfloader:makeNodeMeshes( gltfobj, parent, node )
 	-- Parent this mesh to the incoming node 
 	gameobject.set_parent(gochild, parent)
 	
-	if(thisnode.children) then 
-		for k, child in pairs(thisnode.children) do 
+	if(thisnode.children ~= nil) then 
+		local ccount = tonumber(thisnode.children_count)
+		for i = 0, ccount - 1 do 
+			local child = thisnode.children[i]
 			self:makeNodeMeshes( gltfobj, gochild, child)
 		end 
 	end
@@ -362,10 +366,10 @@ end
 
 -- --------------------------------------------------------------------------------------------------------
 -- This creates a world transform for each node. Not sure I like this (was copied from sokol cgltf example)
-local function build_transform_for_gltf_node(gltf, node) 
+local function build_transform_for_gltf_node(node) 
     local parent_tform = hmm.HMM_Mat4()
     if (node.parent ~= nil) then
-        parent_tform = build_transform_for_gltf_node(gltf, node.parent)
+        parent_tform = build_transform_for_gltf_node(node.parent)
 	end
     if (node.has_matrix == true) then
         -- // needs testing, not sure if the element order is correct
@@ -518,24 +522,26 @@ end
 
 -- --------------------------------------------------------------------------------------------------------
 
-function gltf_parse_nodes(model)
-
-	model.scene.nodes = {}
+function gltf_parse_nodes(model, node)
+	
 	local gltf = model.data[0]
-
-	model.scene.nodes_count  = tonumber(gltf[0].nodes_count)
-	for node_index = 0, model.scene.nodes_count-1 do
-        local gltf_node = gltf.nodes[node_index]
-        -- // ignore nodes without mesh, those are not relevant since we
-        -- // bake the transform hierarchy into per-node world space transforms
-        if (gltf_node.mesh ~= nil) then 
-            local node = {}
-			node.name = ffi.string(gltf_node.name or "")
-            node.mesh = model.meshes_map[get_addr(gltf_node.mesh)]
-            node.transform = build_transform_for_gltf_node(gltf, gltf_node)
-			tinsert(model.scene.nodes, node)
-		end
+	local nodes_count  = tonumber(node.children_count)
+	print("childcount: ", nodes_count)
+	for node_index = 0, nodes_count-1 do
+        local gltf_node = node.children[node_index]
+		print("childnode: ", node_index)
+		gltf_parse_nodes(model, gltf_node)
     end
+
+	if (node.mesh ~= nil) then 
+		local newnode = {}
+		print("node mesh: ", ffi.string(node.name))
+		print("node mesh primitives: ", tonumber(node.mesh.primitives_count))
+		newnode.name = ffi.string(node.name or "")
+		newnode.mesh = model.meshes_map[get_addr(node.mesh)]
+		newnode.transform = build_transform_for_gltf_node(node)
+		tinsert(model.scene.nodes, newnode)
+	end
 end
 
 -- --------------------------------------------------------------------------------------------------------
@@ -601,7 +607,14 @@ function gltfloader:load_gltf( assetfilename, asset, disableaabb )
 	gltf_parse_images(model)
 	gltf_parse_materials(model)
 	gltf_parse_meshes(model)
-	gltf_parse_nodes(model)
+
+	model.scene.nodes = {}
+	local gltf = model.data[0]
+	model.scene.nodes_count  = tonumber(gltf[0].nodes_count)
+	for i=0, model.scene.nodes_count-1 do
+		local node = gltf[0].nodes[i]
+		gltf_parse_nodes(model, node)
+	end
 
 	-- if(model.animations) then 
 	-- 	ozzanim.loadgltf( "--file="..assetfilename )
@@ -615,12 +628,6 @@ function gltfloader:load_gltf( assetfilename, asset, disableaabb )
 		-- local mesh, scene = gltf:load(assetfilename, asset.go, asset.name)
 		-- go.set_position(vmath.vector3(0, -999999, 0), asset.go)
 	end
-
-	if(model.aabb and disableaabb == nil) then 
-		-- model.aabb.id = geomextension.addboundingbox( vmath.vector3(aabbmin.x, aabbmin.y, aabbmin.z), vmath.vector3(aabbmax.x, aabbmax.y, aabbmax.z), asset.go )
-	else 
-		print("[Error] Model has no aabb: "..assetfilename)
-	end
 	
 	local states 	  = {}
 	-- TODO: DOdgy override for a material atm. Will change.
@@ -628,15 +635,17 @@ function gltfloader:load_gltf( assetfilename, asset, disableaabb )
 	local prims       = {}
 
 	-- Collect meshes together for rendering
-	gltfloader:run_nodes(model, function(model, thisnode)
+	gltfloader:run_nodes( model , function( model, thisnode )
 		if(thisnode.mesh) then 
-			if(thisnode.mesh.primitives) then 
-				for i, prim in ipairs(thisnode.mesh.primitives) do 
-					if(prims[prim.primname] == nil) then 
-            			prims[prim.primname] = { 
+			local mesh = thisnode.mesh
+			if(mesh.primitives) then 
+				for i, prim in ipairs(mesh.primitives) do 
+					if(prims[prim.primmesh] == nil and prim.mesh_buffers) then 
+            			prims[prim.primmesh] = { 
 							index_count = prim.mesh_buffers.count,
-							node = thisnode, prim = prim, 
-							mesh = prim.mesh_buffers 
+							node = mesh, prim = prim, 
+							mesh = prim.mesh_buffers,
+							aabb = prim.aabb,
 						}
 					end
 				end 
@@ -644,11 +653,17 @@ function gltfloader:load_gltf( assetfilename, asset, disableaabb )
 		end
 	end)
 
+	model.aabb = nil
 	for k, prim in pairs(prims) do 
 		-- local geom_mesh = geom:GetMesh(prim.prim.primmesh)
-		local state_tbl = meshes.state(prim.node.goname, prim.mesh, material)
+		local state_tbl = meshes.state(k, prim.mesh, material)
 		local state = { pip = state_tbl.pip, bind = state_tbl.bind, count = prim.index_count }
 		tinsert(states, state)
+		model.aabb = calcAABB(model.aabb, prim.aabb.min, prim.aabb.max)
+	end
+
+	if(model.aabb == nil) then 
+		print("[Error] Model has no aabb: "..assetfilename)
 	end
 
 	model.states_tbl = states
@@ -660,9 +675,11 @@ end
 
 function gltfloader:run_node( model, thisnode, node_func)
 
-	if(thisnode.children) then 
-		for k,v in pairs(thisnode.children) do 
-			self:run_node( model,  v, node_func)
+	if(thisnode.children ~= nil) then 
+		local ccount = tonumber(thisnode.children_count)
+		for i=0, ccount -1 do 
+			local child = thisnode.children[i]
+			self:run_node( model,  child, node_func)
 		end 
 	end
 
