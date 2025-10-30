@@ -28,7 +28,7 @@ local gltfloader = {
 
 ------------------------------------------------------------------------------------------------------------
 
-function gltfloader:processmaterials( gltfobj, gochildname, thisnode )
+function gltfloader:processmaterials( model, gochildname, thisnode )
 
 	-- Get indices from accessor 
 	local thismesh = thisnode.mesh
@@ -68,23 +68,23 @@ function gltfloader:processmaterials( gltfobj, gochildname, thisnode )
 				
 				if(pbrmetallicrough.baseColorTexture) then 
 					local bcolor = pbrmetallicrough.baseColorTexture
-					gltfloader:loadimages( gltfobj, primmesh, bcolor, 0 )
+					gltfloader:loadimages( model, primmesh, bcolor, 0 )
 				end 
 
 				if(pbrmetallicrough.metallicRoughnessTexture) then 
 					local bcolor = pbrmetallicrough.metallicRoughnessTexture
-					gltfloader:loadimages( gltfobj, primmesh, bcolor, 1 )
+					gltfloader:loadimages( model, primmesh, bcolor, 1 )
 				end
 			end
 			local pbremissive = mat.emissiveTexture
 			if(pbremissive) then 
 				local bcolor = pbremissive
-				gltfloader:loadimages( gltfobj, primmesh, bcolor, 2 )
+				gltfloader:loadimages( model, primmesh, bcolor, 2 )
 			end
 			local pbrnormal = mat.normalTexture
 			if(pbrnormal) then  
 				local bcolor = pbrnormal
-				gltfloader:loadimages( gltfobj, primmesh, bcolor, 3 )
+				gltfloader:loadimages( model, primmesh, bcolor, 3 )
 			end
 
 			if(mat.doubleSided == true) then 
@@ -122,9 +122,9 @@ end
 
 ------------------------------------------------------------------------------------------------------------
 
-function gltfloader:processdata( gltfobj, gochildname, thisnode, parent )
+function gltfloader:processdata( model, gochildname, thisnode, parent )
 
-	--print(gltfobj)
+	--print(model)
 	local thismesh = thisnode.mesh
 	local prims = thismesh.primitives	
 
@@ -193,9 +193,11 @@ function gltfloader:processdata( gltfobj, gochildname, thisnode, parent )
 			buffer_data = cgltf.cgltf_buffer_view_data(bv)
 
 			local length = tonumber(bv[0].size)
+			local vert_count = length / ffi.sizeof("float")
+			model.stats.vertices = model.stats.vertices + vert_count
 
 			-- Get positions (or verts) 
-			verts = ffi.new("float[?]", length / ffi.sizeof("float"))
+			verts = ffi.new("float[?]", vert_count)
 			ffi.copy(verts, buffer_data, length)
 
 			-- geomextension.setdataindexfloatstotable( buffer_data, verts, indices, 3)
@@ -261,6 +263,8 @@ function gltfloader:processdata( gltfobj, gochildname, thisnode, parent )
 				uvs = uvs, 
 				normals = normals, 
 			}
+
+			model.stats.polya = model.stats.polys + primdata.icount / 3
 			prim.mesh_buffers = geom:makeMesh( primmesh, primdata )
 			print("Added mesh buffer", prim.primmesh)
 		else 
@@ -277,7 +281,7 @@ end
 
 ------------------------------------------------------------------------------------------------------------
 
-function gltfloader:makeNodeMeshes( gltfobj, parent, node )
+function gltfloader:makeNodeMeshes( model, parent, node )
 
 	local thisnode = node
 	
@@ -301,8 +305,8 @@ function gltfloader:makeNodeMeshes( gltfobj, parent, node )
 	if(thisnode.mesh) then 
 		
 		-- Temp.. 
-		gltfloader:processdata( gltfobj, gochildname, thisnode, parent )
-		gltfloader:processmaterials( gltfobj, gochildname, thisnode )	
+		gltfloader:processdata( model, gochildname, thisnode, parent )
+		gltfloader:processmaterials( model, gochildname, thisnode )	
 	end 
 
 	-- Try children
@@ -321,7 +325,7 @@ function gltfloader:makeNodeMeshes( gltfobj, parent, node )
 		local ccount = tonumber(thisnode.children_count)
 		for i = 0, ccount - 1 do 
 			local child = thisnode.children[i]
-			self:makeNodeMeshes( gltfobj, gochild, child)
+			self:makeNodeMeshes( model, gochild, child)
 		end 
 	end
 end	
@@ -329,14 +333,14 @@ end
 ------------------------------------------------------------------------------------------------------------
 -- Load images: This is horribly slow at the moment. Will improve.
 
-function gltfloader:loadimages( gltfobj, primmesh, bcolor, tid )
+function gltfloader:loadimages( model, primmesh, bcolor, tid )
 	
 	if(bcolor and bcolor.texture and bcolor.texture.source) then 
 		tid = tid or 0
 		-- Load in any images 
 		if(bcolor.texture.source.uri) then 
-			-- print("TID: "..tid.."   "..gltfobj.basepath..bcolor.texture.source.uri)
-			imageutils.loadimage(primmesh.mesh, gltfobj.basepath..bcolor.texture.source.uri, tid )
+			-- print("TID: "..tid.."   "..model.basepath..bcolor.texture.source.uri)
+			imageutils.loadimage(primmesh.mesh, model.basepath..bcolor.texture.source.uri, tid )
 		elseif(bcolor.texture.source.bufferView) then
 			-- print("TID: "..tid.."   "..bcolor.texture.source.name.."  "..bcolor.texture.source.mimeType)
 			local stringbuffer = bcolor.texture.source.bufferView:get()
@@ -440,6 +444,7 @@ function gltf_parse_images(model)
 		local texaddr = get_addr(model.data[0].textures, i, "cgltf_texture")
 		model.textures_map[texaddr] = tex_img
     	tinsert(model.textures, tex_img)
+		model.stats.textures = model.stats.textures + 1
 	end	
 end
 
@@ -520,6 +525,7 @@ function gltf_parse_meshes(model)
 
 			tinsert( mesh.primitives, prim )
         end 
+		model.stats.primitives = model.stats.prmitives + mesh.num_primitives
 		model.meshes_map[get_addr(gltf.meshes, mesh_index, "cgltf_mesh")] = mesh
 		tinsert( model.scene.meshes, mesh )
     end
@@ -543,6 +549,7 @@ function gltf_parse_nodes(model, node)
 		newnode.transform = build_transform_for_gltf_node(node)
 		tinsert(model.scene.nodes, newnode)
 	end
+	model.stats.nodes = model.stats.nodes + 1 
 end
 
 -- --------------------------------------------------------------------------------------------------------
@@ -602,6 +609,13 @@ function gltfloader:load_gltf( assetfilename, asset, disableaabb )
 		filename = assetfilename,
 		basepath = basepath,
 		data = data,
+		stats = {
+			vertices = 0,
+			polys = 0,
+			textures = 0,
+			nodes = 0,
+			primitives = 0,
+		}
 	}
 
 	gltf_parse_buffers(model)

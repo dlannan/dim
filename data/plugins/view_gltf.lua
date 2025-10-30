@@ -19,6 +19,20 @@ local function find(string, field)
   return nil
 end
 
+local function draw_states(model, pos, size)
+  local color = style.background2
+  renderer.draw_rect(pos.x, pos.y, 100, 100, color)
+
+  local xpos = pos.x + 10
+  local ypos = pos.y + 10
+  for i, item in pairs(model.stats) do
+    local text = string.format("%s: %s", item.label, tostring(item.value))
+    local tw, th = font:get_width(text), font:get_height(text)
+    common.draw_text( style.font, style.text, text, "left", xpos, ypos, tw, th)
+    local ypos = ypos + th
+  end
+end 
+
 -- Override the Doc loader - if its a png.. then load it, and make a png Image Viewer for it.
 local original_doc_load = Doc.load
 
@@ -48,6 +62,7 @@ DocView.draw = function(self)
     local doc_pos = self.position
 
     renderer.draw_model(model, doc_pos.x, doc_pos.y, doc_size.x, doc_size.y)
+    draw_states(model, doc_pos, doc_size)
   else
     original_docview_draw(self)
   end
