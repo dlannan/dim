@@ -45,7 +45,7 @@ function geom:makeMesh( goname, primdata )
 		buffers.indices = indices
 	end 
 	if(uvs) then 
-		buffers.uv0 = uvs
+		buffers.uvs = uvs
 	end 
 	if(normals) then 
 		buffers.normals = normals

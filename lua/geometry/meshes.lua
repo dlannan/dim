@@ -58,23 +58,29 @@ mesh.create_buffer     = function(name, buffers)
 
     local stride      = 0
     local attribs     = {}
+    local float_size  = ffi.sizeof("float")
+    local offset      = 0
 
     if(buffers.vertices) then 
         
-        vertcount = ffi.sizeof(buffers.vertices) / (3 * ffi.sizeof("float"))
+        vertcount = ffi.sizeof(buffers.vertices) / (3 * float_size)
         stride = 3
-        tinsert(attribs, sg.SG_VERTEXFORMAT_FLOAT3)
+        tinsert(attribs, { offset = offset, format = sg.SG_VERTEXFORMAT_FLOAT3 })
+
         if(buffers.uvs) then 
             stride = stride + 2
-            tinsert(attribs, sg.SG_VERTEXFORMAT_FLOAT2)
+            offset = offset + 3 * float_size
+            tinsert(attribs, { offset = offset, format = sg.SG_VERTEXFORMAT_FLOAT2 })
         end
         if(buffers.normals) then 
             stride = stride + 3
-            tinsert(attribs, sg.SG_VERTEXFORMAT_FLOAT3)
+            offset = offset + 5 * float_size
+            tinsert(attribs, { offset = offset, format = sg.SG_VERTEXFORMAT_FLOAT3 })
         end
         if(buffers.colors) then 
             stride = stride + 4
-            tinsert(attribs, sg.SG_VERTEXFORMAT_FLOAT4)
+            offset = offset + 8 * float_size
+            tinsert(attribs, { offset = offset, format = sg.SG_VERTEXFORMAT_FLOAT4 })
         end
     end
 
@@ -109,19 +115,22 @@ mesh.create_buffer     = function(name, buffers)
         -- Copy in interlaced! 
         local ptr = ffi.cast("float *", buffer) 
         for i=1, vertcount do 
-            ffi.copy(ptr, vptr,  3 * ffi.sizeof("float"))
+            ffi.copy(ptr, vptr,  3 * float_size)
             vptr = vptr + 3
             ptr = ptr + 3
+
             if(buffers.uvs) then 
-                ffi.copy(ptr, uvptr, 2* ffi.sizeof("float"))
+                ffi.copy(ptr, uvptr, 2* float_size)
                 uvptr = uvptr + 2
                 ptr = ptr + 2
-            elseif(buffers.normals) then 
-                ffi.copy(ptr, nptr,  3* ffi.sizeof("float"))
+            end
+            if(buffers.normals) then 
+                ffi.copy(ptr, nptr,  3* float_size)
                 nptr = nptr + 3
                 ptr = ptr + 3
-            elseif(buffers.colors) then 
-                ffi.copy(ptr, cptr,  4* ffi.sizeof("float"))
+            end
+            if(buffers.colors) then 
+                ffi.copy(ptr, cptr,  4* float_size)
                 cptr = cptr + 4
                 ptr = ptr + 4
             end
@@ -230,7 +239,8 @@ mesh.make_mesh = function(name, buffers)
 
         if(buffer.attrs) then 
             for i, attr in ipairs(buffer.attrs) do
-                mesh.layout.attrs[i-1].format = attr
+                mesh.layout.attrs[i-1].format = attr.format
+                mesh.layout.attrs[i-1].offset = attr.offset
             end
         end
 
@@ -272,6 +282,7 @@ mesh.state     = function(name, prim, mesh, material)
     end
 
     pipe_desc[0].label                  = name.."-pipeline"
+
     local pipeline = sg.sg_make_pipeline(pipe_desc)
     
     local binding = ffi.new("sg_bindings[1]", {})

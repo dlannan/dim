@@ -8,6 +8,7 @@ layout(binding=0, std140) uniform vs_params {
 
 layout(location=0) in vec3 position;
 layout(location=1) in vec2 texcoord;
+layout(location=2) in vec2 normal;
 
 out vec2 uv;
 out vec4 base_color_out;
@@ -20,11 +21,10 @@ void main() {
 @end
 
 @fs fs
-in vec2 uv;
-in vec4 base_color_out;
+layout(location=0) in vec2 uv;
+layout(location=1) in vec4 base_color_out;
 
 layout(binding=0) uniform texture2D base_color_tex;
-
 layout(binding=0) uniform sampler base_color_smp;
 
 out vec4 frag_color;

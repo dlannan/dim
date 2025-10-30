@@ -196,7 +196,6 @@ function gltfloader:processdata( gltfobj, gochildname, thisnode, parent )
 
 			-- Get positions (or verts) 
 			verts = ffi.new("float[?]", length / ffi.sizeof("float"))
-			local bufptr = ffi.cast("char * ", buffer_data)
 			ffi.copy(verts, buffer_data, length)
 
 			-- geomextension.setdataindexfloatstotable( buffer_data, verts, indices, 3)
@@ -212,11 +211,10 @@ function gltfloader:processdata( gltfobj, gochildname, thisnode, parent )
 			local bv = tex_attrib.data.buffer_view
 			buffer_data = cgltf.cgltf_buffer_view_data(bv)
 
-			local length = tonumber(bv[0].size/ ffi.sizeof("float"))
+			local length = tonumber(bv[0].size)
 
-			uvs = ffi.new("float[?]", length)
-			local bufptr = ffi.cast("char * ", ffi.string(buffer_data))
-			ffi.copy(uvs, bufptr, length)
+			uvs = ffi.new("float[?]", length / ffi.sizeof("float"))
+			ffi.copy(uvs, buffer_data, length)
 			-- geomextension.setdataindexfloatstotable( buffer_data, uvs, indices, 2)
 		end 
 
@@ -226,11 +224,10 @@ function gltfloader:processdata( gltfobj, gochildname, thisnode, parent )
 			local bv = norm_attrib.data.buffer_view
 			buffer_data = cgltf.cgltf_buffer_view_data(bv)
 
-			local length = tonumber(bv[0].size/ ffi.sizeof("float"))
+			local length = tonumber(bv[0].size)
 
-			normals = ffi.new("float[?]", length)
-			local bufptr = ffi.cast("char * ", ffi.string(buffer_data))
-			ffi.copy(normals, bufptr, length)			
+			normals = ffi.new("float[?]", length/ ffi.sizeof("float"))
+			ffi.copy(normals, buffer_data, length)			
 			-- geomextension.setdataindexfloatstotable( buffer_data, normals, indices, 3)
 		end 
 
@@ -672,6 +669,8 @@ function gltfloader:load_gltf( assetfilename, asset, disableaabb )
 	end
 
 	model.states_tbl = states
+	-- This releases cgltf data
+	model.data = nil
 
 	return model
 end
