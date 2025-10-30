@@ -96,18 +96,19 @@ end
 
 ------------------------------------------------------------------------------------------------------------
 -- Combine AABB's of model with primitives. 
-local function calcAABB( gltfobj, aabbmin, aabbmax )
-	gltfobj.aabb = gltfobj.aabb or { 
+local function calcAABB( aabb, aabbmin, aabbmax )
+	aabb = aabb or { 
 		min = hmm.HMM_Vec3(math.huge,math.huge,math.huge), 
 		max = hmm.HMM_Vec3(-math.huge,-math.huge,-math.huge) 
 	}
-	gltfobj.aabb.min.x = math.min(gltfobj.aabb.min.x, aabbmin[1])
-	gltfobj.aabb.min.y = math.min(gltfobj.aabb.min.y, aabbmin[2])
-	gltfobj.aabb.min.z = math.min(gltfobj.aabb.min.z, aabbmin[3])
+	aabb.min.x = math.min(aabb.min.x, aabbmin[0])
+	aabb.min.y = math.min(aabb.min.y, aabbmin[1])
+	aabb.min.z = math.min(aabb.min.z, aabbmin[2])
 
-	gltfobj.aabb.max.x = math.max(gltfobj.aabb.max.x, aabbmax[1])
-	gltfobj.aabb.max.y = math.max(gltfobj.aabb.max.y, aabbmax[2])
-	gltfobj.aabb.max.z = math.max(gltfobj.aabb.max.z, aabbmax[3])
+	aabb.max.x = math.max(aabb.max.x, aabbmax[0])
+	aabb.max.y = math.max(aabb.max.y, aabbmax[1])
+	aabb.max.z = math.max(aabb.max.z, aabbmax[2])
+	return aabb
 end
 
 ------------------------------------------------------------------------------------------------------------
@@ -134,6 +135,7 @@ function gltfloader:processdata( gltfobj, gochildname, thisnode, parent )
 	-- collate all primitives (we ignore material separate prims)
 	for pid, prim in ipairs(prims) do
 
+
 		local verts = nil
 		local uvs = nil
 		local normals = nil
@@ -144,31 +146,35 @@ function gltfloader:processdata( gltfobj, gochildname, thisnode, parent )
 		local itype = sg.SG_INDEXTYPE_UINT16
 
 		if(acc_idx) then 
-			local bv = acc_idx.bufferView
-			local index_buffer_data = bv:get()
+			local bv = acc_idx.buffer_view
+			local index_buffer_data = cgltf.cgltf_buffer_view_data(bv)
 
+			local ctype = tonumber(acc_idx.component_type)
 			-- Indices specific - this is default dataset for gltf (I think)
-			if(acc_idx.componentType == 5125) then 
+			if(ctype == cgltf.cgltf_component_type_r_32u) then 
 				indices = ffi.new("uint32_t[?]", acc_idx.count)
 				ffi.copy(indices, ffi.string(index_buffer_data), acc_idx.count * 4)
 				-- geomextension.setdataintstotable( 0, , index_buffer_data, indices)
 				itype = sg.SG_INDEXTYPE_UINT32
 				print("[Warning] 32 bit index buffer")
-			elseif(acc_idx.componentType == 5123 or acc_idx.componentType == 5122) then 
+			elseif(ctype == cgltf.cgltf_component_type_r_32f) then 
+				print("TODO: Support float buffers")
+			elseif(ctype == cgltf.cgltf_component_type_r_16u or ctype == cgltf.cgltf_component_type_r_16) then 
 				indices = ffi.new("uint16_t[?]", acc_idx.count)
 				ffi.copy(indices, ffi.string(index_buffer_data), acc_idx.count * 2)
 				-- geomextension.setdatashortstotable( 0, acc_idx.count * 2, index_buffer_data, indices)
-			elseif(acc_idx.componentType == 5120 or acc_idx.componentType == 5121) then 
+			elseif(ctype == cgltf.cgltf_component_type_r_8u or ctype == cgltf.cgltf_component_type_r_8) then 
 				indices = ffi.new("uint16_t[?]", acc_idx.count)
 				local ptr = ffi.cast("uint8_t *", ffi.string(index_buffer_data))
-				for i=0, acc_idx.count-1 do 
+				local acount = tonumber(acc_idx.count)
+				for i=0, acount-1 do 
 					indices[i] = ptr[i]
 				end
 				itype = sg.SG_INDEXTYPE_UINT16
 				-- geomextension.setdatabytestotable( 0, acc_idx.count, index_buffer_data, indices)
 				print("[Warning] 8 bit index buffer")
 			else 
-				print("[Error] Unhandled componentType: "..acc_idx.componentType)
+				print("[Error] Unhandled componentType: "..ctype)
 			end
 		else 
 			print("[Error] No indices.")
@@ -181,51 +187,52 @@ function gltfloader:processdata( gltfobj, gochildname, thisnode, parent )
 
 		-- Get position accessor
 		local aabb = nil
-		local posidx = prim.attributes["POSITION"]
-		if(posidx) then 
-			local bv = posidx.bufferView
-			buffer_data = bv:get()
+		local pos_attrib = prim.attributes["POSITION"]
+		if(pos_attrib) then 
+			local bv = pos_attrib.data.buffer_view
+			buffer_data = cgltf.cgltf_buffer_view_data(bv)
 
-			local offset = bv.byteOffset
-			local length = bv.byteLength
+			local length = tonumber(bv[0].size)
 
 			-- Get positions (or verts) 
-			verts = ffi.new("float[?]", length * 3)
-			local bufptr = ffi.cast("char * ", ffi.string(buffer_data))
-			ffi.copy(verts, bufptr + offset, length * 3 * ffi.sizeof("float"))
+			verts = ffi.new("float[?]", length / ffi.sizeof("float"))
+			local bufptr = ffi.cast("char * ", buffer_data)
+			ffi.copy(verts, buffer_data, length)
 
 			-- geomextension.setdataindexfloatstotable( buffer_data, verts, indices, 3)
-			aabb = { posidx.min[1], posidx.min[2], posidx.min[3], posidx.max[1], posidx.max[2], posidx.max[3] }
-			calcAABB( gltfobj, posidx.min, posidx.max )
+			local pos_acc = pos_attrib.data
+			-- aabb = { 
+			-- 	pos_acc.min[0], pos_acc.min[1], pos_acc.min[2], 
+			-- 	pos_acc.max[0], pos_acc.max[1], pos_acc.max[2] 
+			-- }
+			aabb = calcAABB( aabb, pos_acc.min, pos_acc.max )
 		end
 
 		-- Get uvs accessor
-		local texidx = prim.attributes["TEXCOORD_0"]
-		if(texidx) then 
-			local bv = texidx.bufferView
-			buffer_data = bv:get()
+		local tex_attrib = prim.attributes["TEXCOORD_0"]
+		if(tex_attrib) then 
+			local bv = tex_attrib.data.buffer_view
+			buffer_data = cgltf.cgltf_buffer_view_data(bv)
 
-			local offset = bv.byteOffset
-			local length = bv.byteLength			
+			local length = tonumber(bv[0].size/ ffi.sizeof("float"))
 
-			uvs = ffi.new("float[?]", length * 2)
+			uvs = ffi.new("float[?]", length)
 			local bufptr = ffi.cast("char * ", ffi.string(buffer_data))
-			ffi.copy(uvs, bufptr + offset, length * 2 * ffi.sizeof("float"))
+			ffi.copy(uvs, bufptr, length)
 			-- geomextension.setdataindexfloatstotable( buffer_data, uvs, indices, 2)
 		end 
 
 		-- Get normals accessor
-		local normidx = prim.attributes["NORMAL"]
-		if(normidx) then 
-			local bv = normidx.bufferView
-			buffer_data = bv:get()
+		local norm_attrib = prim.attributes["NORMAL"]
+		if(norm_attrib) then 
+			local bv = norm_attrib.data.buffer_view
+			buffer_data = cgltf.cgltf_buffer_view_data(bv)
 
-			local offset = bv.byteOffset
-			local length = bv.byteLength			
+			local length = tonumber(bv[0].size/ ffi.sizeof("float"))
 
-			normals = ffi.new("float[?]", length * 3)
+			normals = ffi.new("float[?]", length)
 			local bufptr = ffi.cast("char * ", ffi.string(buffer_data))
-			ffi.copy(normals, bufptr + offset, length * 3 * ffi.sizeof("float"))			
+			ffi.copy(normals, bufptr, length)			
 			-- geomextension.setdataindexfloatstotable( buffer_data, normals, indices, 3)
 		end 
 
@@ -476,6 +483,7 @@ function gltf_parse_meshes(model)
 
 	model.scene = {}
 	model.scene.meshes = {}
+	model.meshes_map = {}
 	local gltf = model.data[0]
 
     model.scene.num_meshes = tonumber(gltf.meshes_count)
@@ -493,10 +501,17 @@ function gltf_parse_meshes(model)
 				material = model.materials_map[mat_handle],
 				indices = gltf_prim.indices,
 				type = gltf_prim.type,
-				attribs = gltf_prim.attributes,
+				attributes = {},
 			}
+			local attrib_count = tonumber(gltf_prim.attributes_count)
+			for i=0, attrib_count-1 do
+				local attrib = gltf_prim.attributes[i]
+				prim.attributes[ffi.string(attrib.name)] = attrib
+			end
+
 			tinsert( mesh.primitives, prim )
         end 
+		model.meshes_map[get_addr(gltf.meshes, mesh_index)] = mesh
 		tinsert( model.scene.meshes, mesh )
     end
 end
@@ -516,7 +531,7 @@ function gltf_parse_nodes(model)
         if (gltf_node.mesh ~= nil) then 
             local node = {}
 			node.name = ffi.string(gltf_node.name or "")
-            node.mesh = gltf_node.mesh
+            node.mesh = model.meshes_map[get_addr(gltf_node.mesh)]
             node.transform = build_transform_for_gltf_node(gltf, gltf_node)
 			tinsert(model.scene.nodes, node)
 		end
@@ -660,7 +675,7 @@ end
 
 function gltfloader:run_nodes( model, node_func )
 
-	for n, node in ipairs(model.nodes) do
+	for n, node in ipairs(model.scene.nodes) do
 
 		self:run_node( model, node, node_func)
 	end 
