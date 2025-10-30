@@ -396,9 +396,11 @@ end
 
 -- ----------hmm.----------------------------------------------------------------------------------------------
 
-local function get_addr(ptr, off)
-	off = off or 0
-	return tostring(ffi.cast("uintptr_t", ptr) + off)
+local function get_addr(ptr, off, ctype)
+    off = off or 0
+    ctype = ctype or "uintptr_t"  -- type of element, defaults to pointer size
+    local addr = ffi.cast("uintptr_t", ptr) + off * ffi.sizeof(ctype)
+    return tonumber(addr)
 end
 
 -- --------------------------------------------------------------------------------------------------------
@@ -410,7 +412,7 @@ function gltf_parse_images(model)
 	local image_count = tonumber(model.data[0].images_count)
 	for i=0, image_count -1 do 
 		local img = model.data[0].images[i]
-		local addr = get_addr(model.data[0].images, i)
+		local addr = get_addr(model.data[0].images, i, "cgltf_image")
 		image_map[addr] = #model.images + 1
 		local image = nil
 		local imagename = ffi.string(img.name)
@@ -436,9 +438,9 @@ function gltf_parse_images(model)
 	model.textures_map = {}
 	for i = 0, tonumber(model.data[0].textures_count)-1 do
     	local tex = model.data[0].textures[i]
-		local img_id = image_map[get_addr(tex.image, 0)]
+		local img_id = image_map[get_addr(tex.image)]
 		local tex_img = model.images[img_id]
-		local texaddr = get_addr(model.data[0].textures, i)
+		local texaddr = get_addr(model.data[0].textures, i, "cgltf_texture")
 		model.textures_map[texaddr] = tex_img
     	tinsert(model.textures, tex_img)
 	end	
@@ -467,15 +469,21 @@ function gltf_parse_materials(model)
 				gltf_mat.emissive_factor[0], gltf_mat.emissive_factor[1], gltf_mat.emissive_factor[2],
 			}
 
+			local base_color_tex = model.textures_map[get_addr(src.base_color_texture.texture)]
+			local metallic_roughness_tex = model.textures_map[get_addr(src.metallic_roughness_texture.texture)]
+			local normal_tex = model.textures_map[get_addr(gltf_mat.normal_texture.texture)]
+			local occulusion_tex = model.textures_map[get_addr(gltf_mat.occlusion_texture.texture)]
+			local emissive_tex = model.textures_map[get_addr(gltf_mat.emissive_texture.texture)]
+
             scene_mat.images = {
-                base_color = model.textures_map[get_addr(src.base_color_texture.texture, 0)],
-                metallic_roughness = model.textures_map[get_addr(src.metallic_roughness_texture.texture,0)],
-                normal = model.textures_map[get_addr(gltf_mat.normal_texture.texture, 0)],
-                occlusion = model.textures_map[get_addr(gltf_mat.occlusion_texture.texture, 0)],
-                emissive = model.textures_map[get_addr(gltf_mat.emissive_texture.texture, 0)]
+                base_color 			= base_color_tex,
+                metallic_roughness 	= metallic_roughness_tex,
+                normal 				= normal_tex,
+                occlusion 			= occulusion_tex,
+                emissive 			= emissive_tex,
             }
         end 
-		model.materials_map[ get_addr(gltf.materials, i)] = scene_mat
+		model.materials_map[ get_addr(gltf.materials, i, "cgltf_material") ] = scene_mat
 		tinsert(model.materials, scene_mat)
 	end
 
@@ -515,7 +523,7 @@ function gltf_parse_meshes(model)
 
 			tinsert( mesh.primitives, prim )
         end 
-		model.meshes_map[get_addr(gltf.meshes, mesh_index)] = mesh
+		model.meshes_map[get_addr(gltf.meshes, mesh_index, "cgltf_mesh")] = mesh
 		tinsert( model.scene.meshes, mesh )
     end
 end
@@ -526,17 +534,13 @@ function gltf_parse_nodes(model, node)
 	
 	local gltf = model.data[0]
 	local nodes_count  = tonumber(node.children_count)
-	print("childcount: ", nodes_count)
 	for node_index = 0, nodes_count-1 do
         local gltf_node = node.children[node_index]
-		print("childnode: ", node_index)
 		gltf_parse_nodes(model, gltf_node)
     end
 
 	if (node.mesh ~= nil) then 
 		local newnode = {}
-		print("node mesh: ", ffi.string(node.name))
-		print("node mesh primitives: ", tonumber(node.mesh.primitives_count))
 		newnode.name = ffi.string(node.name or "")
 		newnode.mesh = model.meshes_map[get_addr(node.mesh)]
 		newnode.transform = build_transform_for_gltf_node(node)
@@ -630,8 +634,8 @@ function gltfloader:load_gltf( assetfilename, asset, disableaabb )
 	end
 	
 	local states 	  = {}
-	-- TODO: DOdgy override for a material atm. Will change.
-    local material    = meshes.material(asset.go, "lua/engine/cube_simple.glsl")
+	-- TODO: Dodgy override for a material atm. Will change.
+    local material    = meshes.material(asset.go, "lua/engine/base_texture.glsl")
 	local prims       = {}
 
 	-- Collect meshes together for rendering
@@ -646,6 +650,7 @@ function gltfloader:load_gltf( assetfilename, asset, disableaabb )
 							node = mesh, prim = prim, 
 							mesh = prim.mesh_buffers,
 							aabb = prim.aabb,
+							material = prim.material,
 						}
 					end
 				end 
@@ -656,7 +661,7 @@ function gltfloader:load_gltf( assetfilename, asset, disableaabb )
 	model.aabb = nil
 	for k, prim in pairs(prims) do 
 		-- local geom_mesh = geom:GetMesh(prim.prim.primmesh)
-		local state_tbl = meshes.state(k, prim.mesh, material)
+		local state_tbl = meshes.state(k, prim, prim.mesh, material)
 		local state = { pip = state_tbl.pip, bind = state_tbl.bind, count = prim.index_count }
 		tinsert(states, state)
 		model.aabb = calcAABB(model.aabb, prim.aabb.min, prim.aabb.max)

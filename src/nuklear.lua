@@ -89,7 +89,7 @@ nuklear_renderer.load_image = function(filename, no_ui)
     local data = stb.stbi_load(filename, x, y, n, 4)
     if (data == nil) then error("[STB]: failed to load image: "..filename); return nil end
     -- print("Original channels in file:", n[0])
-    -- print("Image Loaded: "..filename.."      Width: "..x[0].."  Height: "..y[0].."  Channels: "..n[0])
+    print("Image Loaded: "..filename.."      Width: "..x[0].."  Height: "..y[0].."  Channels: "..n[0])
 
     -- Auto free when data handles are released
     ffi.gc(data, stb.stbi_image_free)
@@ -145,8 +145,9 @@ nuklear_renderer.load_image_buffer = function( name, buf, bufsize, no_ui )
     sg_img_desc[0].data.subimage[0][0].ptr = data
     sg_img_desc[0].data.subimage[0][0].size = x[0] * y[0] * 4
 
-    if(sg.sg_isvalid() == false or no_ui) then return nil, sg_img_desc end
+    if(sg.sg_isvalid() == false) then return nil, sg_img_desc, data end
     local new_img = sg.sg_make_image(sg_img_desc)
+    if(no_ui) then return new_img, sg_img_desc, data end
 
     -- // create a sokol-nuklear image object which associates an sg_image with an sg_sampler
     local img_desc = ffi.new("snk_image_desc_t[1]")

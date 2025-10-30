@@ -14,6 +14,7 @@
 local ffi           = require("ffi")
 
 local utils         = require("lua.utils")
+local imageutils 	= require("lua.gltfloader.image-utils")
 
 local tinsert       = table.insert
 
@@ -175,11 +176,22 @@ mesh.material  = function(name, shaderfile, params)
 
     local shader    = shc.compile(shaderfile)
     local shd       = sg.sg_make_shader(shader)
+
+    local sampler_desc      = ffi.new("sg_sampler_desc")
+    sampler_desc.min_filter = sg.SG_FILTER_LINEAR
+    sampler_desc.mag_filter = sg.SG_FILTER_LINEAR
+    sampler_desc.wrap_u     = sg.SG_WRAP_REPEAT
+    sampler_desc.wrap_v     = sg.SG_WRAP_REPEAT
+    sampler_desc.wrap_w     = sg.SG_WRAP_REPEAT  -- only needed for 3D textures
+    
+    local default_sampler = sg.sg_make_sampler(sampler_desc)
+
     if(shd) then 
         local material = {
-            shader      = shd, 
-            params      = params,
-            name        = name, 
+            shader          = shd, 
+            params          = params,
+            name            = name, 
+            base_color_smp  = default_sampler,
         }
         return material
     else 
@@ -242,10 +254,10 @@ end
 
 -- ----------------------------------------------------------------------------------------
 -- Model makes a pipeline 
-mesh.state     = function(name, mesh, material)
+mesh.state     = function(name, prim, mesh, material)
 
     -- Stores material with mesh - this should be an index
-    mesh.material = material
+    -- mesh.material = material
 
     local pipe_desc = ffi.new("sg_pipeline_desc[1]", {})
     pipe_desc[0].layout.buffers         = mesh.layout.buffers
@@ -258,10 +270,6 @@ mesh.state     = function(name, mesh, material)
         if(mesh.depth.write_enabled) then pipe_desc[0].depth.write_enabled = mesh.depth.write_enabled end
         if(mesh.depth.compare) then pipe_desc[0].depth.compare = mesh.depth.compare end
     end
-    -- pipe_desc[0].index_type     = sg.SG_INDEXTYPE_UINT16
-    -- pipe_desc[0].cull_mode      = sg.SG_CULLMODE_BACK
-    -- pipe_desc[0].depth.write_enabled = true
-    -- pipe_desc[0].depth.compare  = sg.SG_COMPAREFUNC_LESS_EQUAL
 
     pipe_desc[0].label                  = name.."-pipeline"
     local pipeline = sg.sg_make_pipeline(pipe_desc)
@@ -270,6 +278,21 @@ mesh.state     = function(name, mesh, material)
     binding[0].vertex_buffers[0]       = mesh.vbuf
     if(mesh.ibuf) then binding[0].index_buffer = mesh.ibuf end
 
+    local mesh_mat = prim.material
+    local tex = nil
+    if(mesh_mat and mesh_mat.images) then 
+        if(mesh_mat.images.base_color ~= nil) then
+            local img = mesh_mat.images.base_color.img or sg.sg_make_image(mesh_mat.images.base_color.info)
+            binding[0].images[0]   = img
+            tex = true 
+        end
+    end
+    if(tex == nil) then 
+        binding[0].images[0]   =  imageutils.default_white_image
+    end
+    if(material.base_color_smp ~= nil) then
+        binding[0].samplers[0] = material.base_color_smp  -- the sampler        
+    end
     return {
         pip     = pipeline,
         bind    = binding,

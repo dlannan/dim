@@ -17,6 +17,8 @@ local stb       = require("stb")
 local utils     = require("utils")
 local keymap    = require("src.keymap")
 
+local imageutils = require("lua.gltfloader.image-utils")
+
 local ffi       = require("ffi")
 
 -- --------------------------------------------------------------------------------------
@@ -91,10 +93,10 @@ local function init()
     desc[0].logger.func = slib.slog_func
     desc[0].disable_validation = false
 
-    desc[0].buffer_pool_size = 8192
-    desc[0].image_pool_size = 1024
-    desc[0].shader_pool_size = 128
-    desc[0].pipeline_pool_size = 256
+    desc[0].buffer_pool_size = 16384
+    desc[0].image_pool_size = 8192
+    desc[0].shader_pool_size = 1024
+    desc[0].pipeline_pool_size = 4096
     sg.sg_setup( desc )
 
     local snk = ffi.new("snk_desc_t[1]")
@@ -112,6 +114,8 @@ local function init()
     local hwnd = sapp.sapp_win32_get_hwnd()
     ffi.C.ShowWindow(hwnd, SW_MAXIMIZE)
     SCALE = sapp.sapp_dpi_scale()
+
+    imageutils.make_defaults()
 end
 
 -- --------------------------------------------------------------------------------------
