@@ -235,6 +235,11 @@ local function render_model( t, model_rect )
 
     model_rect.sg_range = model_rect.sg_range or ffi.new("sg_range[1]")
     local all_states = model_rect.model.data.mesh.states_tbl
+    local aabb = model_rect.model.data.mesh.aabb
+    local maxx = aabb.max.x - aabb.min.x
+    local maxy = aabb.max.y - aabb.min.y
+    local maxz = aabb.max.z - aabb.min.z
+    local maxsize = math.sqrt( maxx * maxx + maxy * maxy + maxz * maxz)
 
     for i, state_data in ipairs(all_states) do 
 
@@ -255,7 +260,7 @@ local function render_model( t, model_rect )
         local rym       = hmm.HMM_Rotate(state.ry, hmm.HMM_Vec3(0.0, 1.0, 0.0))
         local model     = hmm.HMM_MultiplyMat4(rxm, rym)
 
-        local sc = 0.01
+        local sc = 3.0 / maxsize
         local scaler    = hmm.HMM_Scale(hmm.HMM_Vec3(sc, sc, sc))
         local model     = hmm.HMM_MultiplyMat4(model, scaler)
         local mvp       = hmm.HMM_MultiplyMat4(view_proj, model)

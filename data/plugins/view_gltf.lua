@@ -30,6 +30,7 @@ Doc.load = function(self, filename)
     else
       self.model = gltf
       self.model.scale = 1.0
+      self.filename = filename
     end
   else
     original_doc_load(self, filename)
