@@ -15,9 +15,9 @@ I expect to have some nice features for this:
 - Maybe a PBR shader to support some nice rendering. 
 
 I still need to fix:
-- Texture coord mapping  - fixed!
-- Color component on colored only polys - working on now
-- Alpha transparency and cut-out. - working on now
+[x] Texture coord mapping  - fixed!
+[ ] Color component on colored only polys - working on now
+[ ] Alpha transparency and cut-out. - working on now
 
 Overall very happy with progress. Will finish up the 3D viewer sections in the next couple of days and move onto framework/project management tools and build tools.
 
