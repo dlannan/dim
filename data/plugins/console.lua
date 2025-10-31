@@ -51,8 +51,7 @@ local function new_console(name)
         -- Simple echo for now; you can extend to Lua evaluation
         local results = system.exec(line)
 
-        self:write_line(fmt("[Log time]: %s \n", line))
-        self:write_line(fmt("[Log time]: %s \n", results))
+        self:write_line(fmt("%s", results))
         self:append_line(self.prompt) 
     end
 
