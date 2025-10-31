@@ -136,6 +136,7 @@ local function core_init(ctx)
     package.path = EXEDIR .. '/data/?/init.lua;' .. package.path
     core = require('core')
     core.init()
+    core.redraw = true
 end
 
 -- -----------------------------------------------------------------------------------------

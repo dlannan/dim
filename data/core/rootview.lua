@@ -505,5 +505,8 @@ function RootView:draw()
   end
 end
 
+function RootView:get_node()
+  return Node
+end
 
 return RootView

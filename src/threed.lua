@@ -198,7 +198,7 @@ local function render_model( t, model_rect )
     local maxy = aabb.max.y - aabb.min.y
     local maxz = aabb.max.z - aabb.min.z
     local maxsize = math.sqrt( maxx * maxx + maxy * maxy + maxz * maxz)
-    local sc = CAM_DISTANCE * 0.65 / maxsize
+    local sc = CAM_DISTANCE * 0.85 / maxsize
 
     local offset = hmm.HMM_Vec3(aabb.min.x + maxx * 0.5, aabb.min.y + maxy * 0.5, aabb.min.z + maxz * 0.5)
     offset.x, offset.y, offset.z = offset.x * sc, offset.y * sc, offset.x * sc

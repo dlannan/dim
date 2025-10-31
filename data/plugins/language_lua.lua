@@ -18,8 +18,15 @@ syntax.add {
     { pattern = "[<>~=]=",                type = "operator" },
     { pattern = "[%+%-=/%*%^%%#<>]",      type = "operator" },
     { pattern = "[%a_][%w_]*%s*%f[(\"{]", type = "function" },
-    { pattern = "[%a_][%w_]*",            type = "symbol"   },
     { pattern = "::[%a_][%w_]*::",        type = "function" },
+    { pattern = "[%(%)%[%]{}]",           type = "bracket" },
+    { pattern = "return",                 type = "return" },
+
+    -- Match `foo.bar` → foo (variable.parent), .bar (variable.property)
+    { pattern = "%.[%a_][%w_]*",  type = "variable.property" },
+
+    -- Fallback single variable
+    { pattern = "[%a_][%w_]*", type = "variable" },   
   },
   symbols = {
     ["if"]       = "keyword",
@@ -34,7 +41,7 @@ syntax.add {
     ["while"]    = "keyword",
     ["for"]      = "keyword",
     ["break"]    = "keyword",
-    ["return"]   = "keyword",
+    ["return"]   = "return",
     ["local"]    = "keyword",
     ["in"]       = "keyword",
     ["not"]      = "keyword",
