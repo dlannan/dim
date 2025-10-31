@@ -24,12 +24,12 @@
 | `root_view`           | `get_active_node()`       | Returns the currently focused node                    |
 | `command`             | `add(bindings)`           | Adds keyboard command bindings                        |
 | `command`             | `run(name)`               | Runs a command by name                                |
-| `syntax`              | `add(definition)`         | Adds syntax definition (keywords, patterns, etc.)     |
+| `syntax`              | `add(definition)`         | Adds syntax definition (keywords, patterns, etc.)    |
 | `syntax`              | `match(doc, pos)`         | Returns syntax highlight info at a position           |
 | `keymap`              | `add(bindings)`           | Adds keyboard shortcuts                               |
 | `keymap`              | `get_binding(key)`        | Returns command bound to a key                        |
 | `style`               | (table)                   | Holds style info for colors, fonts, padding           |
-| `style.load()`        |                           | Loads styles/themes                                   |
+| `style.load()`       |                            | Loads styles/themes                                   |
 | `core.file_watch`     | `add(path, callback)`     | Watches a file or directory for changes               |
 | `core.file_watch`     | `remove(path)`            | Stops watching a file or directory                    |
 | `core.plugin_manager` | `load_plugin(path)`       | Loads a plugin Lua module                             |
