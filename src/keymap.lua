@@ -158,9 +158,9 @@ local function process_inputs(event)
             })  
         end
     elseif eventtype == sapp.SAPP_EVENTTYPE_FOCUSED then
-        app_has_focus = true
+        system.has_focus = true
     elseif eventtype == sapp.SAPP_EVENTTYPE_UNFOCUSED then
-        app_has_focus = false
+        system.has_focus = false
     elseif eventtype == sapp.SAPP_EVENTTYPE_MOUSE_ENTER then 
         sapp.sapp_show_mouse(false)
         renderer.ctx.style.cursor_visible = nk.nk_true
@@ -170,6 +170,7 @@ local function process_inputs(event)
             type = LITE_EVENT[eventtype],
             a = w, b = h, c = nil, d = nil
         })
+        system.has_focus = true
     elseif eventtype == sapp.SAPP_EVENTTYPE_MOUSE_LEAVE then 
         sapp.sapp_show_mouse(true)
         renderer.ctx.style.cursor_visible = nk.nk_false
@@ -179,12 +180,14 @@ local function process_inputs(event)
             type = LITE_EVENT[eventtype],
             a = w, b = h, c = nil, d = nil
         })
+        system.has_focus = false
     end  
 
     if eventtype == sapp.SAPP_EVENTTYPE_MOUSE_DOWN then
 
         local x, y = event.mouse_x, event.mouse_y
-        local button = LITE_BUTTONS[event.mouse_button]
+        local event_button = tonumber(event.mouse_button)
+        local button = LITE_BUTTONS[event_button]
         system_push_event({
             type = LITE_EVENT[eventtype],
             a = button, b = x-r.x, c = y-r.y, d = 1
@@ -193,7 +196,8 @@ local function process_inputs(event)
     elseif eventtype == sapp.SAPP_EVENTTYPE_MOUSE_UP then
 
         local x, y = event.mouse_x, event.mouse_y
-        local button = LITE_BUTTONS[event.mouse_button]
+        local event_button = tonumber(event.mouse_button)
+        local button = LITE_BUTTONS[event_button]
         system_push_event({
             type = LITE_EVENT[eventtype],
             a = button, b = x-r.x, c = y-r.y, d = nil

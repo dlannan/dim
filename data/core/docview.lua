@@ -328,9 +328,9 @@ function DocView:draw_line_body(idx, x, y)
   self:draw_line_text(idx, x, y)
 
   -- draw caret if it overlaps this line
-  if line == idx and core.active_view == self
-  and self.blink_timer < blink_period / 2
-  and system.window_has_focus() then
+  if line == idx and core.active_view == self 
+    and self.blink_timer < blink_period / 2
+    and system.window_has_focus() then
     local lh = self:get_line_height()
     local x1 = x + self:get_col_x_offset(line, col)
     renderer.draw_rect(x1, y, style.caret_width, lh, style.caret)
