@@ -113,6 +113,39 @@ end
 
 ------------------------------------------------------------------------------------------------------------
 
+local function transformAABB(aabb, tform)
+    -- compute 8 corners of the local AABB
+    local corners = {
+        hmm.HMM_Vec3(aabb.min.x, aabb.min.y, aabb.min.z),
+        hmm.HMM_Vec3(aabb.max.x, aabb.min.y, aabb.min.z),
+        hmm.HMM_Vec3(aabb.min.x, aabb.max.y, aabb.min.z),
+        hmm.HMM_Vec3(aabb.min.x, aabb.min.y, aabb.max.z),
+        hmm.HMM_Vec3(aabb.min.x, aabb.max.y, aabb.max.z),
+        hmm.HMM_Vec3(aabb.max.x, aabb.max.y, aabb.min.z),
+        hmm.HMM_Vec3(aabb.max.x, aabb.min.y, aabb.max.z),
+        hmm.HMM_Vec3(aabb.max.x, aabb.max.y, aabb.max.z),
+    }
+
+    local newAABB = { 
+        min = hmm.HMM_Vec3(math.huge, math.huge, math.huge),
+        max = hmm.HMM_Vec3(-math.huge, -math.huge, -math.huge)
+    }
+
+    for i=1,#corners do
+        local worldCorner = hmm.HMM_MultiplyMat4ByVec4(tform, hmm.HMM_Vec4(corners[i].x, corners[i].y, corners[i].z, 1))
+        newAABB.min.x = math.min(newAABB.min.x, worldCorner.x)
+        newAABB.min.y = math.min(newAABB.min.y, worldCorner.y)
+        newAABB.min.z = math.min(newAABB.min.z, worldCorner.z)
+        newAABB.max.x = math.max(newAABB.max.x, worldCorner.x)
+        newAABB.max.y = math.max(newAABB.max.y, worldCorner.y)
+        newAABB.max.z = math.max(newAABB.max.z, worldCorner.z)
+    end
+
+    return newAABB
+end
+
+------------------------------------------------------------------------------------------------------------
+
 local function jointables(t1, t2)
 
 	for k,v in pairs(t2) do 
@@ -680,7 +713,11 @@ function gltfloader:load_gltf( assetfilename, asset, disableaabb )
 		end
 	end)
 
-	model.aabb = nil
+	model.aabb = { 
+		min = hmm.HMM_Vec3(math.huge,math.huge,math.huge), 
+		max = hmm.HMM_Vec3(-math.huge,-math.huge,-math.huge) 
+	}
+
 	for k, prim in pairs(prims) do 
 		-- local geom_mesh = geom:GetMesh(prim.prim.primmesh)
 		local state_tbl = meshes.state(k, prim, prim.mesh, material)
@@ -690,9 +727,11 @@ function gltfloader:load_gltf( assetfilename, asset, disableaabb )
 			alpha = state_tbl.alpha, 
 			count = prim.index_count,
 			transform = prim.transform,
+			base_color = prim.material.base_color or { 1, 1, 1, 1 },
 		}
 		tinsert(states, state)
-		model.aabb = calcAABB(model.aabb, prim.aabb.min, prim.aabb.max)
+		local tfaabb = transformAABB(prim.aabb, prim.transform)
+		model.aabb = calcAABB(model.aabb, tfaabb.min, tfaabb.max)
 	end
 
 	if(model.aabb == nil) then 

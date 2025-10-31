@@ -206,7 +206,7 @@ local function frame()
     nk.snk_render(sapp.sapp_width(), sapp.sapp_height())
 
     -- // Render 3D view rects here - will get rects from the docviews.
-    threed_renderer.render_rects(t, did_draw)
+    threed_renderer.render_rects(dt, did_draw)
 
     sg.sg_end_pass()
     sg.sg_commit()

@@ -216,7 +216,7 @@ local function render_model( t, model_rect )
         local view      = hmm.HMM_LookAt(hmm.HMM_Vec3(0.0, offset.y + 1.5, CAM_DISTANCE), hmm.HMM_Vec3(0.0, offset.y, 0.0), hmm.HMM_Vec3(0.0, 1.0, 0.0))
         local view_proj = hmm.HMM_MultiplyMat4(proj, view)
         state.rx        = 0.0
-        state.ry        = state.ry + 1.0 * t
+        state.ry        = state.ry + 3.0 * t
 
         local base_tform = state_data.transform
         local rxm       = hmm.HMM_Rotate(state.rx, hmm.HMM_Vec3(1.0, 0.0, 0.0))
@@ -233,7 +233,9 @@ local function render_model( t, model_rect )
 
         local vs_params = ffi.new("vs_params_t[1]")
         vs_params[0].mvp    = mvp
-        vs_params[0].base_color_factor = ffi.new("float [4]", {1.0, 1.0, 1.0, 1.0 } )
+        vs_params[0].base_color_factor    = 	ffi.new("float [4]", {
+            state_data.base_color[1], state_data.base_color[2], state_data.base_color[3], state_data.base_color[4]
+        })
         model_rect.vs_sg_range[0].ptr     = vs_params
         model_rect.vs_sg_range[0].size    = ffi.sizeof(vs_params[0])
         sg.sg_apply_uniforms(sg.SG_SHADERSTAGE_VS,  model_rect.vs_sg_range)
