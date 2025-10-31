@@ -65,6 +65,8 @@ local function new_console(name)
         if(text == "\n") then 
             self:execute_current_line()
         end
+        if(tonumber(col) < psize) then col = psize end 
+        ConsoleDoc.super.move_to(self, #self.lines, col)
     end
 
     -- Write a line to the console
