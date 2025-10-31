@@ -193,11 +193,14 @@ function gltfloader:processdata( model, gochildname, thisnode, parent )
 			buffer_data = cgltf.cgltf_buffer_view_data(bv)
 
 			local length = tonumber(bv[0].size)
-			local vert_count = length / ffi.sizeof("float")
-			model.stats.vertices = model.stats.vertices + vert_count
+			local float_count = length / ffi.sizeof("float")
+			if(model.counted[pos_attrib] == nil) then
+				model.stats.vertices = model.stats.vertices + float_count / 3
+				model.counted[pos_attrib] = true
+			end
 
 			-- Get positions (or verts) 
-			verts = ffi.new("float[?]", vert_count)
+			verts = ffi.new("float[?]", float_count)
 			ffi.copy(verts, buffer_data, length)
 
 			-- geomextension.setdataindexfloatstotable( buffer_data, verts, indices, 3)
@@ -264,7 +267,7 @@ function gltfloader:processdata( model, gochildname, thisnode, parent )
 				normals = normals, 
 			}
 
-			model.stats.polya = model.stats.polys + primdata.icount / 3
+			model.stats.polys = model.stats.polys + primdata.icount / 3
 			prim.mesh_buffers = geom:makeMesh( primmesh, primdata )
 			print("Added mesh buffer", prim.primmesh)
 		else 
@@ -367,31 +370,32 @@ end
 
 -- --------------------------------------------------------------------------------------------------------
 -- This creates a world transform for each node. Not sure I like this (was copied from sokol cgltf example)
-local function build_transform_for_gltf_node(node) 
-    local parent_tform = hmm.HMM_Mat4()
-    if (node.parent ~= nil) then
-        parent_tform = build_transform_for_gltf_node(node.parent)
-	end
-    if (node.has_matrix == true) then
-        -- // needs testing, not sure if the element order is correct
-        tform = ffi.new("hmm_mat4[1]") -- this is a float ptr x 16 or 12
-		ffi.copy(tform, node.matrix, 16 * ffi.sizeof("float"))
-        return tform[0]
-    else 
-        local translate = hmm.HMM_Mat4()
-        local rotate = hmm.HMM_Mat4()
-        local scale = hmm.HMM_Mat4()
-        if (node.has_translation == true) then
-            translate = hmm.HMM_Translate(node.translation[0], node.translation[1], node.translation[2])
+local function build_transform_for_gltf_node(node)
+    local parent_tform = hmm.HMM_Mat4d(1.0) -- ✅ start with identity
+    if node[0].parent ~= nil then
+        parent_tform = build_transform_for_gltf_node(node[0].parent)
+    end
+
+    if node[0].has_matrix == 1 then
+        local tform = ffi.new("hmm_mat4[1]")
+        ffi.copy(tform, node.matrix, 16 * ffi.sizeof("float"))
+        return hmm.HMM_MultiplyMat4(parent_tform, tform[0])
+    else
+        local translate = hmm.HMM_Mat4d(1.0)
+		if(node[0].has_translation == 1) then 
+			translate = hmm.HMM_Translate(hmm.HMM_Vec3(node[0].translation[0], node[0].translation[1], node[0].translation[2])) 
 		end
-        if (node.has_rotation == true) then
-            rotate = hmm.HMM_QuaternionToMat4(hmm.HMM_Quaternion(node.rotation[0], node.rotation[1], node.rotation[2], node.rotation[3]))
+        local rotate = hmm.HMM_Mat4d(1.0)
+		if(node[0].has_rotation == 1) then 
+			rotate = hmm.HMM_QuaternionToMat4(hmm.HMM_Quaternion( node[0].rotation[0], node[0].rotation[1], node[0].rotation[2], node[0].rotation[3]))
 		end
-        if (node.has_scale == true) then
-            scale = hmm.HMM_Scale(node.scale[0], node.scale[1], node.scale[2])
+        local scale = hmm.HMM_Mat4d(1.0)
+		if(node[0].has_scale == 1) then 
+			scale = hmm.HMM_Scale(hmm.HMM_Vec3(node[0].scale[0], node[0].scale[1], node[0].scale[2]))
 		end
-        -- // NOTE: not sure if the multiplication order is correct
-        return hmm.HMM_MultiplyMat4(hmm.HMM_MultiplyMat4(translate, hmm.HMM_MultiplyMat4(rotate, scale)), parent_tform)
+        local local_tform = hmm.HMM_MultiplyMat4(translate, hmm.HMM_MultiplyMat4(rotate, scale))
+
+        return hmm.HMM_MultiplyMat4(parent_tform, local_tform)
     end
 end
 
@@ -462,6 +466,10 @@ function gltf_parse_materials(model)
         scene_mat.is_metallic = gltf_mat.has_pbr_metallic_roughness
         if (scene_mat.is_metallic == 1) then
             local src = gltf_mat.pbr_metallic_roughness
+			scene_mat.name = ffi.string(gltf_mat.name)
+			scene_mat.alpha_mode = gltf_mat.alpha_mode
+			scene_mat.alpha_cutoff = gltf_mat.alpha_cutoff
+
             scene_mat.base_color = {
 				src.base_color_factor[0], src.base_color_factor[1], src.base_color_factor[2], src.base_color_factor[3],
 			}
@@ -488,7 +496,6 @@ function gltf_parse_materials(model)
 		model.materials_map[ get_addr(gltf.materials, i, "cgltf_material") ] = scene_mat
 		tinsert(model.materials, scene_mat)
 	end
-
 end
 
 -- --------------------------------------------------------------------------------------------------------
@@ -525,7 +532,7 @@ function gltf_parse_meshes(model)
 
 			tinsert( mesh.primitives, prim )
         end 
-		model.stats.primitives = model.stats.prmitives + mesh.num_primitives
+		model.stats.primitives = model.stats.primitives + mesh.num_primitives
 		model.meshes_map[get_addr(gltf.meshes, mesh_index, "cgltf_mesh")] = mesh
 		tinsert( model.scene.meshes, mesh )
     end
@@ -533,12 +540,13 @@ end
 
 -- --------------------------------------------------------------------------------------------------------
 
-function gltf_parse_nodes(model, node)
+local function gltf_parse_nodes(model, node)
 	
 	local gltf = model.data[0]
 	local nodes_count  = tonumber(node.children_count)
 	for node_index = 0, nodes_count-1 do
         local gltf_node = node.children[node_index]
+		gltf_node.parent = node
 		gltf_parse_nodes(model, gltf_node)
     end
 
@@ -615,7 +623,8 @@ function gltfloader:load_gltf( assetfilename, asset, disableaabb )
 			textures = 0,
 			nodes = 0,
 			primitives = 0,
-		}
+		},
+		counted = {},
 	}
 
 	gltf_parse_buffers(model)
@@ -625,9 +634,9 @@ function gltfloader:load_gltf( assetfilename, asset, disableaabb )
 
 	model.scene.nodes = {}
 	local gltf = model.data[0]
-	model.scene.nodes_count  = tonumber(gltf[0].nodes_count)
+	model.scene.nodes_count  = tonumber(gltf[0].scene.nodes_count)
 	for i=0, model.scene.nodes_count-1 do
-		local node = gltf[0].nodes[i]
+		local node = gltf[0].scene.nodes[i]
 		gltf_parse_nodes(model, node)
 	end
 
@@ -644,6 +653,7 @@ function gltfloader:load_gltf( assetfilename, asset, disableaabb )
 		-- go.set_position(vmath.vector3(0, -999999, 0), asset.go)
 	end
 	
+	-- TODO - THIS IS HORRIBLE - NEEDS TO GO TO BINS AND HANDLED IN PRE-TRAVERSAL!
 	local states 	  = {}
 	-- TODO: Dodgy override for a material atm. Will change.
     local material    = meshes.material(asset.go, "lua/engine/base_texture.glsl")
@@ -662,6 +672,7 @@ function gltfloader:load_gltf( assetfilename, asset, disableaabb )
 							mesh = prim.mesh_buffers,
 							aabb = prim.aabb,
 							material = prim.material,
+							transform = thisnode.transform,
 						}
 					end
 				end 
@@ -673,7 +684,13 @@ function gltfloader:load_gltf( assetfilename, asset, disableaabb )
 	for k, prim in pairs(prims) do 
 		-- local geom_mesh = geom:GetMesh(prim.prim.primmesh)
 		local state_tbl = meshes.state(k, prim, prim.mesh, material)
-		local state = { pip = state_tbl.pip, bind = state_tbl.bind, count = prim.index_count }
+		local state = { 
+			pip = state_tbl.pip, 
+			bind = state_tbl.bind, 
+			alpha = state_tbl.alpha, 
+			count = prim.index_count,
+			transform = prim.transform,
+		}
 		tinsert(states, state)
 		model.aabb = calcAABB(model.aabb, prim.aabb.min, prim.aabb.max)
 	end

@@ -15,12 +15,13 @@ local ffi           = require("ffi")
 
 local utils         = require("lua.utils")
 local imageutils 	= require("lua.gltfloader.image-utils")
+local cgltf      	= require("ffi.sokol.cgltf")
 
 local tinsert       = table.insert
 
 -- --------------------------------------------------------------------------------------
 
-local shc       = require("tools.shader_compiler.shc_compile").init( "dim", false )
+local shc       = require("tools.shader_compiler.shc_compile").init( "dim", true )
 
 -- ----------------------------------------------------------------------------------------
 
@@ -280,6 +281,15 @@ mesh.state     = function(name, prim, mesh, material)
         if(mesh.depth.write_enabled) then pipe_desc[0].depth.write_enabled = mesh.depth.write_enabled end
         if(mesh.depth.compare) then pipe_desc[0].depth.compare = mesh.depth.compare end
     end
+    if(prim.material.alpha_mode == cgltf.cgltf_alpha_mode_blend) then 
+        pipe_desc[0].colors[0].blend.enabled = true
+        pipe_desc[0].colors[0].blend.src_factor_rgb = sg.SG_BLENDFACTOR_SRC_ALPHA
+        pipe_desc[0].colors[0].blend.dst_factor_rgb = sg.SG_BLENDFACTOR_ONE_MINUS_SRC_ALPHA
+        pipe_desc[0].colors[0].blend.src_factor_alpha = sg.SG_BLENDFACTOR_ONE
+        pipe_desc[0].colors[0].blend.dst_factor_alpha = sg.SG_BLENDFACTOR_ONE_MINUS_SRC_ALPHA
+    elseif(prim.material.alpha_mode == cgltf.cgltf_alpha_mode_mask) then 
+
+    end
 
     pipe_desc[0].label                  = name.."-pipeline"
 
@@ -307,6 +317,7 @@ mesh.state     = function(name, prim, mesh, material)
     return {
         pip     = pipeline,
         bind    = binding,
+        alpha   = { mode = prim.material.alpha_mode, cutoff = prim.material.alpha_cutoff }
     }
 end 
 

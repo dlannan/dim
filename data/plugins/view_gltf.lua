@@ -20,16 +20,17 @@ local function find(string, field)
 end
 
 local function draw_states(model, pos, size)
+  if(model.data == nil or model.data.mesh == nil) then return end
   local color = style.background2
-  renderer.draw_rect(pos.x, pos.y, 100, 100, color)
+  renderer.draw_rect(pos.x, pos.y, 180, 100, color)
 
   local xpos = pos.x + 10
   local ypos = pos.y + 10
-  for i, item in pairs(model.stats) do
-    local text = string.format("%s: %s", item.label, tostring(item.value))
-    local tw, th = font:get_width(text), font:get_height(text)
+  for k,v in pairs(model.data.mesh.stats) do
+    local text = string.format("%s: %s", k, tostring(v))
+    local tw, th = style.font:get_width(text), style.font:get_height(text)
     common.draw_text( style.font, style.text, text, "left", xpos, ypos, tw, th)
-    local ypos = ypos + th
+    ypos = ypos + th
   end
 end 
 
