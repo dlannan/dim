@@ -1,7 +1,7 @@
 local style = require "core.style"
 local common = require "core.common"
 
-style.code_font = renderer.font.load(EXEDIR .. "/data/fonts/CascadiaMono-SemiBold.ttf", 15 * SCALE)
+style.code_font = renderer.font.load(EXEDIR .. "/data/fonts/CascadiaMono-Regular.ttf", 15 * SCALE)
 
 -- VSCode Dark+ palette
 style.background   = { common.color "#1E1E1E" }  -- editor background
@@ -38,7 +38,11 @@ style.syntax["variable.parent"]   = { common.color "#9CDCFE" } -- light blue
 style.syntax["variable.property"] = { common.color "#4EC9B0" } -- green
 style.syntax["variable"]          = { common.color "#9CDCFE" } -- fallback
 
-style.syntax["bracket"]     = { common.color "#DBD710" } -- VS Code yellow
-style.syntax["return"]      = { common.color "#C586C0" }
+style.syntax["bracket"]       = { common.color "#DBD710" } -- VS Code yellow
+style.syntax["return"]        = { common.color "#C586C0" }
+style.syntax["require"]       = { common.color "#C586C0" }
+style.syntax["function_word"] = { common.color "#C586C0" }
+style.syntax["method"]        = { common.color "#4EC9B0" }
+style.syntax["self"]          = { common.color "#007ACC" }
 
 return style
