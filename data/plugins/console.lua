@@ -10,7 +10,9 @@ local Doc       = require "core.doc"
 local fmt       = string.format
 
 -- console.lua
-local M = {}
+local M = {
+    font = renderer.font.load(EXEDIR .. "/data/fonts/CascadiaMono-SemiBold.ttf", 13.5 * SCALE)
+}
 
 -- Stores all console documents
 M.consoles = {}
@@ -48,6 +50,7 @@ local function new_console(name)
         local line = self.lines[#self.lines-1]:sub(#self.prompt + 1)
         -- Simple echo for now; you can extend to Lua evaluation
         local results = system.exec(line)
+
         self:write_line(fmt("[Log time]: %s \n", line))
         self:write_line(fmt("[Log time]: %s \n", results))
         self:append_line(self.prompt) 
@@ -83,7 +86,8 @@ command.add(nil, {
         local doc = new_console("Console")
         local node = core.root_view:get_active_node()
         local view = DocView(doc)
-        view.font = "code_font"
+        view.font = "console_font"
+        style.console_font = M.font
         node:add_view(view)
         M.consoles[doc] = true
         return doc
