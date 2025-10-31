@@ -177,7 +177,7 @@ end
 -- --------------------------------------------------------------------------------------
 
 system.exec               = function(cmd) 
-	cmd = string.format("cmd /c \"%s\"", cmd)
+	cmd = string.format("cmd /c \"%s 2>&1\"", cmd)
 	print(cmd)
     local fh = io.popen(cmd, "r")
 	local results = ""
