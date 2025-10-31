@@ -49,11 +49,12 @@ local function new_console(name)
     function ConsoleDoc:execute_current_line()
         local line = self.lines[#self.lines-1]:sub(#self.prompt + 1)
         line = line:gsub("\n", "")
-        
+
         -- Simple echo for now; you can extend to Lua evaluation
         local results = system.exec(line)
 
-        self:write_line(fmt("%s", results))
+        self:write_line(fmt("%s", line))
+        self:append_line(results)
         self:append_line(self.prompt) 
     end
 
@@ -69,7 +70,6 @@ local function new_console(name)
     -- Write a line to the console
     function ConsoleDoc:write_line(line)
         table.insert(self.console_lines, line)
-        self:append_line(line)
         print(line)
     end
 
