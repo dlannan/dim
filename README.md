@@ -10,7 +10,11 @@ Updates coming quickly now:
 - Updated alpha modes (blend and cutoff working well) - will need alpha sorting (coming soon...)
 - Tested some really big scenes (see below - 2.7 mill polys 27 mill verts - not sure the verts number is right)
 - Many complex objects tested well (see hawkei truck below)
+- Many bugs fixed with the cgltf loader. 
 
+TODO:
+- Rework the render engine to use my bin system (will allow sorting and ordering as well as priority)
+- Add in some better entity management (to be used in Thunc).
 
 <img src="media/2025-10-31_20-59.png">
 
