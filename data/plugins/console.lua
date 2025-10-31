@@ -48,6 +48,8 @@ local function new_console(name)
     -- Handle Enter key: execute command
     function ConsoleDoc:execute_current_line()
         local line = self.lines[#self.lines-1]:sub(#self.prompt + 1)
+        line = line:gsub("\n", "")
+        
         -- Simple echo for now; you can extend to Lua evaluation
         local results = system.exec(line)
 
