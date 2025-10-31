@@ -3,6 +3,20 @@ not so lite
 
 A lite based text editor running from sokol-luajit + nuklear.
 
+[ 31-10-2025 Updates ]:
+
+Updates coming quickly now:
+- Fixed node transform calcs. All looking good now.
+- Updated alpha modes (blend and cutoff working well) - will need alpha sorting (coming soon...)
+- Tested some really big scenes (see below - 2.7 mill polys 27 mill verts - not sure the verts number is right)
+- Many complex objects tested well (see hawkei truck below)
+
+
+<img src="media/2025-10-31_20-59.png">
+
+<img src="media/2025-10-31_21-01.png">
+
+
 [ 30-10-2025 Updates ]:
 
 The 3D viewer is mostly working! A basic 3D rendering system has been added (a 3D engine of sorts).
@@ -16,8 +30,8 @@ I expect to have some nice features for this:
 
 I still need to fix:
 - [x] Texture coord mapping  - fixed!
-- [ ] Color component on colored only polys - working on now
-- [ ] Alpha transparency and cut-out. - working on now
+- [x] Color component on colored only polys - working on now
+- [x] Alpha transparency and cut-out. - working on now
 
 Overall very happy with progress. Will finish up the 3D viewer sections in the next couple of days and move onto framework/project management tools and build tools.
 
