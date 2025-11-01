@@ -68,11 +68,23 @@ end
 
 -- --------------------------------------------------------------------------------------
 
+local rune_ranges = ffi.new("nk_rune[7]", {
+    -- 0x0009, 0x0009, -- tab
+    0x0009, 0x00FF, -- basic Latin + Latin-1
+    0x2500, 0x2BFF, -- box-drawing, arrows
+    0xE000, 0xF8FF, -- private use / Nerd Font symbols
+    0
+})
+
+-- --------------------------------------------------------------------------------------
+
 local function font_loader( atlas, font_file, font_size)
 
     local config = nk.nk_font_config(font_size)
+    config.range = rune_ranges
     -- config.merge_mode = nk.nk_false
     local newfont = nk.nk_font_atlas_add_from_file(atlas, font_file, font_size, config)
+
     -- local image = nk.nk_font_atlas_bake(atlas, master_img_width, master_img_height, nk.NK_FONT_ATLAS_RGBA32)
     return nil, newfont
 end
@@ -124,7 +136,7 @@ local function load_font(font_path, font_size)
     -- Reload previous fonts.
     for i, font in ipairs(fonts) do 
         image, fonts.font = font_loader(atlas, font.path, font.size)    
-        atlas[0].config.range = nk.nk_font_default_glyph_ranges()
+        atlas[0].config.range = rune_ranges -- nk.nk_font_default_glyph_ranges()
     end 
 
     -- local cfg = ffi.new("struct nk_font_config[1]", {nk.nk_font_config(font_size)})
@@ -134,6 +146,13 @@ local function load_font(font_path, font_size)
     image, new_font = font_loader(atlas, font_path, font_size)
     image = nk.nk_font_atlas_bake(atlas, master_img_width, master_img_height, nk.NK_FONT_ATLAS_RGBA32)
 
+    local font = ffi.cast("struct nk_font *", new_font.handle.userdata.ptr)
+    -- font.glyphs[9].codepoint = 9
+    -- font.glyphs[9].xadvance = font.glyphs[32].xadvance * 4
+    -- font.glyphs[9].w, font.glyphs[9].h = 0.0, 0.0
+    -- font.glyphs[9].x0, font.glyphs[9].y0, font.glyphs[9].x1, font.glyphs[9].y1 = 0.0, 0.0, 0.0, 0.0
+    -- font.glyphs[9].u0, font.glyphs[9].v0, font.glyphs[9].u1, font.glyphs[9].v1 = 0.0, 0.0, 0.0, 0.0
+
     local nk_img = font_atlas_img(image, true)
     nk.nk_font_atlas_end(atlas, nk_img, nil)
     nk.nk_font_atlas_cleanup(atlas)
@@ -141,7 +160,8 @@ local function load_font(font_path, font_size)
     nk.nk_style_load_all_cursors(ctx, atlas[0].cursors)
     nk.nk_style_set_font(ctx, new_font.handle)
 
-    local tab_size = get_glyph_xadvance(new_font.handle.userdata, 9)
+    local tab_size = font.glyphs[9].xadvance --get_glyph_xadvance(new_font.handle.userdata, 32)
+
     -- print(master_img_width[0], master_img_height[0], tab_size)
     local new_font_tbl = { tab_width = tab_size, font = new_font, path = font_path, size = font_size, cfg = nil }
     tinsert(fonts, new_font_tbl)

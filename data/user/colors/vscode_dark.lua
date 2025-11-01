@@ -1,7 +1,7 @@
 local style = require "core.style"
 local common = require "core.common"
 
-style.code_font = renderer.font.load(EXEDIR .. "/data/fonts/CascadiaMono-Regular.ttf", 15 * SCALE)
+style.code_font = renderer.font.load(EXEDIR .. "/data/fonts/CascadiaMonoNF-Regular.ttf", 15 * SCALE)
 
 -- VSCode Dark+ palette
 style.background   = { common.color "#1E1E1E" }  -- editor background
