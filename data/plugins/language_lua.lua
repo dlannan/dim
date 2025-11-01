@@ -23,6 +23,8 @@ syntax.add {
     { pattern = "require",                type = "require"  },
     { pattern = " [%a_]+:",               type = "method"   },
     { pattern = "self",                   type = "self"     },
+    { pattern = "\t",                     type = "tab"      },
+
 
     -- Match `foo.bar` → foo (variable.parent), .bar (variable.property)
     { pattern = "%.[%a_][%w_]*",  type = "variable.property" },

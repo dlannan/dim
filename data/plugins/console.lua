@@ -11,7 +11,7 @@ local fmt       = string.format
 
 -- console.lua
 local M = {
-    font = renderer.font.load(EXEDIR .. "/data/fonts/CascadiaMono-SemiBold.ttf", 13.5 * SCALE)
+    font = renderer.font.load(EXEDIR .. "/data/fonts/CascadiaMonoNF-SemiBold.ttf", 13.5 * SCALE)
 }
 
 -- Stores all console documents
