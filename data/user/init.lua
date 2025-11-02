@@ -8,6 +8,7 @@ local config = require "core.config"
 local style = require "core.style"
 
 style = require("data.user.colors.vscode_dark")
+config.indent_size = 4
 
 -- light theme:
 -- require "data.user.colors.fall"
