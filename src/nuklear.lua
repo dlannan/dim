@@ -73,7 +73,7 @@ nuklear_renderer.draw_text      = function(font, text, x, y, color)
     if(string.byte(text, -1, -1) == 10) then text_len = text_len - 1 end
     -- nk.nk_layout_space_begin(renderer.ctx, nk.NK_STATIC, r.w, 1)
     -- nk.nk_layout_space_push(renderer.ctx, r)
-    font:set_tab_width( font.tab_width )
+    -- font:set_tab_width( font.tab_width )
     nk.nk_draw_text(canvas, rect, text, text_len, font_handle, hcolor, hcolor)
     -- nk.nk_layout_space_end(renderer.ctx)
     return w + x, h

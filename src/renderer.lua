@@ -66,11 +66,44 @@ local function get_glyph_xadvance(font_handle, unicode)
     return g.xadvance
 end
 
+-- local function fix_tab_glyph(font, tab_spaces)
+--     local space_advance = font.glyphs[32].xadvance
+--     local g = font.glyphs[9]
+--     g.codepoint = 9
+--     g.xadvance = space_advance * tab_spaces
+--     g.w, g.h = 0, 0
+--     g.x0, g.y0, g.x1, g.y1 = 0, 0, 0, 0
+--     g.u0, g.v0, g.u1, g.v1 = 0, 0, 0, 0
+-- end
+
 -- --------------------------------------------------------------------------------------
 
-local rune_ranges = ffi.new("nk_rune[7]", {
-    -- 0x0009, 0x0009, -- tab
-    0x0009, 0x00FF, -- basic Latin + Latin-1
+local function find_glyph(font, codepoint)
+    local glyph_ptr = font.glyphs
+    while glyph_ptr ~= nil and glyph_ptr[0].codepoint ~= 0 do
+        if tonumber(glyph_ptr[0].codepoint) == codepoint then
+            return glyph_ptr
+        end
+        glyph_ptr = glyph_ptr + 1
+    end
+    return nil
+end
+
+-- --------------------------------------------------------------------------------------
+
+local function fix_tab_glyph(glyph, space)
+
+    glyph[0].xadvance = space * 4
+    glyph[0].w, glyph[0].h = 0, 0
+    glyph[0].x0, glyph[0].y0, glyph[0].x1, glyph[0].y1 = 0, 0, 0, 0
+    glyph[0].u0, glyph[0].v0, glyph[0].u1, glyph[0].v1 = 0, 0, 0, 0
+end
+
+-- --------------------------------------------------------------------------------------
+
+local rune_ranges = ffi.new("nk_rune[9]", {
+    0x0009, 0x000A, -- tab
+    0x0020, 0x00FF, -- basic Latin + Latin-1
     0x2500, 0x2BFF, -- box-drawing, arrows
     0xE000, 0xF8FF, -- private use / Nerd Font symbols
     0
@@ -81,7 +114,12 @@ local rune_ranges = ffi.new("nk_rune[7]", {
 local function font_loader( atlas, font_file, font_size)
 
     local config = nk.nk_font_config(font_size)
-    config.range = rune_ranges
+    -- Special case where the glyphs need to be default
+    if(string.match(font_file, "icons.ttf$")) then 
+        config.range = nk.nk_font_default_glyph_ranges()
+    else 
+        config.range = rune_ranges
+    end
     -- config.merge_mode = nk.nk_false
     local newfont = nk.nk_font_atlas_add_from_file(atlas, font_file, font_size, config)
 
@@ -135,8 +173,13 @@ local function load_font(font_path, font_size)
     
     -- Reload previous fonts.
     for i, font in ipairs(fonts) do 
-        image, fonts.font = font_loader(atlas, font.path, font.size)    
-        atlas[0].config.range = rune_ranges -- nk.nk_font_default_glyph_ranges()
+        image, fonts.font = font_loader(atlas, font.path, font.size)   
+        
+        local glyph = find_glyph(font.font, 9)
+        local space = get_glyph_xadvance(font.font.handle.userdata, 32)    
+        if(glyph) then fix_tab_glyph(glyph, space) end
+        
+        -- atlas[0].config.range = rune_ranges -- nk.nk_font_default_glyph_ranges()
     end 
 
     -- local cfg = ffi.new("struct nk_font_config[1]", {nk.nk_font_config(font_size)})
@@ -145,13 +188,10 @@ local function load_font(font_path, font_size)
 
     image, new_font = font_loader(atlas, font_path, font_size)
     image = nk.nk_font_atlas_bake(atlas, master_img_width, master_img_height, nk.NK_FONT_ATLAS_RGBA32)
+    local glyph = find_glyph(new_font, 9)
+    local space = get_glyph_xadvance(new_font.handle.userdata, 32)    
+    if(glyph) then fix_tab_glyph(glyph, space) end
 
-    local font = ffi.cast("struct nk_font *", new_font.handle.userdata.ptr)
-    -- font.glyphs[9].codepoint = 9
-    -- font.glyphs[9].xadvance = font.glyphs[32].xadvance * 4
-    -- font.glyphs[9].w, font.glyphs[9].h = 0.0, 0.0
-    -- font.glyphs[9].x0, font.glyphs[9].y0, font.glyphs[9].x1, font.glyphs[9].y1 = 0.0, 0.0, 0.0, 0.0
-    -- font.glyphs[9].u0, font.glyphs[9].v0, font.glyphs[9].u1, font.glyphs[9].v1 = 0.0, 0.0, 0.0, 0.0
 
     local nk_img = font_atlas_img(image, true)
     nk.nk_font_atlas_end(atlas, nk_img, nil)
@@ -160,7 +200,7 @@ local function load_font(font_path, font_size)
     nk.nk_style_load_all_cursors(ctx, atlas[0].cursors)
     nk.nk_style_set_font(ctx, new_font.handle)
 
-    local tab_size = font.glyphs[9].xadvance --get_glyph_xadvance(new_font.handle.userdata, 32)
+    local tab_size = get_glyph_xadvance(new_font.handle.userdata, 9)
 
     -- print(master_img_width[0], master_img_height[0], tab_size)
     local new_font_tbl = { tab_width = tab_size, font = new_font, path = font_path, size = font_size, cfg = nil }
