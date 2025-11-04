@@ -21,7 +21,13 @@ local tinsert       = table.insert
 
 -- --------------------------------------------------------------------------------------
 
-local shc       = require("tools.shader_compiler.shc_compile").init( "dim", true )
+local shc       = require("tools.shader_compiler.shc_compile").init( "dim", false )
+
+-- ----------------------------------------------------------------------------------------
+
+local all_meshes = {
+    materials   = {},           -- A material shader cache.
+}
 
 -- ----------------------------------------------------------------------------------------
 
@@ -137,30 +143,42 @@ mesh.create_buffer     = function(name, buffers)
             end
         end
         -- buffer should now have interlaced data
-        local buffer_desc           = ffi.new("sg_buffer_desc[1]")
-        buffer_desc[0].type         = sg.SG_BUFFERTYPE_VERTEXBUFFER 
-        buffer_desc[0].data.ptr     = buffer
-        buffer_desc[0].data.size    = ffi.sizeof(buffer)
-        buffer_desc[0].label        = name.."-vertices"
-        buffs.vbuf = sg.sg_make_buffer(buffer_desc)
+        if(ffi.sizeof(buffer) > 0) then 
+            local buffer_desc           = ffi.new("sg_buffer_desc[1]")
+            buffer_desc[0].type         = sg.SG_BUFFERTYPE_VERTEXBUFFER 
+            buffer_desc[0].data.ptr     = buffer
+            buffer_desc[0].data.size    = ffi.sizeof(buffer)
+            buffer_desc[0].label        = name.."-vertices"
+            buffs.vbuf = sg.sg_make_buffer(buffer_desc)
+        else 
+            return nil         
+        end
     end
 
     if(buffers.indices) then
-        local buffer_desc           = ffi.new("sg_buffer_desc[1]")
-        buffer_desc[0].type         = sg.SG_BUFFERTYPE_INDEXBUFFER 
-        buffer_desc[0].data.ptr     = buffers.indices
-        buffer_desc[0].data.size    = ffi.sizeof(buffers.indices)
-        buffer_desc[0].label        = name.."-indices"
-        buffs.ibuf = sg.sg_make_buffer(buffer_desc)             
+        if(ffi.sizeof(buffers.indices) > 0) then 
+            local buffer_desc           = ffi.new("sg_buffer_desc[1]")
+            buffer_desc[0].type         = sg.SG_BUFFERTYPE_INDEXBUFFER 
+            buffer_desc[0].data.ptr     = buffers.indices
+            buffer_desc[0].data.size    = ffi.sizeof(buffers.indices)
+            buffer_desc[0].label        = name.."-indices"
+            buffs.ibuf = sg.sg_make_buffer(buffer_desc)    
+        else 
+            return nil         
+        end
     end
 
     if(buffers.storage) then 
-        local buffer_desc           = ffi.new("sg_buffer_desc[1]")
-        buffer_desc[0].type         = sg.SG_BUFFERTYPE_STORAGEBUFFER
-        buffer_desc[0].data.ptr     = buffers.storage
-        buffer_desc[0].data.size    = ffi.sizeof(buffers.storage)
-        buffer_desc[0].label        = name.."-storage"
-        buffs.sbuf = sg.sg_make_buffer(buffer_desc)             
+        if(ffi.sizeof(buffers.storage) > 0) then 
+            local buffer_desc           = ffi.new("sg_buffer_desc[1]")
+            buffer_desc[0].type         = sg.SG_BUFFERTYPE_STORAGEBUFFER
+            buffer_desc[0].data.ptr     = buffers.storage
+            buffer_desc[0].data.size    = ffi.sizeof(buffers.storage)
+            buffer_desc[0].label        = name.."-storage"
+            buffs.sbuf = sg.sg_make_buffer(buffer_desc)     
+        else 
+            return nil         
+        end        
     end
 
     return buffs
@@ -184,6 +202,9 @@ end
 -- Create a material from shader and params
 mesh.material  = function(name, shaderfile, params)
 
+    local cached = all_meshes.materials[shaderfile]
+    if(cached) then return cached end
+
     local shader    = shc.compile(shaderfile)
     local shd       = sg.sg_make_shader(shader)
 
@@ -203,6 +224,7 @@ mesh.material  = function(name, shaderfile, params)
             name            = name, 
             base_color_smp  = default_sampler,
         }
+        all_meshes.materials[shaderfile] = material
         return material
     else 
         print("[Error mesh.material] Could not create material: "..tostring(name))
@@ -265,7 +287,7 @@ end
 
 -- ----------------------------------------------------------------------------------------
 -- Model makes a pipeline 
-mesh.state     = function(name, prim, mesh, material)
+mesh.model     = function(name, prim, mesh, material)
 
     -- Stores material with mesh - this should be an index
     -- mesh.material = material

@@ -17,6 +17,10 @@ local utils			= require("lua.utils")
 local cgltf      	= require("ffi.sokol.cgltf")
 local hmm      		= require("hmm")
 
+local binmgr 		= require("lua.geometry.bins")
+
+local fmt 			= string.format
+
 ------------------------------------------------------------------------------------------------------------
 
 local gltfloader = {
@@ -168,7 +172,6 @@ function gltfloader:processdata( model, gochildname, thisnode, parent )
 	-- collate all primitives (we ignore material separate prims)
 	for pid, prim in ipairs(prims) do
 
-
 		local verts = nil
 		local uvs = nil
 		local normals = nil
@@ -283,17 +286,19 @@ function gltfloader:processdata( model, gochildname, thisnode, parent )
 
 		-- Make a submesh for each primitive. This is kinda bad, but.. well.
 		-- print(gochildname)
-		local primname = ffi.string(gochildname).."_prim_"..tostring(pid)
+		local primname = fmt( "%s_prim_%s", ffi.string(gochildname), tostring(pid) )
 		prim.primname = ffi.string(gochildname)
 		local primgo = gameobject.create( nil, primname )
 		local primmesh = ffi.string(gameobject.goname(primgo)).."_temp"
 		prim.primmesh = primmesh
-		
+		prim.transform = thisnode.transform
+		prim.index_count = tonumber(acc_idx.count)
+
 		if(indices) then 
 
 			local primdata = {
 				itype = itype, 
-				icount = tonumber(acc_idx.count),
+				icount = prim.index_count,
 				indices = indices, 
 				verts = verts, 
 				uvs = uvs, 
@@ -302,12 +307,21 @@ function gltfloader:processdata( model, gochildname, thisnode, parent )
 
 			model.stats.polys = model.stats.polys + primdata.icount / 3
 			prim.mesh_buffers = geom:makeMesh( primmesh, primdata )
-			print("Added mesh buffer", prim.primmesh)
+			if(prim.mesh_buffers) then 
+
+				prim.geom = geom:makeGeom(primmesh, prim, prim.mesh_buffers)
+				tinsert(model.all_geom, prim.geom)
+			
+				print("Added mesh buffer", prim.primmesh)
+			end
 		else 
+			-- Should habndle vert buffers naively
 			print("Non index buffers?", prim.primmesh)
 		end
 
 		prim.aabb = aabb
+		local tfaabb = transformAABB(prim.aabb, thisnode.transform)
+		model.aabb = calcAABB(model.aabb, tfaabb.min, tfaabb.max)
 
 		-- go.set_rotation(vmath.quat(), primgo)
 		-- go.set_position(vmath.vector3(0,0,0), primgo)
@@ -650,6 +664,7 @@ function gltfloader:load_gltf( assetfilename, asset, disableaabb )
 		filename = assetfilename,
 		basepath = basepath,
 		data = data,
+		all_geom = {},
 		stats = {
 			vertices = 0,
 			polys = 0,
@@ -676,7 +691,12 @@ function gltfloader:load_gltf( assetfilename, asset, disableaabb )
 	-- if(model.animations) then 
 	-- 	ozzanim.loadgltf( "--file="..assetfilename )
 	-- end
-	
+
+	model.aabb = { 
+		min = hmm.HMM_Vec3(math.huge,math.huge,math.huge), 
+		max = hmm.HMM_Vec3(-math.huge,-math.huge,-math.huge) 
+	}
+
 	if(asset.format == "gltf" or asset.format == "glb") then 
 		asset.go = gameobject.create( nil, asset.name )
 
@@ -686,59 +706,55 @@ function gltfloader:load_gltf( assetfilename, asset, disableaabb )
 		-- go.set_position(vmath.vector3(0, -999999, 0), asset.go)
 	end
 	
-	-- TODO - THIS IS HORRIBLE - NEEDS TO GO TO BINS AND HANDLED IN PRE-TRAVERSAL!
-	local states 	  = {}
-	-- TODO: Dodgy override for a material atm. Will change.
-    local material    = meshes.material(asset.go, "lua/engine/base_texture.glsl")
-	local prims       = {}
+	-- -- TODO - THIS IS HORRIBLE - NEEDS TO GO TO BINS AND HANDLED IN PRE-TRAVERSAL!
+	-- local states 	  = {}
+	-- -- TODO: Dodgy override for a material atm. Will change.
 
-	-- Collect meshes together for rendering
-	gltfloader:run_nodes( model , function( model, thisnode )
-		if(thisnode.mesh) then 
-			local mesh = thisnode.mesh
-			if(mesh.primitives) then 
-				for i, prim in ipairs(mesh.primitives) do 
-					if(prims[prim.primmesh] == nil and prim.mesh_buffers) then 
-            			prims[prim.primmesh] = { 
-							index_count = prim.mesh_buffers.count,
-							node = mesh, prim = prim, 
-							mesh = prim.mesh_buffers,
-							aabb = prim.aabb,
-							material = prim.material,
-							transform = thisnode.transform,
-						}
-					end
-				end 
-			end
-		end
-	end)
+	-- local prims       = {}
 
-	model.aabb = { 
-		min = hmm.HMM_Vec3(math.huge,math.huge,math.huge), 
-		max = hmm.HMM_Vec3(-math.huge,-math.huge,-math.huge) 
-	}
+	-- -- Collect meshes together for rendering
+	-- gltfloader:run_nodes( model , function( model, thisnode )
+	-- 	if(thisnode.mesh) then 
+	-- 		local mesh = thisnode.mesh
+	-- 		if(mesh.primitives) then 
+	-- 			for i, prim in ipairs(mesh.primitives) do 
+	-- 				if(prims[prim.primmesh] == nil and prim.mesh_buffers) then 
+    --         			prims[prim.primmesh] = { 
+	-- 						index_count = prim.mesh_buffers.count,
+	-- 						node = mesh, prim = prim, 
+	-- 						mesh = prim.mesh_buffers,
+	-- 						aabb = prim.aabb,
+	-- 						material = prim.material,
+	-- 						transform = thisnode.transform,
+	-- 					}
+	-- 				end
+	-- 			end 
+	-- 		end
+	-- 	end
+	-- end)
 
-	for k, prim in pairs(prims) do 
-		-- local geom_mesh = geom:GetMesh(prim.prim.primmesh)
-		local state_tbl = meshes.state(k, prim, prim.mesh, material)
-		local state = { 
-			pip = state_tbl.pip, 
-			bind = state_tbl.bind, 
-			alpha = state_tbl.alpha, 
-			count = prim.index_count,
-			transform = prim.transform,
-			base_color = prim.material.base_color or { 1, 1, 1, 1 },
-		}
-		tinsert(states, state)
-		local tfaabb = transformAABB(prim.aabb, prim.transform)
-		model.aabb = calcAABB(model.aabb, tfaabb.min, tfaabb.max)
-	end
+	-- for k, prim in pairs(prims) do 
+	-- 	-- local geom_mesh = geom:GetMesh(prim.prim.primmesh)
+	-- 	local state_tbl = meshes.state(k, prim, prim.mesh, material)
+	-- 	local state = { 
+	-- 		pip = state_tbl.pip, 
+	-- 		bind = state_tbl.bind, 
+	-- 		alpha = state_tbl.alpha, 
+	-- 		count = prim.index_count,
+	-- 		transform = prim.transform,
+	-- 		base_color = prim.material.base_color or { 1, 1, 1, 1 },
+	-- 	}
+	-- 	tinsert(states, state)
+	-- 	local tfaabb = transformAABB(prim.aabb, prim.transform)
+	-- 	model.aabb = calcAABB(model.aabb, tfaabb.min, tfaabb.max)
+	-- end
 
 	if(model.aabb == nil) then 
 		print("[Error] Model has no aabb: "..assetfilename)
 	end
 
-	model.states_tbl = states
+	-- model.states_tbl = states
+
 	-- This releases cgltf data
 	model.data = nil
 

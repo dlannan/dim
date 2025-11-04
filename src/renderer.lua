@@ -59,22 +59,14 @@ local function adjust_glyph(font_handle, unicode, width)
     g.xadvance = width
 end
 
+-- --------------------------------------------------------------------------------------
+
 local function get_glyph_xadvance(font_handle, unicode) 
     
     local font = ffi.cast("struct nk_font *", font_handle.ptr)
     local g = font.glyphs[unicode]
     return g.xadvance
 end
-
--- local function fix_tab_glyph(font, tab_spaces)
---     local space_advance = font.glyphs[32].xadvance
---     local g = font.glyphs[9]
---     g.codepoint = 9
---     g.xadvance = space_advance * tab_spaces
---     g.w, g.h = 0, 0
---     g.x0, g.y0, g.x1, g.y1 = 0, 0, 0, 0
---     g.u0, g.v0, g.u1, g.v1 = 0, 0, 0, 0
--- end
 
 -- --------------------------------------------------------------------------------------
 

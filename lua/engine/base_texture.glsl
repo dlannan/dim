@@ -21,10 +21,9 @@ void main() {
 @end
 
 @fs fs
-layout(binding=1, native) uniform fs_params {
+layout(binding=1) uniform fs_params {
     float alpha_cutoff;
     int alpha_mode; // 0=opaque, 1=mask, 2=blend
-    uint8_t _pad_8[8];
 };
 
 layout(location=0) in vec2 uv;

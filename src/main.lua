@@ -21,6 +21,8 @@ local imageutils = require("lua.gltfloader.image-utils")
 
 local ffi       = require("ffi")
 
+local binmgr 	= require("lua.geometry.bins")
+
 -- --------------------------------------------------------------------------------------
 
 ARGS = arg 
@@ -116,6 +118,7 @@ local function init()
     SCALE = sapp.sapp_dpi_scale()
 
     imageutils.make_defaults()
+    binmgr.init()
 end
 
 -- --------------------------------------------------------------------------------------

@@ -11,6 +11,7 @@ local ffi           = require("ffi")
 local utils         = require("lua.utils")
 local dirtools      = require("tools.vfs.dirtools")
 
+local geom          = require("lua.gltfloader.geometry-utils")
 local gltfloader    = require("lua.gltfloader.gltfloader")
 
 local tinsert       = table.insert
@@ -47,7 +48,7 @@ threed_renderer     = {
 
 -- --------------------------------------------------------------------------------------
 
-local shc       = require("tools.shader_compiler.shc_compile").init( "dim", true )
+local shc       = require("tools.shader_compiler.shc_compile").init( "dim", false )
 local shader    = nil
 
 -- --------------------------------------------------------------------------------------
@@ -156,19 +157,6 @@ local function load_gltf(filename)
 	local assetfilename = filename
 	local gltf_data = gltfloader:load_gltf( assetfilename, asset, nil )
 
-    -- Convert internal bind and pip to internal state array (for global acces by sokol)
-    for i, state in ipairs(gltf_data.states_tbl) do 
-
-        state_array[state_array_index].bind = state.bind
-        state_array[state_array_index].pip = state.pip
-        state_array[state_array_index].rx = 0
-        state_array[state_array_index].ry = 0
-        state_array[state_array_index].alpha_mode = state.alpha.mode or 0
-        state_array[state_array_index].alpha_cutoff = state.alpha.cutoff or 0.0
-        state.state_idx = state_array_index
-        state_array_index = state_array_index + 1
-    end 
-
     local ent = { 
 		name = asset.name,
         id  = asset.go,
@@ -189,38 +177,35 @@ local CAM_DISTANCE  = 6.0
 
 local function render_model( t, model_rect )
 
-    model_rect.vs_sg_range = model_rect.vs_sg_range or ffi.new("sg_range[1]")
-    model_rect.fs_sg_range = model_rect.fs_sg_range or ffi.new("sg_range[1]")
-
-    local all_states = model_rect.model.data.mesh.states_tbl
     local aabb = model_rect.model.data.mesh.aabb
     local maxx = aabb.max.x - aabb.min.x
     local maxy = aabb.max.y - aabb.min.y
     local maxz = aabb.max.z - aabb.min.z
     local maxsize = math.sqrt( maxx * maxx + maxy * maxy + maxz * maxz)
-    local sc = CAM_DISTANCE * 0.85 / maxsize
+    local sc = CAM_DISTANCE * 0.85 / maxsize * model_rect.model.scale
 
     local offset = hmm.HMM_Vec3(aabb.min.x + maxx * 0.5, aabb.min.y + maxy * 0.5, aabb.min.z + maxz * 0.5)
     offset.x, offset.y, offset.z = offset.x * sc, offset.y * sc, offset.x * sc
 
-    for i, state_data in ipairs(all_states) do 
+    local w, h      = model_rect.w, model_rect.h
+    local proj      = hmm.HMM_Perspective(60.0, w/h, 0.01, CAM_DISTANCE * 2 * model_rect.model.scale)
+    local view      = hmm.HMM_LookAt(hmm.HMM_Vec3(0.0, offset.y + 1.5, CAM_DISTANCE), hmm.HMM_Vec3(0.0, offset.y, 0.0), hmm.HMM_Vec3(0.0, 1.0, 0.0))
+    local view_proj = hmm.HMM_MultiplyMat4(proj, view)
 
-        local state     = state_array[state_data.state_idx]
+    local model_all_geom = model_rect.model.data.mesh.all_geom
 
-        local pip       = state.pip
-        local bind      = state.bind
+    for i, geom_id in ipairs(model_all_geom) do 
 
-        local w, h      = model_rect.w, model_rect.h
+        local geom      = geom.all_objs[geom_id]
+        local pip       = geom.pip
+        local bind      = geom.bind
 
-        local proj      = hmm.HMM_Perspective(60.0, w/h, 0.01, 10.0)
-        local view      = hmm.HMM_LookAt(hmm.HMM_Vec3(0.0, offset.y + 1.5, CAM_DISTANCE), hmm.HMM_Vec3(0.0, offset.y, 0.0), hmm.HMM_Vec3(0.0, 1.0, 0.0))
-        local view_proj = hmm.HMM_MultiplyMat4(proj, view)
-        state.rx        = 0.0
-        state.ry        = state.ry + 3.0 * t
+        geom.rx        = 0.0
+        geom.ry        = geom.ry + 3.0 * t
 
-        local base_tform = state_data.transform
-        local rxm       = hmm.HMM_Rotate(state.rx, hmm.HMM_Vec3(1.0, 0.0, 0.0))
-        local rym       = hmm.HMM_Rotate(state.ry, hmm.HMM_Vec3(0.0, 1.0, 0.0))
+        local base_tform = geom.transform
+        local rxm       = hmm.HMM_Rotate(geom.rx, hmm.HMM_Vec3(1.0, 0.0, 0.0))
+        local rym       = hmm.HMM_Rotate(geom.ry, hmm.HMM_Vec3(0.0, 1.0, 0.0))
         local rotator   = hmm.HMM_MultiplyMat4(rxm, rym)
 
         local scaler    = hmm.HMM_Scale(hmm.HMM_Vec3(sc, sc, sc))
@@ -231,26 +216,14 @@ local function render_model( t, model_rect )
         sg.sg_apply_pipeline(pip)
         sg.sg_apply_bindings(bind)
 
-        local vs_params = ffi.new("vs_params_t[1]")
-        vs_params[0].mvp    = mvp
-        vs_params[0].base_color_factor    = 	ffi.new("float [4]", {
-            state_data.base_color[1], state_data.base_color[2], state_data.base_color[3], state_data.base_color[4]
-        })
-        model_rect.vs_sg_range[0].ptr     = vs_params
-        model_rect.vs_sg_range[0].size    = ffi.sizeof(vs_params[0])
-        sg.sg_apply_uniforms(sg.SG_SHADERSTAGE_VS,  model_rect.vs_sg_range)
-
-        local fs_params = ffi.new("fs_params_t[1]")
-        fs_params[0].alpha_cutoff   = state.alpha_cutoff
-        fs_params[0].alpha_mode     = state.alpha_mode
-        model_rect.fs_sg_range[0].ptr     = fs_params
-        model_rect.fs_sg_range[0].size    = ffi.sizeof(fs_params[0])
-        sg.sg_apply_uniforms(sg.SG_SHADERSTAGE_FS,  model_rect.fs_sg_range)
+        geom.vs_params[0].mvp    = mvp
+        sg.sg_apply_uniforms(sg.SG_SHADERSTAGE_VS,  geom.vs_sg_range)
+        sg.sg_apply_uniforms(sg.SG_SHADERSTAGE_FS,  geom.fs_sg_range)
 
         sg.sg_apply_viewport(model_rect.x, model_rect.y, model_rect.w, model_rect.h, true)
         sg.sg_apply_scissor_rect(model_rect.x, model_rect.y, model_rect.w, model_rect.h, true)
     
-        sg.sg_draw(0, state_data.count, 1)
+        sg.sg_draw(0, geom.count, 1)
     end
 end
 
