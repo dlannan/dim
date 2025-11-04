@@ -4,12 +4,20 @@
 --    /// 
 
 -- luajit helpers :) 
-local tinsert 	= table.insert 
-local tremove 	= table.remove
+local tinsert 		= table.insert 
+local tremove 		= table.remove
 
-local ffi 		= require("ffi")
-local utils 	= require("lua.utils")
-local meshes	= require("lua.geometry.meshes")
+local ffi 			= require("ffi")
+local utils 		= require("lua.utils")
+local meshes		= require("lua.geometry.meshes")
+
+local sapp          = require("sokol_app")
+local slib      	= require("sokol_libs")
+
+local hmm           = require("hmm")
+local hutils        = require("hmm_utils")
+
+local bins 			= require("lua.geometry.bins")
 
 ------------------------------------------------------------------------------------------------------------
 
@@ -17,18 +25,98 @@ local geom = {
 
 	ctr 		= 0,
 	meshes 		= {},
+
+	all_objs    = {},
 }
+
+------------------------------------------------------------------------------------------------------------
+
+local function makeMvp(rx, ry)
+    
+    local w         = sapp.sapp_widthf()
+    local h         = sapp.sapp_heightf()
+    local t         = (sapp.sapp_frame_duration() * 60.0)
+
+    local proj      = hmm.HMM_Perspective(60.0, w/h, 0.01, 10.0)
+    local view      = hmm.HMM_LookAt(hmm.HMM_Vec3(0.0, 1.5, 6.0), hmm.HMM_Vec3(0.0, 0.0, 0.0), hmm.HMM_Vec3(0.0, 1.0, 0.0))
+    local view_proj = hmm.HMM_MultiplyMat4(proj, view)
+
+    local rxm       = hmm.HMM_Rotate(rx, hmm.HMM_Vec3(1.0, 0.0, 0.0))
+    local rym       = hmm.HMM_Rotate(ry, hmm.HMM_Vec3(0.0, 1.0, 0.0))
+    local model     = hmm.HMM_MultiplyMat4(rxm, rym)
+
+    local mvp       = hmm.HMM_MultiplyMat4(view_proj, model)
+    return mvp
+end
+
+------------------------------------------------------------------------------------------------------------
+-- Bin related code
+function geom:makeGeom(name, prim, mesh)
+
+	-- TODO: Needs to come from gltf refs
+	local material    = meshes.material(name, "lua/engine/base_texture.glsl", {})
+	local prim_mat    = prim.material
+
+	local newgeom = {}
+	newgeom.id 			= #geom.all_objs + 1
+	newgeom.model 		= meshes.model(name, prim, mesh, material)
+	newgeom.transform 	= prim.transform
+
+	newgeom.pip        = newgeom.model.pip 
+	newgeom.bind       = newgeom.model.bind
+	newgeom.rx = 0
+	newgeom.ry = 0
+
+	local bcolor = prim_mat.base_color or { 1, 1, 1, 1 }
+
+	newgeom.vs_params = ffi.new("vs_params_t[1]")
+	newgeom.vs_params[0].mvp    = makeMvp(0.0, 0.0)
+	newgeom.vs_params[0].base_color_factor    = 	ffi.new("float [4]", {
+		bcolor[1], bcolor[2], bcolor[3], bcolor[4]
+	})
+
+	newgeom.vs_sg_range = ffi.new("sg_range[1]")
+	newgeom.vs_sg_range[0].ptr     = newgeom.vs_params
+	newgeom.vs_sg_range[0].size    = ffi.sizeof(newgeom.vs_params[0])
+
+	newgeom.fs_params = ffi.new("fs_params_t[1]")
+	newgeom.fs_params[0].alpha_cutoff   = newgeom.model.alpha.cutoff or 0.0
+	newgeom.fs_params[0].alpha_mode     = newgeom.model.alpha.mode or 0
+
+	newgeom.fs_sg_range = ffi.new("sg_range[1]")
+	newgeom.fs_sg_range[0].ptr     = newgeom.fs_params
+	newgeom.fs_sg_range[0].size    = ffi.sizeof(newgeom.fs_params[0])
+
+	newgeom.offset     = 0
+	newgeom.count      = prim.index_count 
+	newgeom.instances  = 1
+
+	newgeom.bintype    = bins.BTYPE_OPAQUE
+
+	tinsert(geom.all_objs, newgeom)
+
+	newgeom.binid = bins.bin_add(newgeom)
+	newgeom.pass = {
+		action      =  sg.SG_LOADACTION_CLEAR,
+		clear       = { 0.25, 0.5, 0.75, 1.0 },
+		swapchain   = slib.sglue_swapchain(),
+	}
+	
+	bins.pass_add(newgeom.pass, newgeom.binid, true)
+	return newgeom.id
+end
+
 ------------------------------------------------------------------------------------------------------------
 -- AABB param is a table with siz values (min.max) like: { 0, 0, 0, 1, 1, 1 }
 function geom:makeMesh( goname, primdata )
 
-	local itype = primdata.itype
-	local icount = primdata.icount
-	local indices = primdata.indices
-	local verts = primdata.verts
-	local uvs = primdata.uvs
-	local normals = primdata.normals
-	local aabb = primdata.aabb
+	local itype 	= primdata.itype
+	local icount 	= primdata.icount
+	local indices 	= primdata.indices
+	local verts 	= primdata.verts
+	local uvs 		= primdata.uvs
+	local normals 	= primdata.normals
+	local aabb 		= primdata.aabb
 
 	if(verts == nil) then
 		print("[Error geom:makeMesh] No valid vertices?")
@@ -36,10 +124,10 @@ function geom:makeMesh( goname, primdata )
 	end 
 	if(type(goname) == "cdata") then goname = ffi.string(goname) end
 
-	local buffers 	= {}
-	buffers.itype = itype
-	buffers.icount = icount
-	buffers.vertices = verts
+	local buffers 		= {}
+	buffers.itype 		= itype
+	buffers.icount 		= icount
+	buffers.vertices 	= verts
 
 	if(indices) then 
 		buffers.indices = indices
@@ -52,6 +140,7 @@ function geom:makeMesh( goname, primdata )
 	end 
 	
 	local buffs =  meshes.create_buffer(goname, buffers)
+	if(buffs == nil) then return nil end -- Dont process missing buffers!
 
 	-- Fill out some manual defaults in the buffs
     -- buffs.index_type = itype
@@ -60,6 +149,7 @@ function geom:makeMesh( goname, primdata )
     buffs.depth.compare = sg.SG_COMPAREFUNC_LESS_EQUAL
 
 	local mesh = meshes.make_mesh(goname, {buffs})
+
 	geom.meshes[goname] = mesh
 	geom.ctr = geom.ctr + 1
 

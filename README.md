@@ -3,6 +3,21 @@ not so lite
 
 A lite based text editor running from sokol-luajit + nuklear.
 
+[ 04-11-2025 Updates ]:
+
+More updates. Mostly about new underlying rendering engine. 
+- Added zoom feature for 3d plugin
+- Reworked 3D rendering. Using more specific geometry blocks (soon to be bin organized)
+- Many fixes in fonts, tabs, and some tweaks to init and config.
+- Expanded lua language plugin. Now has some more highlighting (much closer to vscode)
+- Started building my own console. Works but beware in progress!! :)
+
+Next Up:
+- Workspaces, plugin manager and finish binning for 3D viewer.
+
+<img src="media/2025-11-04_18-54.png">
+
+
 [ 31-10-2025 Updates ]:
 
 Updates coming quickly now:

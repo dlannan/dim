@@ -46,7 +46,7 @@ local slib      = require("sokol_libs") -- Warn - always after gfx!!
 local hmm       = require("hmm")
 local hutils    = require("hmm_utils")
 
-local utils     = require("utils.utils")
+local utils     = require("lua.utils")
 
 local ffi       = require("ffi")
 

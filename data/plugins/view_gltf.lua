@@ -39,11 +39,12 @@ local original_doc_load = Doc.load
 
 Doc.load = function(self, filename)
   if ( find(filename, "files") ) then 
-    local gltf = renderer.load_model(filename)
-    if(gltf == nil) then 
+    core.try(function()
+      self.model = renderer.load_model(filename)
+    end)    
+    if(self.model == nil) then 
       original_doc_load(self, filename)
     else
-      self.model = gltf
       self.model.scale = 1.0
       self.filename = filename
     end
@@ -62,9 +63,18 @@ DocView.draw = function(self)
     local doc_size = self.size
     local doc_pos = self.position
 
-    renderer.draw_model(model, doc_pos.x, doc_pos.y, doc_size.x, doc_size.y)
-    draw_states(model, doc_pos, doc_size)
+    core.try(function()
+      renderer.draw_model(model, doc_pos.x, doc_pos.y, doc_size.x, doc_size.y)
+      draw_states(model, doc_pos, doc_size)  
+    end)    
   else
     original_docview_draw(self)
+  end
+end
+
+function DocView:on_mouse_wheel(y)
+  if(self.doc.model) then 
+    local model = self.doc.model
+    model.scale = model.scale + y / 100  -- 100 should be dpi or something I think. 
   end
 end
