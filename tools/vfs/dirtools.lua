@@ -619,6 +619,7 @@ end
 dirtools.get_fileinfo = function(path)
 
     local buf
+    if string.len(path) == 0 then return nil end
     if ffi.os == "Windows" then
         buf = ffi.new("struct __stat64[1]")
         if ffi.C._stat64(path, buf) ~= 0 then

@@ -19,13 +19,25 @@ function Object:extend()
   return cls
 end
 
-
 function Object:implement(...)
   for _, cls in pairs({...}) do
     for k, v in pairs(cls) do
       if self[k] == nil and type(v) == "function" then
         self[k] = v
       end
+    end
+  end
+end
+
+function Object:override(cls, newfuncs)
+  cls.__override = cls.__override or {}
+  for k, v in pairs(newfuncs) do
+    if type(v) == "function" then
+      -- Save old func
+      if(cls[k]) then cls.__override[k] = cls[k] end
+      -- Assign new func
+      print(k, v, cls)
+      cls[k] = v
     end
   end
 end
