@@ -157,6 +157,7 @@ local function core_run(ctx)
         renderer.rect = nk.nk_window_get_content_region(ctx)
         core.render()
     end
+    renderer.set_cursor()
     nk.nk_end(ctx)
     return not nk.nk_window_is_closed(ctx, "Dim")    
 end
@@ -194,7 +195,7 @@ local function frame()
 
     if(core == nil) then     
         ErrorCheck( pcall( core_init ) )
-        nk.nk_style_show_cursor(ctx)   
+        -- nk.nk_style_show_cursor(ctx)   
         core_ready = true
     end 
     if(core_ready and did_draw == true) then 

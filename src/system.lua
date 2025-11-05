@@ -94,7 +94,8 @@ end
 
 -- --------------------------------------------------------------------------------------
 
-system.set_cursor         = function(cursor_name) 
+system.set_cursor         = function(cursor_name, rect) 
+    renderer.cursor = { name = cursor_name, rect = rect }
 end
 
 -- --------------------------------------------------------------------------------------
