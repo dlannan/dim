@@ -3,6 +3,7 @@ local style = require "core.style"
 local common = require "core.common"
 local Doc = require "core.doc"
 local DocView = require "core.docview"
+local View = require "core.view"
 
 local syntax = require "core.syntax"
 
@@ -37,25 +38,29 @@ end
 -- Override the Doc loader - if its a png.. then load it, and make a png Image Viewer for it.
 local GLTFDoc = Doc:extend()
 
-function GLTFDoc:load(filename)
-  if ( find(filename, "files") ) then
-    core.try(function()
-      self.model = renderer.load_model(filename)
-    end)
-    if(self.model == nil) then
-      GLTFDoc.super.load(self, filename)
-    else
-      self.model.scale = 1.0
-      self.filename = filename
-    end
-  else
-    GLTFDoc.super.load(self, filename)
-  end
-end
+GLTFDoc:override( Doc, {
+    load = function (self, filename)
+      print("loading doc..", filename)
+      if ( find(filename, "files") ) then
+        core.try(function()
+          self.model = renderer.load_model(filename)
+        end)
+        if(self.model == nil) then
+          Doc.__override.load(self, filename)
+        else
+          self.model.scale = 1.0
+          self.filename = filename
+        end
+      else
+        Doc.__override.load(self, filename)
+      end
+    end,
+  }
+)
 
 local GLTFDocView = DocView:extend()
 
-function GLTFDocView:draw()
+local function GLTF_draw(self)
   if(self.doc.model) then
     self:draw_background(style.background)
     -- Work out aspect for image so it is always centered and correct aspect view
@@ -68,15 +73,20 @@ function GLTFDocView:draw()
       draw_states(model, doc_pos, doc_size)
     end)
   else
-    GLTFDocView.super.draw(self)
+    DocView.__override.draw(self)
   end
 end
 
-function GLTFDocView:on_mouse_wheel(y)
+local function GLTF_on_mouse_wheel(self, y)
   if(self.doc.model) then
     local model = self.doc.model
     model.scale = model.scale + y / 100  -- 100 should be dpi or something I think.
   else
-    GLTFDocView.super.on_mouse_wheel(self, y)
+    DocView.__override.on_mouse_wheel(self, y)
   end
 end
+
+GLTFDocView:override( DocView, {
+  draw = GLTF_draw,
+  on_mouse_wheel = GLTF_on_mouse_wheel,
+})
