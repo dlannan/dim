@@ -32,31 +32,31 @@ local function draw_states(model, pos, size)
     common.draw_text( style.font, style.text, text, "left", xpos, ypos, tw, th)
     ypos = ypos + th
   end
-end 
+end
 
 -- Override the Doc loader - if its a png.. then load it, and make a png Image Viewer for it.
-local original_doc_load = Doc.load
+local GLTFDoc = Doc:extend()
 
-Doc.load = function(self, filename)
-  if ( find(filename, "files") ) then 
+function GLTFDoc:load(filename)
+  if ( find(filename, "files") ) then
     core.try(function()
       self.model = renderer.load_model(filename)
-    end)    
-    if(self.model == nil) then 
-      original_doc_load(self, filename)
+    end)
+    if(self.model == nil) then
+      GLTFDoc.super.load(self, filename)
     else
       self.model.scale = 1.0
       self.filename = filename
     end
   else
-    original_doc_load(self, filename)
+    GLTFDoc.super.load(self, filename)
   end
 end
 
-local original_docview_draw = DocView.draw
+local GLTFDocView = DocView:extend()
 
-DocView.draw = function(self)
-  if(self.doc.model) then 
+function GLTFDocView:draw()
+  if(self.doc.model) then
     self:draw_background(style.background)
     -- Work out aspect for image so it is always centered and correct aspect view
     local model = self.doc.model
@@ -65,16 +65,18 @@ DocView.draw = function(self)
 
     core.try(function()
       renderer.draw_model(model, doc_pos.x, doc_pos.y, doc_size.x, doc_size.y)
-      draw_states(model, doc_pos, doc_size)  
-    end)    
+      draw_states(model, doc_pos, doc_size)
+    end)
   else
-    original_docview_draw(self)
+    GLTFDocView.super.draw(self)
   end
 end
 
-function DocView:on_mouse_wheel(y)
-  if(self.doc.model) then 
+function GLTFDocView:on_mouse_wheel(y)
+  if(self.doc.model) then
     local model = self.doc.model
-    model.scale = model.scale + y / 100  -- 100 should be dpi or something I think. 
+    model.scale = model.scale + y / 100  -- 100 should be dpi or something I think.
+  else
+    GLTFDocView.super.on_mouse_wheel(self, y)
   end
 end
