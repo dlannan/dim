@@ -188,6 +188,9 @@ local function render_model( t, model_rect )
     offset.x, offset.y, offset.z = offset.x * sc, offset.y * sc, offset.x * sc
 
     local w, h      = model_rect.w, model_rect.h
+    -- Dont render if there is no width or height?
+    if(w <= 0 or h <= 0) then return end 
+
     local proj      = hmm.HMM_Perspective(60.0, w/h, 0.01, CAM_DISTANCE * 2 * model_rect.model.scale)
     local view      = hmm.HMM_LookAt(hmm.HMM_Vec3(0.0, offset.y + 1.5, CAM_DISTANCE), hmm.HMM_Vec3(0.0, offset.y, 0.0), hmm.HMM_Vec3(0.0, 1.0, 0.0))
     local view_proj = hmm.HMM_MultiplyMat4(proj, view)
