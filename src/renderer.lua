@@ -34,6 +34,7 @@ end
 renderer = {
     ctx             = nil,
     all_fonts       = {},
+    cursor          = { name = "arrow", rect = { position = {x=0,y=0}, size ={x=1,y=1} } },
 }
 
 renderer.font = {
@@ -281,6 +282,14 @@ renderer.draw_text      = function(font, text, x, y, color)
     return nuklear_renderer.draw_text(font, text, x, y, color)
     -- return rencache.rencache_draw_text(font, text, x, y, color)
 end
+
+-- --------------------------------------------------------------------------------------
+
+renderer.draw_cursor   = function()
+    local icolor = nk.nk_rgba(0xff, 0xff, 0xff, 0xff)
+    local r = nk.nk_rect(renderer.ctx.input.mouse.pos.x, renderer.ctx.input.mouse.pos.y, 12, 19)
+    nk.nk_draw_image(renderer.canvas, r, renderer.ctx.style.cursor_active.img, icolor)
+end
   
 -- --------------------------------------------------------------------------------------
 
@@ -318,5 +327,11 @@ renderer.draw_model      = function(model, x, y, w, h)
 
     return threed_renderer.draw_model(model, x, y, w, h)
 end 
+
+-- --------------------------------------------------------------------------------------
+
+renderer.set_cursor      = function()
+    nuklear_renderer.set_cursor()
+end
 
 -- --------------------------------------------------------------------------------------

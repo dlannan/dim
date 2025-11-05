@@ -469,11 +469,11 @@ function RootView:on_mouse_moved(x, y, dx, dy)
   local node = self.root_node:get_child_overlapping_point(x, y)
   local div = self.root_node:get_divider_overlapping_point(x, y)
   if div then
-    system.set_cursor(div.type == "hsplit" and "sizeh" or "sizev")
+    system.set_cursor(div.type == "hsplit" and "sizeh" or "sizev", div)
   elseif node:get_tab_overlapping_point(x, y) then
-    system.set_cursor("arrow")
+    system.set_cursor("arrow", node)
   else
-    system.set_cursor(node.active_view.cursor)
+    system.set_cursor(node.active_view.cursor, node)
   end
 end
 

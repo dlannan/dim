@@ -172,3 +172,32 @@ nuklear_renderer.draw_image = function(img, x, y, w, h, color)
 end
 
 -- --------------------------------------------------------------------------------------
+
+nuklear_renderer.set_cursor = function()
+
+    if(renderer.ctx == nil) then return end
+    local cursor_name, rect = renderer.cursor.name, renderer.cursor.rect 
+    local r = nk.nk_rect(rect.position.x, rect.position.y, rect.size.x, rect.size.y)
+    
+    nk.nk_layout_space_begin(renderer.ctx, nk.NK_STATIC, 27, 1)
+    nk.nk_layout_space_push(renderer.ctx, r)
+    if (nk.nk_widget_is_hovered(renderer.ctx) == true) then
+
+        if(cursor_name == "arrow") then 
+            nk.nk_style_set_cursor(renderer.ctx, nk.NK_CURSOR_ARROW)
+        elseif(cursor_name == "ibeam") then 
+            nk.nk_style_set_cursor(renderer.ctx, nk.NK_CURSOR_TEXT)
+        elseif(cursor_name == "hsplit") then 
+            nk.nk_style_set_cursor(renderer.ctx, nk.NK_CURSOR_RESIZE_HORIZONTAL)
+        elseif(cursor_name == "sizeh") then 
+            nk.nk_style_set_cursor(renderer.ctx, nk.NK_CURSOR_RESIZE_HORIZONTAL)
+        elseif(cursor_name == "sizev") then 
+            nk.nk_style_set_cursor(renderer.ctx, nk.NK_CURSOR_RESIZE_VERTICAL)
+        end
+    else 
+        nk.nk_style_set_cursor(renderer.ctx, nk.NK_CURSOR_ARROW);
+    end
+    nk.nk_layout_space_end(renderer.ctx)
+end 
+
+-- --------------------------------------------------------------------------------------
