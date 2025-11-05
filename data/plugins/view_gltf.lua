@@ -38,25 +38,25 @@ end
 -- Override the Doc loader - if its a png.. then load it, and make a png Image Viewer for it.
 local GLTFDoc = Doc:extend()
 
+local GLTF_load = function (self, filename)
+  if ( find(filename, "files") ) then
+    core.try(function()
+      self.model = renderer.load_model(filename)
+    end)
+    if(self.model == nil) then
+      Doc.__override.load(self, filename)
+    else
+      self.model.scale = 1.0
+      self.filename = filename
+    end
+  else
+    Doc.__override.load(self, filename)
+  end
+end
+
 GLTFDoc:override( Doc, {
-    load = function (self, filename)
-      print("loading doc..", filename)
-      if ( find(filename, "files") ) then
-        core.try(function()
-          self.model = renderer.load_model(filename)
-        end)
-        if(self.model == nil) then
-          Doc.__override.load(self, filename)
-        else
-          self.model.scale = 1.0
-          self.filename = filename
-        end
-      else
-        Doc.__override.load(self, filename)
-      end
-    end,
-  }
-)
+  load  = GLTF_load,
+})
 
 local GLTFDocView = DocView:extend()
 

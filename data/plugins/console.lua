@@ -8,93 +8,107 @@ local DocView   = require "core.docview"
 local Doc       = require "core.doc"
 
 local fmt       = string.format
+local tinsert   = table.insert
 
 -- console.lua
-local M = {
-    font = renderer.font.load(EXEDIR .. "/data/fonts/CascadiaMonoNF-SemiBold.ttf", 13.5 * SCALE)
+local ConsoleData = {
+    font = renderer.font.load(EXEDIR .. "/data/fonts/CascadiaMonoNF-SemiBold.ttf", 13.5 * SCALE),
+    -- Stores all console documents
+    consoles = {},
 }
 
--- Stores all console documents
-M.consoles = {}
+local ConsoleDoc = Doc:extend()    
+
+function ConsoleDoc:new()
+    ConsoleDoc.super.new(self)
+    ConsoleDoc.super.reset(self)
+    self.prompt = "> "
+    self.console_lines = {}
+    style.console_font = ConsoleData.font
+    return self
+end
+
+function ConsoleDoc:get_name()
+    return "Console"
+end
+
+function ConsoleDoc:append_line(text, col)
+    local last_line = #self.lines
+    local psize = #self.prompt + 1
+    col = col or psize
+
+    if(tonumber(col) < psize) then col = psize end 
+    ConsoleDoc.super.insert(self, last_line, col, text)
+    ConsoleDoc.super.move_to(self, #self.lines, col)
+    return #self.lines
+end
+
+-- Handle Enter key: execute command
+function ConsoleDoc:execute_current_line()
+    local line = self.lines[#self.lines-1]:sub(#self.prompt + 1)
+    line = line:gsub("\n", "")
+
+    -- Simple echo for now; you can extend to Lua evaluation
+    local results = system.exec(line)
+
+    self:write_line(fmt("%s", line))
+    self:append_line(results)
+    self:append_line(self.prompt) 
+end
+
+function ConsoleDoc:insert(line, col, text)
+    -- Only allow appending after the last line
+    local last_line = self:append_line( text, col )
+    local psize = #self.prompt + 1
+    if(text == "\n") then 
+        self:execute_current_line()
+    end
+    if(tonumber(col) < psize) then col = psize end 
+    ConsoleDoc.super.move_to(self, #self.lines, col)
+end
+
+-- Write a line to the console
+function ConsoleDoc:write_line(line)
+    table.insert(self.console_lines, line)
+    print(line)
+end
+
+function ConsoleDoc:load(filename)
+    print("Console: ", filename)
+    if(string.match(filename, "^Console_")) then 
+        ConsoleDoc.new(self, filename)
+    end
+end
+
+local ConsoleDocView = DocView:extend()
 
 -- Helper: create a new console doc
-local function new_console(name)
-    
-    local ConsoleDoc = Doc:extend()    
+function ConsoleDocView:new(doc)   
 
-    function ConsoleDoc:new()
-        ConsoleDoc.super.new(self)
-        ConsoleDoc.super.reset(self)
-        self.prompt = "> "
-        self.console_lines = {}
-        return self
-    end
-
-    function ConsoleDoc:get_name()
-        return "Console"
-    end
-
-    function ConsoleDoc:append_line(text, col)
-        local last_line = #self.lines
-        local psize = #self.prompt + 1
-        col = col or psize
-
-        if(tonumber(col) < psize) then col = psize end 
-        ConsoleDoc.super.insert(self, last_line, col, text)
-        ConsoleDoc.super.move_to(self, #self.lines, col)
-        return #self.lines
-    end
-
-    -- Handle Enter key: execute command
-    function ConsoleDoc:execute_current_line()
-        local line = self.lines[#self.lines-1]:sub(#self.prompt + 1)
-        line = line:gsub("\n", "")
-
-        -- Simple echo for now; you can extend to Lua evaluation
-        local results = system.exec(line)
-
-        self:write_line(fmt("%s", line))
-        self:append_line(results)
-        self:append_line(self.prompt) 
-    end
-
-    function ConsoleDoc:insert(line, col, text)
-        -- Only allow appending after the last line
-        local last_line = self:append_line( text, col )
-        local psize = #self.prompt + 1
-        if(text == "\n") then 
-            self:execute_current_line()
-        end
-        if(tonumber(col) < psize) then col = psize end 
-        ConsoleDoc.super.move_to(self, #self.lines, col)
-    end
-
-    -- Write a line to the console
-    function ConsoleDoc:write_line(line)
-        table.insert(self.console_lines, line)
-        print(line)
-    end
-
-
+    doc = doc or ConsoleDoc()
+    self.module = "data.plugins.console"
+    ConsoleDocView.super.new(self, doc)
+    print("new console")
+    doc:insert(1, 1, doc.prompt)
     -- Initialize prompt
-    local doc = ConsoleDoc:new()
-    doc:insert(1, 1, ConsoleDoc.prompt)
-
+    ConsoleDocView.font = "console_font"
+    doc.console_id = #ConsoleData.consoles + 1
+    tinsert(ConsoleData.consoles, doc)
     return doc
+end
+
+function ConsoleDocView:get_name()
+    local id = self.doc.console_id
+    return fmt("Console_%d", id)
 end
 
 -- Command to open a console
 command.add(nil, {
     ["console:new"] = function()
-        local doc = new_console("Console")
         local node = core.root_view:get_active_node()
-        local view = DocView(doc)
-        view.font = "console_font"
-        style.console_font = M.font
-        node:add_view(view)
-        M.consoles[doc] = true
-        return doc
+        local doc = ConsoleDoc()
+        node:add_view(ConsoleDocView(doc))
     end
 })
 
-return M
+return ConsoleDocView

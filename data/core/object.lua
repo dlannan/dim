@@ -42,7 +42,6 @@ function Object:override(cls, newfuncs)
   end
 end
 
-
 function Object:is(T)
   local mt = getmetatable(self)
   while mt do
