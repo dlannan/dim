@@ -134,9 +134,14 @@ local function process_inputs(event)
     local system_push_event = system.push_event
 
     -- Only kick things off once the window is ready.
-    if(eventtype == sapp.SAPP_EVENTTYPE_RESIZED) then 
-        local w         = sapp.sapp_widthf()
-        local h         = sapp.sapp_heightf()   
+    if(eventtype == sapp.SAPP_EVENTTYPE_ICONIFIED or eventtype == sapp.SAPP_EVENTTYPE_SUSPENDED) then 
+        system.iconified = true
+    elseif(eventtype == sapp.SAPP_EVENTTYPE_RESTORED) then 
+        system.iconified = false
+    
+    elseif(eventtype == sapp.SAPP_EVENTTYPE_RESIZED) then 
+        local w         = sapp.sapp_width()
+        local h         = sapp.sapp_height()   
         system_push_event({
             type = LITE_EVENT[eventtype],
             a = w, b = h, c = nil, d = nil
