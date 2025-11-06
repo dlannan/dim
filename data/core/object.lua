@@ -30,13 +30,12 @@ function Object:implement(...)
 end
 
 function Object:override(cls, newfuncs)
-  cls.__override = cls.__override or {}
+  self.__override = self.__override or {}
   for k, v in pairs(newfuncs) do
     if type(v) == "function" then
       -- Save old func
-      if(cls[k]) then cls.__override[k] = cls[k] end
+      if(cls[k]) then self.__override[k] = cls[k] end
       -- Assign new func
-      print(k, v, cls)
       cls[k] = v
     end
   end
