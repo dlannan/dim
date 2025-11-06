@@ -28,7 +28,7 @@ local binmgr 	= require("lua.geometry.bins")
 ARGS = arg 
 
 VERSION         = "1.11"
-PLATFORM        = ffi.os.." "..ffi.arch
+PLATFORM        = ffi.os
 SCALE           = sapp.sapp_dpi_scale()
 -- This is kinda a fake runner name for the timebeing. Not sure if its really needed.
 APPPATH         = dirtools.get_app_path()

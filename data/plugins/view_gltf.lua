@@ -44,13 +44,13 @@ local GLTF_load = function (self, filename)
       self.model = renderer.load_model(filename)
     end)
     if(self.model == nil) then
-      Doc.__override.load(self, filename)
+      GLTFDoc.__override.load(self, filename)
     else
       self.model.scale = 1.0
       self.filename = filename
     end
   else
-    Doc.__override.load(self, filename)
+    GLTFDoc.__override.load(self, filename)
   end
 end
 
@@ -73,7 +73,7 @@ local function GLTF_draw(self)
       draw_states(model, doc_pos, doc_size)
     end)
   else
-    DocView.__override.draw(self)
+    GLTFDocView.__override.draw(self)
   end
 end
 
@@ -82,7 +82,7 @@ local function GLTF_on_mouse_wheel(self, y)
     local model = self.doc.model
     model.scale = model.scale + y / 100  -- 100 should be dpi or something I think.
   else
-    DocView.__override.on_mouse_wheel(self, y)
+    GLTFDocView.__override.on_mouse_wheel(self, y)
   end
 end
 

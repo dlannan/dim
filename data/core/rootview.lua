@@ -381,7 +381,6 @@ function Node:draw()
 end
 
 
-
 local RootView = View:extend()
 
 function RootView:new()

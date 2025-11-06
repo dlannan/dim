@@ -22,26 +22,30 @@ local function find(string, field)
 end
 
 -- Override the Doc loader - if its a png.. then load it, and make a png Image Viewer for it.
-local original_doc_load = Doc.load
+local ImageDoc  = Doc:extend()
 
-Doc.load = function(self, filename)
+local imagedoc_load = function(self, filename)
   local idx = find(filename, "files")
   if ( idx ) then 
     local image, image_info = renderer.load_image(filename)
     if(image == nil) then 
-      original_doc_load(self, filename)
+      ImageDoc.__override.load(self, filename)
     else
       self.image = { nk_image = image, info = image_info, zoom = 1.0, itype = images.file_types[idx] }
       self.filename = filename
     end
   else
-    original_doc_load(self, filename)
+    ImageDoc.__override.load(self, filename)
   end
 end
 
-local original_docview_draw = DocView.draw
+ImageDoc:override( Doc, {
+  load = imagedoc_load,
+})
 
-DocView.draw = function(self)
+local ImageDocView = DocView:extend()
+
+local function imagedocview_draw(self)
   if(self.doc.image) then 
     self:draw_background(style.background)
     -- Work out aspect for image so it is always centered and correct aspect view
@@ -83,24 +87,28 @@ DocView.draw = function(self)
 
     renderer.draw_image(img.nk_image, x, y, scaled_width, scaled_height)
   else
-    original_docview_draw(self)
+    ImageDocView.__override.draw(self)
   end
 end
 
-local get_items = StatusView.get_items
+ImageDocView:override( DocView, {
+  draw = imagedocview_draw,
+})
 
-function StatusView:get_items()
+local ImageStatusView = StatusView:extend()
+
+local function imagestatusview_get_items(self)
   local dv = core.active_view
   if(not dv.doc) then 
-    return get_items(self)
+    return ImageStatusView.__override.get_items(self)
   end
 
   local img = dv.doc.image
 
   if not img then
-    return get_items(self)
+    return ImageStatusView.__override.get_items(self)
   end
-  local left, right = get_items(self)
+  local left, right = ImageStatusView.__override.get_items(self)
 
   local itype, w, h = img.itype, img.info[0].width, img.info[0].height
 
@@ -118,3 +126,7 @@ function StatusView:get_items()
 
   return left, right
 end
+
+ImageStatusView:override( StatusView, {
+  get_items = imagestatusview_get_items,
+})

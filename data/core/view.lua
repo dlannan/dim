@@ -17,7 +17,7 @@ function View:new()
 end
 
 
-function View:move_towards(t, k, dest, rate)
+function View:move_towards(t, k, dest, rate, on_complete)
   if type(t) ~= "table" then
     return self:move_towards(self, t, k, dest, rate)
   end
@@ -29,6 +29,8 @@ function View:move_towards(t, k, dest, rate)
   end
   if val ~= dest then
     core.redraw = true
+  else 
+    if(on_complete) then on_complete() end
   end
 end
 

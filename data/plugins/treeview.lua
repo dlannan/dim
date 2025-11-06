@@ -16,7 +16,6 @@ local function get_depth(filename)
   return n
 end
 
-
 local TreeView = View:extend()
 
 function TreeView:new()
@@ -26,7 +25,6 @@ function TreeView:new()
   self.init_size = true
   self.cache = {}
 end
-
 
 function TreeView:get_cached(item)
   local t = self.cache[item.filename]
@@ -42,16 +40,13 @@ function TreeView:get_cached(item)
   return t
 end
 
-
 function TreeView:get_name()
   return "Project"
 end
 
-
 function TreeView:get_item_height()
   return style.font:get_height() + style.padding.y
 end
-
 
 function TreeView:check_cache()
   -- invalidate cache's skip values if project_files has changed
@@ -62,7 +57,6 @@ function TreeView:check_cache()
     self.last_project_files = core.project_files
   end
 end
-
 
 function TreeView:each_item()
   return coroutine.wrap(function()
@@ -98,8 +92,7 @@ function TreeView:each_item()
   end)
 end
 
-
-function TreeView:on_mouse_moved(px, py)
+function TreeView:on_mouse_moved(px, py, dx, dy)
   self.hovered_item = nil
   for item, x,y,w,h in self:each_item() do
     if px > x and py > y and px <= x + w and py <= y + h then
@@ -109,10 +102,9 @@ function TreeView:on_mouse_moved(px, py)
   end
 end
 
-
 function TreeView:on_mouse_pressed(button, x, y)
   if not self.hovered_item then
-    return
+    return 
   elseif self.hovered_item.type == "dir" then
     self.hovered_item.expanded = not self.hovered_item.expanded
   else
@@ -122,20 +114,16 @@ function TreeView:on_mouse_pressed(button, x, y)
   end
 end
 
-
 function TreeView:update()
-  -- update width
-  local dest = self.visible and config.treeview_size or 0
-  if self.init_size then
-    self.size.x = dest
-    self.init_size = false
-  else
-    self:move_towards(self.size, "x", dest)
+
+  if(self.init_size == true and self.size.x ~= self.target_width) then
+    self:move_towards(self.size, "x", self.target_width, 0.5, function() self.init_size = false end)
+  else 
+    self.target_width = self.size.x -- Update for border movement
   end
 
   TreeView.super.update(self)
 end
-
 
 function TreeView:draw()
   self:draw_background(style.background2)
@@ -181,16 +169,19 @@ function TreeView:draw()
   end
 end
 
-
 -- init
 local view = TreeView()
+view.target_width = config.treeview_size
 local node = core.root_view:get_active_node()
-node:split("left", view, true)
+-- Ok - the node is locked so you cant change its size. So.. we make a special case :)
+local child = node:split("left", view, true)
 
 -- register commands and keymap
 command.add(nil, {
   ["treeview:toggle"] = function()
     view.visible = not view.visible
+    view.target_width = config.treeview_size - view.target_width
+    view.init_size = true
   end,
 })
 
