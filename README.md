@@ -3,6 +3,18 @@ not so lite
 
 A lite based text editor running from sokol-luajit + nuklear.
 
+[ 07-11-2025 Updates ]:
+Some cross platform testing and more:
+- Linux tested and working now (3D and Image plugins as well)
+- Added initial sidebar 
+- Added FontAwesome 3 (its open source and free to use)
+- Added a platform file as I support more platforms this will fill up.
+
+TODO:
+- Finish workspaces
+- Add plugin manager
+- Complete binning for 3D - I may move it to texture rendering multi-proc. will see.
+
 [ 04-11-2025 Updates ]:
 
 More updates. Mostly about new underlying rendering engine. 
