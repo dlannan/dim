@@ -19,7 +19,6 @@ syntax.add {
     { pattern = "[%+%-=/%*%^%%#<>]",      type = "operator" },
     { pattern = "[%a_][%w_]*%s*%f[(\"{]", type = "function" },
     { pattern = "::[%a_][%w_]*::",        type = "function" },
-    { pattern = "[%(%)%[%]{}]",           type = "bracket"  },
     { pattern = "require",                type = "require"  },
     { pattern = " [%a_]+:",               type = "method"   },
     { pattern = "self",                   type = "self"     },
