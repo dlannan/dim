@@ -1,4 +1,5 @@
 local ffi       = require("ffi")
+local bit       = require("bit")
 
 local dirtools  = {}
 
@@ -34,9 +35,9 @@ local tconcat   = table.concat
 
 
 local allfolders_cmd = [[dir /ON /AD /B "%s" 2>nul]]
-if(ffi.os ~= "Windows") then allfolders_cmd = [[ls -p "%s" | grep /]] end
+if(ffi.os ~= "Windows") then allfolders_cmd = [[find "%s" -mindepth 1 -maxdepth 1 -type d -exec basename {} \;]] end
 local allfiles_cmd = [[dir /ON /A-D /B "%s" 2>nul]]
-if(ffi.os ~= "Windows") then allfiles_cmd = [[ls -p "%s" | grep -v /]] end
+if(ffi.os ~= "Windows") then allfiles_cmd = [[find "%s" -mindepth 1 -maxdepth 1 -type f -exec basename {} \;]] end
 
 -- --------------------------------------------------------------------------------------
 
@@ -309,12 +310,11 @@ dirtools.get_absolute_path = function( relative_path )
     else 
         -- Try realpath directly (file or directory)
         local abs_path = nil
-        run_open(string.format('realpath "%s" 2>/dev/null', path), function(handle)
+        run_popen(string.format('realpath "%s" 2>/dev/null', relative_path), function(handle)
             abs_path = handle:read("*a")
         end)
 
         abs_path = abs_path and abs_path:match("^%s*(.-)%s*$")
-
         if abs_path and abs_path ~= "" then
             return abs_path
         end
@@ -565,10 +565,9 @@ dirtools.init = function( base_path )
 end
 
 ---------------------------------------------------------------------------------------
--- Windows - dear god. Wheres ls when you need it.
-if ffi.os == "Windows" then
+-- Windows is posix compliant but there are some subtle difference of course.
     
--- Windows needs _stat, Linux/macOS uses stat
+if(ffi.os == "Windows") then 
 ffi.cdef[[
 typedef uint64_t __time64_t;
 
@@ -593,59 +592,68 @@ struct __stat64
 
 int _stat64(const char *path, struct __stat64 *buf);
 ]]
+else 
+ffi.cdef[[     
 
-else
-ffi.cdef[[
-    typedef long time_t;
+    typedef uint64_t __time64_t;
 
-    struct stat {
-        unsigned long st_dev;
-        unsigned long st_ino;
-        unsigned long st_nlink;
-        unsigned int st_mode;
-        unsigned int st_uid;
-        unsigned int st_gid;
-        unsigned long st_rdev;
-        long st_size;
-        time_t st_atime;
-        time_t st_mtime;
-        time_t st_ctime;
+    typedef uint64_t  _dev_t;
+    typedef uint64_t  _ino_t;
+    typedef unsigned int   _mode_t;
+
+    struct __stat {
+        _dev_t         st_dev;
+        _ino_t         st_ino;
+        uint64_t       st_nlink;
+        _mode_t        st_mode;
+        unsigned int   st_uid;
+        unsigned int   st_gid;
+        int __pad0;
+        _dev_t         st_rdev;
+        int64_t        st_size;
+        __time64_t     st_atime;
+        __time64_t     st_mtime;
+        __time64_t     st_ctime;
+        char           pad[62];
     };
-
-    int stat(const char* path, struct stat* buf);
+    
+int stat(const char *path, struct __stat *buf);
 ]]
-end
+end        
     
 dirtools.get_fileinfo = function(path)
+    if string.len(path) == 0 then return nil end
 
     local buf
-    if string.len(path) == 0 then return nil end
+    local S_IFDIR = 0x4000
+    local S_IFREG = 0x8000
+
+    -- Different handling for Windows vs Linux
     if ffi.os == "Windows" then
         buf = ffi.new("struct __stat64[1]")
         if ffi.C._stat64(path, buf) ~= 0 then
             print("[Error] dirtools.get_fileinfo | File not found or inaccessible: ", path)
-            return nil 
+            return nil
         end
     else
-        buf = ffi.new("struct stat[1]")
+        buf = ffi.new("struct __stat[1]")
         if ffi.C.stat(path, buf) ~= 0 then
             print("[Error] dirtools.get_fileinfo | File not found or inaccessible: ", path)
             return nil
         end
     end
-    
+
+    -- Fill the file info
     local info = {
         size = tonumber(buf[0].st_size),
         modified = tonumber(buf[0].st_mtime),
         type = nil,
         path = path,
     }
-    
-    -- Check type using st_mode bits
-    local S_IFDIR = 0x4000
-    local S_IFREG = 0x8000
+
+    -- Check file type using st_mode bits
     local mode = tonumber(buf[0].st_mode)
-    
+
     if bit.band(mode, S_IFDIR) == S_IFDIR then
         info.type = "dir"
     elseif bit.band(mode, S_IFREG) == S_IFREG then
@@ -653,8 +661,7 @@ dirtools.get_fileinfo = function(path)
     else
         info.type = "other"
     end
-    
-    -- print(info.size, info.path, info.type, mode)
+
     return info
 end
 
