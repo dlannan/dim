@@ -17,7 +17,7 @@ local ConsoleData = {
     consoles = {},
 }
 
-local ConsoleDoc = Doc:extend()    
+local ConsoleDoc = Doc:extend()
 
 function ConsoleDoc:new()
     ConsoleDoc.super.new(self)
@@ -37,7 +37,7 @@ function ConsoleDoc:append_line(text, col)
     local psize = #self.prompt + 1
     col = col or psize
 
-    if(tonumber(col) < psize) then col = psize end 
+    if(tonumber(col) < psize) then col = psize end
     ConsoleDoc.super.insert(self, last_line, col, text)
     ConsoleDoc.super.move_to(self, #self.lines, col)
     return #self.lines
@@ -53,29 +53,29 @@ function ConsoleDoc:execute_current_line()
 
     self:write_line(fmt("%s", line))
     self:append_line(results)
-    self:append_line(self.prompt) 
+    self:append_line(self.prompt)
 end
 
 function ConsoleDoc:insert(line, col, text)
     -- Only allow appending after the last line
     local last_line = self:append_line( text, col )
     local psize = #self.prompt + 1
-    if(text == "\n") then 
+    if(text == "\n") then
         self:execute_current_line()
     end
-    if(tonumber(col) < psize) then col = psize end 
+    if(tonumber(col) < psize) then col = psize end
     ConsoleDoc.super.move_to(self, #self.lines, col)
 end
 
 -- Write a line to the console
 function ConsoleDoc:write_line(line)
     table.insert(self.console_lines, line)
-    print(line)
+--     print(line)
 end
 
 function ConsoleDoc:load(filename)
     print("Console: ", filename)
-    if(string.match(filename, "^Console_")) then 
+    if(string.match(filename, "^Console_")) then
         ConsoleDoc.new(self, filename)
     end
 end
@@ -83,12 +83,11 @@ end
 local ConsoleDocView = DocView:extend()
 
 -- Helper: create a new console doc
-function ConsoleDocView:new(doc)   
+function ConsoleDocView:new(doc)
 
     doc = doc or ConsoleDoc()
     self.module = "data.plugins.console"
     ConsoleDocView.super.new(self, doc)
-    print("new console")
     doc:insert(1, 1, doc.prompt)
     -- Initialize prompt
     ConsoleDocView.font = "console_font"

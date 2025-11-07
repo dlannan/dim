@@ -49,7 +49,7 @@ local fonts     = {}
 -- --------------------------------------------------------------------------------------
 
 local master_img_width = ffi.new("int[1]", 2048)
-local master_img_height = ffi.new("int[1]", 2048)   
+local master_img_height = ffi.new("int[1]", 4096)   
 
 -- --------------------------------------------------------------------------------------
 
@@ -102,6 +102,11 @@ local rune_ranges = ffi.new("nk_rune[9]", {
     0
 })
 
+local fa_rune_ranges = ffi.new("nk_rune[9]", {
+    0xE000, 0xF8FF, -- private use / Nerd Font symbols
+    0
+})
+
 -- --------------------------------------------------------------------------------------
 
 local function font_loader( atlas, font_file, font_size)
@@ -110,6 +115,8 @@ local function font_loader( atlas, font_file, font_size)
     -- Special case where the glyphs need to be default
     if(string.match(font_file, "icons.ttf$")) then 
         config.range = nk.nk_font_default_glyph_ranges()
+    elseif(string.match(font_file, "fontawesome")) then 
+        config.range = fa_rune_ranges
     else 
         config.range = rune_ranges
     end
@@ -335,3 +342,5 @@ renderer.set_cursor      = function()
 end
 
 -- --------------------------------------------------------------------------------------
+
+renderer.find_glyph     = find_glyph
