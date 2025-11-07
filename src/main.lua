@@ -3,7 +3,7 @@
 
 local dirtools  = require("tools.vfs.dirtools").init("dim")
 
---_G.SOKOL_DLL    = "sokol_debug_dll"
+--SOKOL_DLL    = "sokol_debug_dll"
 local sapp      = require("sokol_app")
 sg              = require("sokol_gfx")
 sg              = require("sokol_nuklear")
@@ -34,25 +34,21 @@ SCALE           = sapp.sapp_dpi_scale()
 APPPATH         = dirtools.get_app_path()
 EXEFILE         = string.format("%s%s", APPPATH, dirtools.sep)
 
+WINDOW_NAME     = "Dim v"..VERSION.."["..PLATFORM.."]"
+
 -- --------------------------------------------------------------------------------------
 -- Load in the methods lites registers for rendering and io and such.
 require("src.system")
 require("src.renderer")
 require("src.threed")
 
-local core      = nil
+require("src.platform")
 
 -- --------------------------------------------------------------------------------------
-local shell32   = ffi.load("shell32")
+-- lite core setup
+local core          = nil
 
--- TODO: Need equivalents for OSX and Linux - probably should go in a systems utils.
-ffi.cdef[[
-    void Sleep(uint32_t ms);
-    void *  ShellExecuteA(const void * hwnd, const char * lpOperation, const char * lpFile, const char * lpParameters, char* lpDirectory, int nShowCmd);
-    int ShowWindow(const void * hWnd, int nCmdShow);
-]]
-
-local SW_MAXIMIZE = 3
+local SW_MAXIMIZE   = 3
 
 -- --------------------------------------------------------------------------------------
 -- To use luajits internal profiler - can be useful to find hotspots.
@@ -83,6 +79,8 @@ local function ErrorCheck(status, err)
         print("[Error] ", err)
         print(debug.traceback())
         os.exit()
+    else 
+        return err
     end
 end
 
@@ -108,14 +106,17 @@ local function init()
 
     print("Sokol Is Valid: "..tostring(sg.sg_isvalid()))
 
-    core = nil
-
     sapp.sapp_show_mouse(true)
-    sapp.sapp_set_window_title("Dim v"..VERSION.."["..PLATFORM.."]")
-
-    local hwnd = sapp.sapp_win32_get_hwnd()
-    ffi.C.ShowWindow(hwnd, SW_MAXIMIZE)
+    sapp.sapp_set_window_title(WINDOW_NAME)
+   
     SCALE = sapp.sapp_dpi_scale()
+
+    if(sapp.sapp_isvalid() == true) then 
+        local hwnd = sapp.sapp_win32_get_hwnd()
+        win.ShowWindow(hwnd or WINDOW_NAME, SW_MAXIMIZE)
+    else 
+        print("SAPP isnt valid?")
+    end
 
     imageutils.make_defaults()
     binmgr.init()
@@ -129,24 +130,28 @@ local function input(event)
 end
 
 -- -----------------------------------------------------------------------------------------
+-- This is global too. But I dont think it needs to be. There are some potential 
+--     nk callbacks that might need it to be, so its here like this for the time being.
+winrect         = ffi.new("struct nk_rect[1]", {{0, 0, 1000, 600}})
 
 local function core_init(ctx)
+
     SCALE = tonumber(os.getenv("LITE_SCALE")) or SCALE
     PATHSEP = package.config:sub(1, 1)
     EXEDIR = EXEFILE:match("^(.+)[/\\\\].*$")
     package.path = EXEDIR .. '/data/?.lua;' .. package.path
     package.path = EXEDIR .. '/data/?/init.lua;' .. package.path
-    core = require('core')
+    
+    local core          = require('core')
     core.init()
     core.redraw = true
+    core.ready = true
+    return core
 end
 
 -- -----------------------------------------------------------------------------------------
--- This is global too. But I dont think it needs to be. There are some potential 
---     nk callbacks that might need it to be, so its here like this for the time being.
-winrect         = ffi.new("struct nk_rect[1]", {{0, 0, 1000, 600}})
 
-local function core_run(ctx)
+local function core_run(ctx, core, winrect)
 
     local window_flags =  bit.bor(nk.NK_WINDOW_NO_INPUT, nk.NK_WINDOW_NO_SCROLLBAR, nk.NK_WINDOW_BACKGROUND) 
     if (nk.nk_begin(ctx, "Dim", winrect[0], window_flags) == true) then
@@ -161,7 +166,6 @@ end
 
 -- --------------------------------------------------------------------------------------
 -- Simple init flag. Core init needs some rendering, so the frame has to be running.
-local core_ready = nil 
 
 local function frame()
 
@@ -194,12 +198,11 @@ local function frame()
     renderer.ctx    = ctx 
 
     if(core == nil) then     
-        ErrorCheck( pcall( core_init ) )
+        core = ErrorCheck( pcall( core_init, ctx, core ) )
         -- nk.nk_style_show_cursor(ctx)   
-        core_ready = true
     end 
-    if(core_ready and did_draw == true) then 
-        ErrorCheck( pcall(core_run, ctx) )
+    if(core and core.ready and did_draw == true) then 
+        ErrorCheck( pcall(core_run, ctx, core, winrect ) )
     end
 
     if (w > 0 and h > 0 and system.iconified == false) then
@@ -209,10 +212,10 @@ local function frame()
     pass[0].action.colors[0].clear_value = { 0.25, 0.5, 0.7, 1.0 }
     pass[0].swapchain = slib.sglue_swapchain()
     sg.sg_begin_pass(pass)
-    nk.snk_render(sapp.sapp_width(), sapp.sapp_height())
+    nk.snk_render(w, h)
 
     -- // Render 3D view rects here - will get rects from the docviews.
-    threed_renderer.render_rects(dt, did_draw)
+    threed_renderer.render_rects(dt)
 
     sg.sg_end_pass()
     sg.sg_commit()

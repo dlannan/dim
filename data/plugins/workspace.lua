@@ -102,6 +102,7 @@ end
 
 
 local function load_node(node, t)
+  if t == nil then return nil end
   if t.type == "leaf" then
     local res
     for _, v in ipairs(t.views) do

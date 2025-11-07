@@ -1973,3 +1973,5 @@ SOKOL_APP_API_DECL int sapp_gl_get_minor_version(void);
 /* Android: get native activity handle */
 SOKOL_APP_API_DECL const void* sapp_android_get_native_activity(void);
 
+void _sapp_x11_show_window();
+void _sapp_x11_hide_window();
