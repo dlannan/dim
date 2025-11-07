@@ -9,7 +9,7 @@ local closers = {
   ["{"] = "}"
 }
 local function parenstyle(parenstack)
-  return "paren" .. ((#parenstack % 5) + 1)
+  return "paren" .. ((#parenstack % 3) + 1)
 end
 function tokenizer.tokenize(syntax, text, state)
   state = state or {}
@@ -51,8 +51,9 @@ function tokenizer.tokenize(syntax, text, state)
 end
 
 style.syntax.paren_unbalanced = style.syntax.paren_unbalanced or { common.color "#DC0408" }
-style.syntax.paren1  =  style.syntax.paren1 or { common.color "#FC6F71"}
-style.syntax.paren2  =  style.syntax.paren2 or { common.color "#fcb053"}
-style.syntax.paren3  =  style.syntax.paren3 or { common.color "#fcd476"}
-style.syntax.paren4  =  style.syntax.paren4 or { common.color "#52dab2"}
-style.syntax.paren5  =  style.syntax.paren5 or { common.color "#5a98cf"}
+style.syntax.paren1  =  style.syntax.paren1 or { common.color "#dbd700"}
+style.syntax.paren2  =  style.syntax.paren2 or { common.color "#ce70cb"}
+style.syntax.paren3  =  style.syntax.paren3 or { common.color "#1a9fdb"}
+-- style.syntax.paren4  =  style.syntax.paren4 or { common.color "#52dab2"}
+-- style.syntax.paren5  =  style.syntax.paren5 or { common.color "#5a98cf"}
+
