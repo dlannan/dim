@@ -29,7 +29,7 @@ function ConsoleDoc:new()
 end
 
 function ConsoleDoc:get_name()
-    return "Console"
+    return self.name
 end
 
 function ConsoleDoc:append_line(text, col)
@@ -74,7 +74,6 @@ function ConsoleDoc:write_line(line)
 end
 
 function ConsoleDoc:load(filename)
-    print("Console: ", filename)
     if(string.match(filename, "^Console_")) then
         ConsoleDoc.new(self, filename)
     end
@@ -86,6 +85,7 @@ local ConsoleDocView = DocView:extend()
 function ConsoleDocView:new(doc)
 
     doc = doc or ConsoleDoc()
+    doc.name = string.format("Console_%s", #ConsoleData.consoles)
     self.module = "data.plugins.console"
     ConsoleDocView.super.new(self, doc)
     doc:insert(1, 1, doc.prompt)

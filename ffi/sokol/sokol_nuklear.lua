@@ -11,7 +11,6 @@ local libs = ffi_sokol_nuklear or {
 }
 
 local lib  = ffi_sokol_nuklear or libs[ ffi.os ][ ffi.arch ]
-print(lib)
 local sokol_nuklear   = ffi.load( lib )
 
 ffi.cdef[[

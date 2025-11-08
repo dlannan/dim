@@ -21,7 +21,7 @@ local tinsert       = table.insert
 
 -- --------------------------------------------------------------------------------------
 
-local shc       = require("tools.shader_compiler.shc_compile").init( "dim", false )
+local shc           = require("tools.shader_compiler.shc_compile").init( "dim", false )
 
 -- ----------------------------------------------------------------------------------------
 

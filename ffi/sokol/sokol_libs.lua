@@ -11,7 +11,6 @@ local libs = ffi_sokol_libs or {
 }
 
 local lib  = ffi_sokol_libs or libs[ ffi.os ][ ffi.arch ]
-print(lib)
 local sokol_libs   = ffi.load( lib )
 
 -- load lcpp (ffi.cdef wrapper turned on per default)

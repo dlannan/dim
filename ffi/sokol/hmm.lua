@@ -10,7 +10,6 @@ local libs = ffi_hmm_dll or {
 }
 
 local lib  = ffi_hmm_dll or libs[ ffi.os ][ ffi.arch ]
-print(lib)
 local hmm_lib   = ffi.load( lib )
 
 ffi.cdef[[

@@ -1,12 +1,20 @@
 # dim
-not so lite 
+not so lite
 
 A lite based text editor running from sokol-luajit + nuklear.
+
+Lite links:
+Lite: https://github.com/rxi/lite/
+Plugins: https://github.com/rxi/lite-plugins
+Color Themes: https://github.com/rxi/lite-colors
+
+ (Note Dim has its own VSCode color theme that you can use in Lite or Lite XL).
+
 
 [ 07-11-2025 Updates ]:
 Some cross platform testing and more:
 - Linux tested and working now (3D and Image plugins as well)
-- Added initial sidebar 
+- Added initial sidebar
 - Added FontAwesome 3 (its open source and free to use)
 - Added a platform file as I support more platforms this will fill up.
 
@@ -17,7 +25,7 @@ TODO:
 
 [ 04-11-2025 Updates ]:
 
-More updates. Mostly about new underlying rendering engine. 
+More updates. Mostly about new underlying rendering engine.
 - Added zoom feature for 3d plugin
 - Reworked 3D rendering. Using more specific geometry blocks (soon to be bin organized)
 - Many fixes in fonts, tabs, and some tweaks to init and config.
@@ -37,7 +45,7 @@ Updates coming quickly now:
 - Updated alpha modes (blend and cutoff working well) - will need alpha sorting (coming soon...)
 - Tested some really big scenes (see below - 2.7 mill polys 27 mill verts - not sure the verts number is right)
 - Many complex objects tested well (see hawkei truck below)
-- Many bugs fixed with the cgltf loader. 
+- Many bugs fixed with the cgltf loader.
 
 TODO:
 - Rework the render engine to use my bin system (will allow sorting and ordering as well as priority)
@@ -56,8 +64,8 @@ The 3D viewer is mostly working! A basic 3D rendering system has been added (a 3
 I expect to have some nice features for this:
 - Selectable "up axis" for different model spaces.
 - Information on the model (tris/polys, materials, texture counts)
-- Ability to manually zoom and spin on the Up axis. 
-- Maybe a PBR shader to support some nice rendering. 
+- Ability to manually zoom and spin on the Up axis.
+- Maybe a PBR shader to support some nice rendering.
 
 I still need to fix:
 - [x] Texture coord mapping  - fixed!
@@ -68,10 +76,10 @@ Overall very happy with progress. Will finish up the 3D viewer sections in the n
 
 [ 23-10-2025 Updates already ]:
 
-- Its working. Most (if not all?) of lite's operations are working. Theres a couple of system calls that result in "File Not Found" in the console - this is due to .. and . being included in the file list. Will fix. 
+- Its working. Most (if not all?) of lite's operations are working. Theres a couple of system calls that result in "File Not Found" in the console - this is due to .. and . being included in the file list. Will fix.
 - Added an image view plugin (see pic below)
 - Adding a gltf 3D viewer as well - this will be needed for Thunc.
-- Added an image interface to renderer (load and draw - will add save maybe. Not sure I want image editing). 
+- Added an image interface to renderer (load and draw - will add save maybe. Not sure I want image editing).
 
 <img src="media/2025-10-23_13-58.png">
 
@@ -105,7 +113,7 @@ Note: There are slight variances in these versions vs the original sokol (like b
 
 The intended use for this will be in the sokol-luajit editor (Thunc). It will allow the easy editing, loading, saving of game engine scripts. Debugging should also be able to be added (future goal).
 
-## Sokol-luajit 
+## Sokol-luajit
 
 A luajit + ffi + sokol + nuklear + (some other nice libs) framework providing a rapid development framework for making applications, games or in my case sims.
 
@@ -113,7 +121,7 @@ https://github/dlannan/sokol-luajit/
 
 This is all MIT. Use however you would like. I have a discord that is not very busy :) but if you want to communicate its there.
 
-I have a number of applications being developed with this framework (including dim). Many are in my repositories. I hope to be making simulation games with the framework in 2026 - main recreations of M1A1 Tank Platoon, F16 Combat Pilot, F15 Strike Eagle and some others. 
+I have a number of applications being developed with this framework (including dim). Many are in my repositories. I hope to be making simulation games with the framework in 2026 - main recreations of M1A1 Tank Platoon, F16 Combat Pilot, F15 Strike Eagle and some others.
 
 My initial F18 Interceptor homage can be played here (its in production atm with release date now looking like Jan 2026).
 
