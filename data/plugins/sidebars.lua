@@ -6,8 +6,9 @@ local keymap = require "core.keymap"
 local style = require "core.style"
 local View = require "core.view"
 
-local ICON_SIZE = 24.0 * SCALE
-local SIDEBAR_SIZE = 35.0 * SCALE
+local ICON_SIZE     = 24.0 * SCALE
+local SIDEBAR_SIZE  = 35.0 * SCALE
+local ICON_SPACING  = 8.0 * SCALE
 
 local SidebarData = {
     -- Sidebar can be extended as needed. Add your panel here
@@ -16,7 +17,8 @@ local SidebarData = {
     size = { x = SIDEBAR_SIZE, y = SIDEBAR_SIZE },
     panels  = {
         { id = 1, name = "workspaces", icon = "", module = "workspaces", config = {} },
-        { id = 2, name = "treeview", icon = "", module = "treeview", config = {} } ,
+        { id = 2, name = "search", icon = "", module = "search", config = {} } ,
+        { id = 3, name = "treeview", icon = "", module = "treeview", config = {} } ,
     },
 
     active_selected = 1,  -- Which item is actively selected (should always have one?)
@@ -91,7 +93,7 @@ function SidebarView:on_mouse_moved(px, py, dx, dy)
   self.hovered_item = nil
   for item, x,y,w,h in self:each_item() do
     if px > x and py > y and px <= x + w and py <= y + h then
-      self.hovered_item = item
+      self.hovered_item = item.id
       break
     end
   end
@@ -100,9 +102,9 @@ end
 function SidebarView:on_mouse_pressed(button, x, y)
   if not self.hovered_item then
     return 
-  elseif self.hovered_item.type == "dir" then
-    self.hovered_item.expanded = not self.hovered_item.expanded
-  else
+  -- elseif self.hovered_item == "dir" then
+  --   self.hovered_item.expanded = not self.hovered_item.expanded
+  -- else
     -- TODO: Open panel if it is closed
     -- core.try(function()
     --   core.root_view:open_doc(core.open_doc(self.hovered_item.filename))
@@ -123,7 +125,6 @@ end
 
 function SidebarView:draw()
   self:draw_background(style.background2)
-  local spacing = 5 * SCALE
   local doc = core.active_view.doc
   for item, x,y,w,h in self:each_item() do
     local color = style.dim
@@ -134,19 +135,18 @@ function SidebarView:draw()
     end
 
     -- hovered item background
-    if item == self.hovered_item then
+    if item.id == self.hovered_item then
       renderer.draw_rect(x, y, w, h, style.line_highlight)
-      color = style.accent
+      color = style.icon_hover
     end
-    x = x + spacing
-    y = y + spacing
-    x = common.draw_text(style.fa_font, color, item.icon, nil, x, y, ICON_SIZE + spacing, ICON_SIZE + spacing)
+    x = x + ICON_SPACING
+    x = common.draw_text(style.fa_font, color, item.icon, nil, x, y, ICON_SIZE, ICON_SIZE)
   end
 end
 
 -- init
 local view = SidebarView()
-view.target_width = SIDEBAR_SIZE
+view.target_width = SIDEBAR_SIZE + ICON_SPACING
 local node = core.root_view:get_active_node()
 -- Ok - the node is locked so you cant change its size. So.. we make a special case :)
 local child = node:split("left", view, true)

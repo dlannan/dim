@@ -10,7 +10,6 @@ local libs = ffi_stb_dll or {
 }
 
 local lib  = ffi_stb_dll or libs[ ffi.os ][ ffi.arch ]
-print(lib)
 local stb_lib   = ffi.load( lib )
 
 ffi.cdef[[

@@ -20,6 +20,8 @@ style.line_highlight = { common.color "#2A2A2A" }
 style.scrollbar    = { common.color "#424242" }
 style.scrollbar2   = { common.color "#686868" }
 
+style.icon_hover   = { common.color "#569CD6" }
+
 -- Syntax highlighting (based on VS Code Dark+)
 style.syntax["normal"]   = { common.color "#D4D4D4" }
 style.syntax["symbol"]   = { common.color "#D4D4D4" }
