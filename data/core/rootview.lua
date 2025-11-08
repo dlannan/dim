@@ -175,6 +175,15 @@ function Node:get_node_for_view(view)
   end
 end
 
+function Node:get_named_node(name)
+  for _, v in ipairs(self.views) do
+    local vname = v:get_name()
+    if vname == name then return self end
+  end
+  if self.type ~= "leaf" then
+    return self.a:get_named_node(name) or self.b:get_named_node(name)
+  end
+end
 
 function Node:get_parent_node(root)
   if root.a == self or root.b == self then
@@ -400,6 +409,9 @@ function RootView:get_active_node()
   return self.root_node:get_node_for_view(core.active_view)
 end
 
+function RootView:get_named_node(name)
+  return self.root_node:get_named_node(name)
+end
 
 function RootView:open_doc(doc)
   local node = self:get_active_node()

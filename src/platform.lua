@@ -7,7 +7,7 @@ win = {}
 
 -- --------------------------------------------------------------------------------------
 -- Windows stuff
-if ffi.os == "Windows" then 
+if ffi.os == "Windows" then
 local shell32   = ffi.load("shell32")
 
 -- TODO: Need equivalents for OSX and Linux - probably should go in a systems utils.
@@ -24,7 +24,7 @@ end
 
 -- --------------------------------------------------------------------------------------
 -- Linux stuff
-if ffi.os == "Linux" then 
+if ffi.os == "Linux" then
 
 ffi.cdef[[
 void usleep(unsigned int usec);
@@ -90,6 +90,8 @@ local function maximizeWindow(win)
     X11.XCloseDisplay(display)
 end
 
+-- --------------------------------------------------------------------------------------
+-- TODO: ShowWindow not working properly on Linux yet
 win.ShowWindow  = function(hwnd, state)
     -- Open the display
     local display = X11.XOpenDisplay(hwnd)
@@ -100,7 +102,7 @@ win.ShowWindow  = function(hwnd, state)
     -- auto display = XOpenDisplay(NULL);
     -- Get the root window (or get the window ID through other methods if needed)
     local root_window = X11.XRootWindow(display, 0)
-  
+
     -- Example usage: Get the active window and maximize it
     local NET_ACTIVE_WINDOW = X11.XInternAtom(display, "_NET_ACTIVE_WINDOW", 0)
     local prop = ffi.new("unsigned char*[1]")
@@ -124,7 +126,7 @@ win.ShowWindow  = function(hwnd, state)
     else
         print("Failed to fetch active window.")
     end
-        print("Window resized successfully.")
-    end
+    print("Window resized successfully.")
+end
 
 end
