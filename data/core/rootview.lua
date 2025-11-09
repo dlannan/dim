@@ -267,10 +267,12 @@ function Node:get_locked_size()
   else
     local x1, y1 = self.a:get_locked_size()
     local x2, y2 = self.b:get_locked_size()
-    if x1 and x2 then
+    if x1 and x2 and self.type == "hsplit" then
       local dsx = (x1 < 1 or x2 < 1) and 0 or style.divider_size
+      return x1 + x2 + dsx, y1
+    elseif y1 and y2 and self.type == "vsplit" then
       local dsy = (y1 < 1 or y2 < 1) and 0 or style.divider_size
-      return x1 + x2 + dsx, y1 + y2 + dsy
+      return x1, y1 + y2 + dsy
     end
   end
 end
@@ -279,10 +281,6 @@ end
 local function copy_position_and_size(dst, src)
   dst.position.x, dst.position.y = src.position.x, src.position.y
   dst.size.x, dst.size.y = src.size.x, src.size.y
-  if(dst.size.x > 10000) then 
-    print(debug.traceback())
-    os.exit()
-  end
 end
 
 

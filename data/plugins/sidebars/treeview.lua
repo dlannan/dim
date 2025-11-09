@@ -27,11 +27,13 @@ local TreeView = View:extend()
 
 function TreeView:new()
   TreeView.super.new(self)
+  TreeViewData.view = self
   self.scrollable = true
   self.visible = true
   self.init_size = true
   self.cache = {}
   self.size.x = config.treeview_size
+  TreeViewData.height = self.size.y
 end
 
 function TreeView:get_cached(item)
@@ -125,6 +127,8 @@ function TreeView:update()
 
   -- We have to maintain width to the parent panel!
   self.size.x = TreeViewData.width
+  if(self.size.y > 0) then TreeViewData.last_height = self.size.y end
+
   -- if(self.init_size == true and self.size.x < self.target_width) then
   --   self:move_towards(self.size, "x", self.target_width, 0.5, function() self.init_size = false end)
   -- else 
@@ -136,6 +140,7 @@ end
 
 function TreeView:draw()
   self:draw_background(style.background2)
+  if(self.visible == false) then return end 
 
   local icon_width = style.icon_font:get_width("D")
   local spacing = style.font:get_width(" ") * 2
@@ -176,21 +181,17 @@ function TreeView:draw()
     x = x + spacing
     x = common.draw_text(style.font, color, item.name, nil, x, y, 0, h)
   end
-  print(self:get_content_bounds())
 end
-
--- init
-TreeViewData.panel = core.root_view:get_named_node("Panels")
-TreeViewData.view = TreeView()
-local child = TreeViewData.panel:split("down", TreeViewData.view, true)
 
 -- register commands and keymap
 command.add(nil, {
     ["treeview:toggle"] = function()
       TreeViewData.view.visible = not TreeViewData.view.visible
-      TreeViewData.width = config.treeview_size - TreeViewData.width
+      TreeViewData.height = TreeViewData.view.visible and TreeViewData.last_height or 0 
       TreeViewData.init_size = true
     end,
 })
   
 keymap.add { ["ctrl+\\"] = "treeview:toggle" }
+
+return TreeView

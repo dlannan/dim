@@ -16,10 +16,46 @@ local SidebarData = {
     position = { x = 0, y = 0 },
     size = { x = SIDEBAR_SIZE, y = SIDEBAR_SIZE },
     panels  = {
-        { id = 1, name = "workspaces", icon = "", module = "workspaces", config = {}, command = "workspaces:toggle" },
-        { id = 2, name = "panels", icon = nil, module = "panels", config = {}, command = nil} ,
-        { id = 3, name = "treeview", icon = "", module = "treeview", config = {}, command = "treeview:toggle"} ,
-        { id = 4, name = "search", icon = "", module = "search", config = {}, command = "searchfiles:toggle" } ,
+        { 
+          id = 1, 
+          name = "workspaces", 
+          icon = "", 
+          module = "workspaces", 
+          config = {},  
+          split_dir = nil, 
+          split_node = nil, 
+          command = "workspaces:toggle" 
+        },
+        { 
+          id = 2, 
+          name = "panels", 
+          icon = nil, 
+          module = "panels", 
+          config = { title = config.project_path }, 
+          split_dir = "right", 
+          split_node = "Sidebar", 
+          command = nil
+        },
+        { 
+          id = 3, 
+          name = "treeview", 
+          icon = "", 
+          module = "treeview", 
+          config = {},  
+          split_dir = "down", 
+          split_node = "Panels", 
+          command = "treeview:toggle"
+        },
+        { 
+          id = 4, 
+          name = "search", 
+          icon = "", 
+          module = "search", 
+          config = {},  
+          split_dir = "down", 
+          split_node = "Panels", 
+          command = "searchfiles:toggle" 
+        },
     },
 
     active_selected = 1,  -- Which item is actively selected (should always have one?)
@@ -36,7 +72,7 @@ function SidebarView:new()
   self.visible = true
   self.init_size = true
   self.cache = {}
-  self.size.x = SIDEBAR_SIZE + ICON_SPACING
+  self.width  = SIDEBAR_SIZE + ICON_SPACING
 end
 
 function SidebarView:get_cached(item)
@@ -119,6 +155,7 @@ end
 
 function SidebarView:update()
 
+  self.size.x = self.width 
   -- if(self.init_size == true and self.size.x ~= self.target_width) then
   --   self:move_towards(self.size, "x", self.target_width, 0.5, function() self.init_size = false end)
   -- else 
@@ -161,11 +198,21 @@ local child = node:split("left", view, true)
 local no_errors = true
 
 -- Process panel modules 
+--  Make the base structure for enabled panels
 for i, mod in ipairs(SidebarData.panels) do 
   local modname = "plugins.sidebars." .. mod.module
-  local ok = core.try(require, modname)
-  if ok then
+  local ok, ViewClass = core.try(require, modname)
+  if ok == true then
     core.log_quiet("Loaded plugin %q", modname)
+
+    if(mod.split_dir) then 
+      local node = core.root_view:get_active_node()
+      if(mod.split_node) then 
+        node = core.root_view:get_named_node(mod.split_node)
+      end
+      local view = ViewClass(mod.config) 
+      node:split(mod.split_dir, view, true)
+    end
   else
     no_errors = false
   end  
@@ -176,7 +223,7 @@ command.add(nil, {
   ["sidebarview:toggle"] = function()
     view.visible = not view.visible
     -- view.target_width = SidebarData.size.x - view.target_width
-    view.size.x = SIDEBAR_SIZE + ICON_SPACING - view.size.x
+    view.width = SIDEBAR_SIZE + ICON_SPACING - view.width 
     view.init_size = true
   end,
 })
