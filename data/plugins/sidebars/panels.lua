@@ -28,6 +28,7 @@ end
 
 function PanelsView:new(config)
   PanelsView.super.new(self)
+  self.scrollable = true
   self.header = config.title or ""
   self.size.x = 200
   self.size.y = style.font:get_height()

@@ -9,7 +9,8 @@ local style = require "core.style"
 
 style = require("data.user.colors.vscode_dark")
 config.indent_size = 4
-config.project_path = "F:\\dev\\luajit\\LuaJIT"
+-- config.project_path = "F:\\dev\\luajit\\LuaJIT"
+config.project_path = "."
 
 -- light theme:
 -- require "data.user.colors.fall"
