@@ -8,7 +8,14 @@ local View = require "core.view"
 
 config.treeview_size = 200 * SCALE
 
+local TreeViewData = {
+  width = config.treeview_size
+}
+
 local function get_depth(filename)
+  if(config.project_path ~= ".") then 
+    filename = filename:gsub(config.project_path.."\\","")
+  end
   local n = 0
   for sep in filename:gmatch("[\\/]") do
     n = n + 1
@@ -24,6 +31,7 @@ function TreeView:new()
   self.visible = true
   self.init_size = true
   self.cache = {}
+  self.size.x = config.treeview_size
 end
 
 function TreeView:get_cached(item)
@@ -65,7 +73,6 @@ function TreeView:each_item()
     local y = oy + style.padding.y
     local w = self.size.x
     local h = self:get_item_height()
-
     local i = 1
     while i <= #core.project_files do
       local item = core.project_files[i]
@@ -116,11 +123,13 @@ end
 
 function TreeView:update()
 
-  if(self.init_size == true and self.size.x ~= self.target_width) then
-    self:move_towards(self.size, "x", self.target_width, 0.5, function() self.init_size = false end)
-  else 
-    self.target_width = self.size.x -- Update for border movement
-  end
+  -- We have to maintain width to the parent panel!
+  self.size.x = TreeViewData.width
+  -- if(self.init_size == true and self.size.x < self.target_width) then
+  --   self:move_towards(self.size, "x", self.target_width, 0.5, function() self.init_size = false end)
+  -- else 
+  --   self.target_width = self.size.x -- Update for border movement
+  -- end
 
   TreeView.super.update(self)
 end
@@ -167,22 +176,21 @@ function TreeView:draw()
     x = x + spacing
     x = common.draw_text(style.font, color, item.name, nil, x, y, 0, h)
   end
+  print(self:get_content_bounds())
 end
 
 -- init
-local view = TreeView()
-view.target_width = config.treeview_size
-local node = core.root_view:get_active_node()
--- Ok - the node is locked so you cant change its size. So.. we make a special case :)
-local child = node:split("left", view, true)
+TreeViewData.panel = core.root_view:get_named_node("Panels")
+TreeViewData.view = TreeView()
+local child = TreeViewData.panel:split("down", TreeViewData.view, true)
 
 -- register commands and keymap
 command.add(nil, {
-  ["treeview:toggle"] = function()
-    view.visible = not view.visible
-    view.target_width = config.treeview_size - view.target_width
-    view.init_size = true
-  end,
+    ["treeview:toggle"] = function()
+      TreeViewData.view.visible = not TreeViewData.view.visible
+      TreeViewData.width = config.treeview_size - TreeViewData.width
+      TreeViewData.init_size = true
+    end,
 })
-
+  
 keymap.add { ["ctrl+\\"] = "treeview:toggle" }
