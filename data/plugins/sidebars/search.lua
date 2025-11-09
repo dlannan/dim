@@ -53,13 +53,14 @@ function SearchFilesView:new()
     SearchFilesView.super.new(self)
 
     self.scrollable = true
-    self.visible = true
+    self.visible = false
     self.init_size = true
     self.search_id = #SearchFilesData.searched
     self.cache = {}
 
     -- Initialize font
     SearchFilesView.font = SearchFilesData.font
+    self.width = 200
     return self
 end
 
@@ -80,8 +81,7 @@ function SearchFilesView:get_item_height()
 end
 
 function SearchFilesView:get_name()
-    local id = self.search_id
-    return fmt("Search_%d", id)
+    return "SearchFiles"
 end
 
 function SearchFilesView:check_cache()
@@ -152,6 +152,13 @@ end
 
 function SearchFilesView:update()
   
+    if(self.visible == true) then
+        self.size.x = self.width
+        self.size.y = 200
+    else 
+        self.size.x = 0
+        self.size.y = 0
+    end
     -- SearchFilesView.super.update(self)
 end
 
@@ -199,13 +206,16 @@ function SearchFilesView:draw()
     end
 end
 
--- Command to open a console
+-- Command to toggle file search panel
 command.add(nil, {
-    ["searchfiles:new"] = function()
-        local node = core.root_view:get_named_node("Panels")
-        local view = SearchFilesView(node)
-        SearchFilesData.child = node:split("down", view, true)
+    ["searchfiles:toggle"] = function()
+        local node = core.root_view:get_named_node("SearchFiles")
+        local view = node.active_view 
+        view.visible = not view.visible
     end
 })
+  
+keymap.add { ["ctrl+shift+f"] = "searchfiles:toggle" }
+
 
 return SearchFilesView

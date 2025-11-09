@@ -26,9 +26,9 @@ local function draw_text(x, y, color)
 end
 
 
-function PanelsView:new(title)
+function PanelsView:new(config)
   PanelsView.super.new(self)
-  self.header = title or ""
+  self.header = config.title or ""
   self.size.x = 200
   self.size.y = style.font:get_height()
 end
@@ -55,9 +55,4 @@ function PanelsView:draw()
     draw_text(x, y, style.dim)
 end
 
-
-local hview = PanelsView(config.project_path) 
-local snode = core.root_view:get_named_node("Sidebar")
-snode:split("right", hview, true)
-
-
+return PanelsView
