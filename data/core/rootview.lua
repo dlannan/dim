@@ -258,7 +258,6 @@ function Node:get_divider_rect()
   end
 end
 
-
 function Node:get_locked_size()
   if self.type == "leaf" then
     if self.locked then
@@ -280,6 +279,10 @@ end
 local function copy_position_and_size(dst, src)
   dst.position.x, dst.position.y = src.position.x, src.position.y
   dst.size.x, dst.size.y = src.size.x, src.size.y
+  if(dst.size.x > 10000) then 
+    print(debug.traceback())
+    os.exit()
+  end
 end
 
 
@@ -346,7 +349,7 @@ function Node:draw_tabs()
   local x, y, _, h = self:get_tab_rect(1)
   local ds = style.divider_size
   core.push_clip_rect(x, y, self.size.x, h)
-  renderer.draw_rect(x, y, self.size.x, h, style.background2)
+  renderer.draw_rect(x, y, self.size.x, h, style.background3)
   renderer.draw_rect(x, y + h - ds, self.size.x, ds, style.divider)
 
   for i, view in ipairs(self.views) do

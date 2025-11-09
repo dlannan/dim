@@ -229,6 +229,7 @@ renderer.font.load = function(path, size)
         return self.tab_width 
     end
     new_font.get_width = function(self, text) 
+        if(text==nil) then print(debug.traceback()) end
         local text = checkstring(text)
         return self.font.handle.width(self.font.handle.userdata, self.font.handle.height, text, #text)
     end

@@ -16,9 +16,10 @@ local SidebarData = {
     position = { x = 0, y = 0 },
     size = { x = SIDEBAR_SIZE, y = SIDEBAR_SIZE },
     panels  = {
-        { id = 1, name = "workspaces", icon = "", module = "workspaces", config = {} },
-        { id = 2, name = "search", icon = "", module = "search", config = {} } ,
-        { id = 3, name = "treeview", icon = "", module = "treeview", config = {} } ,
+        { id = 1, name = "workspaces", icon = "", module = "workspaces", config = {}, command = "workspaces:toggle" },
+        { id = 2, name = "panels", icon = nil, module = "panels", config = {}, command = nil} ,
+        { id = 3, name = "treeview", icon = "", module = "treeview", config = {}, command = "treeview:toggle"} ,
+        { id = 4, name = "search", icon = "", module = "search", config = {}, command = "searchfiles:toggle" } ,
     },
 
     active_selected = 1,  -- Which item is actively selected (should always have one?)
@@ -35,6 +36,7 @@ function SidebarView:new()
   self.visible = true
   self.init_size = true
   self.cache = {}
+  self.size.x = SIDEBAR_SIZE + ICON_SPACING
 end
 
 function SidebarView:get_cached(item)
@@ -52,7 +54,7 @@ function SidebarView:get_cached(item)
 end
 
 function SidebarView:get_name()
-  return "Project"
+  return "Sidebar"
 end
 
 function SidebarView:get_item_height()
@@ -80,10 +82,12 @@ function SidebarView:each_item()
     local i = 1
     while i <= #SidebarData.panels do
       local item = SidebarData.panels[i]
-      local cached = self:get_cached(item)
+      if(item.icon) then 
+        local cached = self:get_cached(item)
 
-      coroutine.yield(cached, ox, y, w, h)
-      y = y + h
+        coroutine.yield(cached, ox, y, w, h)
+        y = y + h
+      end
       i = i + 1
     end
   end)
@@ -99,26 +103,27 @@ function SidebarView:on_mouse_moved(px, py, dx, dy)
   end
 end
 
-function SidebarView:on_mouse_pressed(button, x, y)
+function SidebarView:on_mouse_released(button, x, y)
   if not self.hovered_item then
     return 
   -- elseif self.hovered_item == "dir" then
   --   self.hovered_item.expanded = not self.hovered_item.expanded
-  -- else
+  else
     -- TODO: Open panel if it is closed
-    -- core.try(function()
-    --   core.root_view:open_doc(core.open_doc(self.hovered_item.filename))
-    -- end)
+    local item = SidebarData.panels[self.hovered_item]
+    core.try(function()
+      command.perform(item.command)
+    end)
   end
 end
 
 function SidebarView:update()
 
-  if(self.init_size == true and self.size.x ~= self.target_width) then
-    self:move_towards(self.size, "x", self.target_width, 0.5, function() self.init_size = false end)
-  else 
-    self.target_width = self.size.x -- Update for border movement
-  end
+  -- if(self.init_size == true and self.size.x ~= self.target_width) then
+  --   self:move_towards(self.size, "x", self.target_width, 0.5, function() self.init_size = false end)
+  -- else 
+  --   self.target_width = self.size.x -- Update for border movement
+  -- end
 
   SidebarView.super.update(self)
 end
@@ -139,19 +144,22 @@ function SidebarView:draw()
       renderer.draw_rect(x, y, w, h, style.line_highlight)
       color = style.icon_hover
     end
-    x = x + ICON_SPACING
-    x = common.draw_text(style.fa_font, color, item.icon, nil, x, y, ICON_SIZE, ICON_SIZE)
+
+    if(item.icon) then 
+      x = x + ICON_SPACING
+      x = common.draw_text(style.fa_font, color, item.icon, nil, x, y, ICON_SIZE, ICON_SIZE)
+    end
   end
 end
 
--- init
+-- The side bar sets up the whole display view.
+-- First a sidebar is made. Then the Panels column, then the documents view.
 local view = SidebarView()
-view.target_width = SIDEBAR_SIZE + ICON_SPACING
 local node = core.root_view:get_active_node()
--- Ok - the node is locked so you cant change its size. So.. we make a special case :)
 local child = node:split("left", view, true)
 
 local no_errors = true
+
 -- Process panel modules 
 for i, mod in ipairs(SidebarData.panels) do 
   local modname = "plugins.sidebars." .. mod.module
@@ -167,7 +175,8 @@ end
 command.add(nil, {
   ["sidebarview:toggle"] = function()
     view.visible = not view.visible
-    view.target_width = SidebarData.size.x - view.target_width
+    -- view.target_width = SidebarData.size.x - view.target_width
+    view.size.x = SIDEBAR_SIZE + ICON_SPACING - view.size.x
     view.init_size = true
   end,
 })

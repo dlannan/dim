@@ -62,7 +62,7 @@ local function project_scan_thread()
   while true do
     -- get project files and replace previous table if the new table is
     -- different
-    local t = get_files(".")
+    local t = get_files(config.project_path or ".")
     if diff_files(core.project_files, t) then
       core.project_files = t
       core.redraw = true
@@ -112,8 +112,8 @@ function core.init()
 
   core.add_thread(project_scan_thread)
   command.add_defaults()
-  local got_plugin_error = not core.load_plugins()
   local got_user_error = not core.try(require, "user")
+  local got_plugin_error = not core.load_plugins()
   local got_project_error = not core.load_project_module()
 
   for _, filename in ipairs(files) do

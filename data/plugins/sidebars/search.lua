@@ -50,8 +50,8 @@ local SearchFilesView = View:extend()
 
 -- Helper: create a new console doc
 function SearchFilesView:new()
-
     SearchFilesView.super.new(self)
+
     self.scrollable = true
     self.visible = true
     self.init_size = true
@@ -60,6 +60,7 @@ function SearchFilesView:new()
 
     -- Initialize font
     SearchFilesView.font = SearchFilesData.font
+    return self
 end
 
 function SearchFilesView:get_cached(item)
@@ -201,9 +202,9 @@ end
 -- Command to open a console
 command.add(nil, {
     ["searchfiles:new"] = function()
-        local view = SearchFilesView()
-        local node = core.root_view:get_named_node("Project")
-        SearchFilesData.child = node:split("up", view, true)
+        local node = core.root_view:get_named_node("Panels")
+        local view = SearchFilesView(node)
+        SearchFilesData.child = node:split("down", view, true)
     end
 })
 
