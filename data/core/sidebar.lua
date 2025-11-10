@@ -46,16 +46,16 @@ local SidebarData = {
           split_node = "Panels", 
           command = "treeview:toggle"
         },
-        { 
-          id = 4, 
-          name = "search", 
-          icon = "", 
-          module = "search", 
-          config = {},  
-          split_dir = "down", 
-          split_node = "Panels", 
-          command = "searchfiles:toggle" 
-        },
+        -- { 
+        --   id = 4, 
+        --   name = "search", 
+        --   icon = "", 
+        --   module = "search", 
+        --   config = {},  
+        --   split_dir = "down", 
+        --   split_node = "Panels", 
+        --   command = "searchfiles:toggle" 
+        -- },
     },
 
     active_selected = 1,  -- Which item is actively selected (should always have one?)
@@ -74,6 +74,31 @@ function SidebarView:new()
   self.cache = {}
   self.width  = SIDEBAR_SIZE + ICON_SPACING
 end
+
+function SidebarView:load_modules()
+  local no_errors = true
+
+  -- Process panel modules 
+  --  Make the base structure for enabled panels
+  for i, mod in ipairs(SidebarData.panels) do 
+    local modname = "plugins.sidebars." .. mod.module
+    local ok, ViewClass = core.try(require, modname)
+    if ok == true then
+      core.log_quiet("Loaded plugin %q", modname)
+  
+      if(mod.split_dir) then 
+        local node = core.root_view:get_active_node()
+        if(mod.split_node) then 
+          node = core.root_view:get_named_node(mod.split_node)
+        end
+        local view = ViewClass(mod.config) 
+        node:split(mod.split_dir, view, true)
+      end
+    else
+      no_errors = false
+    end  
+  end
+end  
 
 function SidebarView:get_cached(item)
   local t = self.cache[item.filename]
@@ -141,7 +166,7 @@ end
 
 function SidebarView:on_mouse_released(button, x, y)
   if not self.hovered_item then
-    return 
+    core.root_view:set_focus_view()
   -- elseif self.hovered_item == "dir" then
   --   self.hovered_item.expanded = not self.hovered_item.expanded
   else
@@ -155,12 +180,11 @@ end
 
 function SidebarView:update()
 
-  self.size.x = self.width 
-  -- if(self.init_size == true and self.size.x ~= self.target_width) then
-  --   self:move_towards(self.size, "x", self.target_width, 0.5, function() self.init_size = false end)
-  -- else 
-  --   self.target_width = self.size.x -- Update for border movement
-  -- end
+  if(self.init_size == true and self.size.x ~= self.width) then
+    self:move_towards(self.size, "x", self.width, 0.5, function() self.init_size = false end)
+  else 
+    self.width = self.size.x -- Update for border movement
+  end
 
   SidebarView.super.update(self)
 end
@@ -191,41 +215,20 @@ end
 
 -- The side bar sets up the whole display view.
 -- First a sidebar is made. Then the Panels column, then the documents view.
-local view = SidebarView()
-local node = core.root_view:get_active_node()
-local child = node:split("left", view, true)
-
-local no_errors = true
-
--- Process panel modules 
---  Make the base structure for enabled panels
-for i, mod in ipairs(SidebarData.panels) do 
-  local modname = "plugins.sidebars." .. mod.module
-  local ok, ViewClass = core.try(require, modname)
-  if ok == true then
-    core.log_quiet("Loaded plugin %q", modname)
-
-    if(mod.split_dir) then 
-      local node = core.root_view:get_active_node()
-      if(mod.split_node) then 
-        node = core.root_view:get_named_node(mod.split_node)
-      end
-      local view = ViewClass(mod.config) 
-      node:split(mod.split_dir, view, true)
-    end
-  else
-    no_errors = false
-  end  
-end
+-- local view = SidebarView()
+-- local node = core.root_view:get_active_node()
+-- local child = node:split("left", view, true)
 
 -- register commands and keymap
 command.add(nil, {
   ["sidebarview:toggle"] = function()
-    view.visible = not view.visible
+    SidebarView.visible = not SidebarView.visible
     -- view.target_width = SidebarData.size.x - view.target_width
-    view.width = SIDEBAR_SIZE + ICON_SPACING - view.width 
-    view.init_size = true
+    SidebarView.width = SIDEBAR_SIZE + ICON_SPACING - SidebarView.width 
+    SidebarView.init_size = true
   end,
 })
 
 keymap.add { ["ctrl+shift+\\"] = "sidebarview:toggle" }
+
+return SidebarView

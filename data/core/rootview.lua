@@ -147,6 +147,7 @@ function Node:add_view(view)
   if self.views[1] and self.views[1]:is(EmptyView) then
     table.remove(self.views)
   end
+  view.node = self
   table.insert(self.views, view)
   self:set_active_view(view)
 end
@@ -414,11 +415,15 @@ function RootView:get_named_node(name)
   return self.root_node:get_named_node(name)
 end
 
+function RootView:set_focus_view()
+  core.set_active_view(core.focus_view or core.last_active_view)
+end
+
 function RootView:open_doc(doc)
   local node = self:get_active_node()
-  if node.locked and core.last_active_view then
-    core.set_active_view(core.last_active_view)
-    node = self:get_active_node()
+  if node.locked and core.focus_view then
+    self:set_focus_view()
+    node = core.focus_view.node
   end
   assert(not node.locked, "Cannot open doc on locked node")
   for i, view in ipairs(node.views) do
