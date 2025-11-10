@@ -7,6 +7,7 @@ local keymap
 local RootView
 local StatusView
 local CommandView
+local SidebarView
 local Doc
 
 local core = {}
@@ -80,6 +81,8 @@ function core.init()
   RootView = require "core.rootview"
   StatusView = require "core.statusview"
   CommandView = require "core.commandview"
+  SidebarView = require "core.sidebar"
+
   Doc = require "core.doc"
 
   local project_dir = EXEDIR
@@ -106,15 +109,18 @@ function core.init()
   core.root_view = RootView()
   core.command_view = CommandView()
   core.status_view = StatusView()
+  core.sidebar_view = SidebarView()
 
   core.root_view.root_node:split("down", core.command_view, true)
   core.root_view.root_node.b:split("down", core.status_view, true)
+  core.root_view.root_node.a:split("left", core.sidebar_view, true)
 
   core.add_thread(project_scan_thread)
   command.add_defaults()
-  local got_user_error = not core.try(require, "user")
   local got_plugin_error = not core.load_plugins()
+  local got_user_error = not core.try(require, "user")
   local got_project_error = not core.load_project_module()
+  core.sidebar_view:load_modules()
 
   for _, filename in ipairs(files) do
     core.root_view:open_doc(core.open_doc(filename))
@@ -219,6 +225,10 @@ function core.set_active_view(view)
     core.last_active_view = core.active_view
     core.active_view = view
   end
+  if view ~= core.focus_view and view.node.locked ~= true and view.node.type ~= "hsplit" and view.node.type ~= "vsplit" then 
+    core.focus_view = view 
+    print("setting focus:", view, view.node, view.node.locked, view.node.type)
+  end 
 end
 
 
