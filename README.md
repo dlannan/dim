@@ -10,6 +10,12 @@ Color Themes: https://github.com/rxi/lite-colors
 
  (Note Dim has its own VSCode color theme that you can use in Lite or Lite XL).
 
+[ 12-11-2025 Updates ]:
+Mostly working on workspaces, sidebar and focus implementation:
+- Added a focus for views. Its not pretty and will be redone. Need to separate active and focus.
+- More improvements in organization of panels (for sidebar)
+- Improved sidebar operation (will be able to animate panels)
+Lots to do here. Kinda boring backend arch. Aim is to make things more referential - the lite system is too OO and will cause many problems in the future, so it needs to be done.
 
 [ 07-11-2025 Updates ]:
 Some cross platform testing and more:
