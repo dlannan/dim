@@ -163,6 +163,8 @@ function SearchFilesView:update()
 end
 
 function SearchFilesView:draw()
+
+    if(self.visible == false) then return end
     self:draw_background(style.background2)
 
     local icon_width = style.icon_font:get_width("D")

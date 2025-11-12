@@ -219,15 +219,20 @@ function core.reload_module(name)
 end
 
 
-function core.set_active_view(view)
+function core.set_active_view(view, node)
   assert(view, "Tried to set active view to nil")
   if view ~= core.active_view then
     core.last_active_view = core.active_view
     core.active_view = view
   end
-  if view ~= core.focus_view and view.node.locked ~= true and view.node.type ~= "hsplit" and view.node.type ~= "vsplit" then 
-    core.focus_view = view 
-    print("setting focus:", view, view.node, view.node.locked, view.node.type)
+  if view and view._is_locked ~= true then
+    local node = node or core.root_view:get_view_node(view)
+    if(node) then 
+      -- print("setting focus:", view, node, view._is_locked, node.type, view:get_name())
+      if node.type == "leaf" then 
+        core.focus_view = view 
+      end
+    end
   end 
 end
 

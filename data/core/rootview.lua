@@ -101,7 +101,11 @@ function Node:split(dir, view, locked)
   self:consume(Node(type))
   self.a = child
   self.b = Node()
-  if view then self.b:add_view(view) end
+  
+  if view then 
+    view._is_locked = locked -- dodgy "prelock lock!"
+    self.b:add_view(view) 
+  end
   if locked then
     self.b.locked = locked
     core.set_active_view(last_active)
@@ -147,7 +151,6 @@ function Node:add_view(view)
   if self.views[1] and self.views[1]:is(EmptyView) then
     table.remove(self.views)
   end
-  view.node = self
   table.insert(self.views, view)
   self:set_active_view(view)
 end
@@ -156,7 +159,7 @@ end
 function Node:set_active_view(view)
   assert(self.type == "leaf", "Tried to set active view on non-leaf node")
   self.active_view = view
-  core.set_active_view(view)
+  core.set_active_view(view, self)
 end
 
 
@@ -411,19 +414,24 @@ function RootView:get_active_node()
   return self.root_node:get_node_for_view(core.active_view)
 end
 
+function RootView:get_view_node(view)
+  return self.root_node:get_node_for_view(view)
+end
+
 function RootView:get_named_node(name)
   return self.root_node:get_named_node(name)
 end
 
 function RootView:set_focus_view()
-  core.set_active_view(core.focus_view or core.last_active_view)
+  -- print("Setting focus view...", core.focus_view, core.focus_view._is_locked)
+  core.set_active_view(core.focus_view)
 end
 
 function RootView:open_doc(doc)
   local node = self:get_active_node()
   if node.locked and core.focus_view then
     self:set_focus_view()
-    node = core.focus_view.node
+    node = self.root_node:get_node_for_view(core.focus_view)
   end
   assert(not node.locked, "Cannot open doc on locked node")
   for i, view in ipairs(node.views) do

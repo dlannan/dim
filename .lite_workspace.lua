@@ -1,1 +1,1 @@
-return {["type"]="leaf",["views"]={[1]={["text"]=false,["selection"]={[1]=33,[2]=55,[3]=33,[4]=55},["type"]="doc",["scroll"]={["x"]=0,["y"]=0},["filename"]="README.md",["active"]=false},[2]={["text"]=false,["selection"]={[1]=19,[2]=19,[3]=19,[4]=19},["type"]="doc",["scroll"]={["x"]=0,["y"]=0},["filename"]="LICENSE",["active"]=true}},["active_view"]=2}
+return {["type"]="leaf",["views"]={}}
