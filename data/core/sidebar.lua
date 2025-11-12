@@ -70,12 +70,12 @@ style.fa_font   = renderer.font.load(EXEDIR .. "/data/fonts/fontawesome-webfont.
 local SidebarView = View:extend()
 
 function SidebarView:new()
-    SidebarView.super.new(self)
+  SidebarView.super.new(self)
   self.scrollable = true
   self.visible = true
   self.init_size = true
   self.cache = {}
-  self.width  = SIDEBAR_SIZE + ICON_SPACING
+  SidebarView.width  = SIDEBAR_SIZE + ICON_SPACING
 end
 
 function SidebarView:load_modules()
@@ -190,8 +190,8 @@ end
 
 function SidebarView:update()
 
-  if(self.init_size == true and self.size.x ~= self.width) then
-    self:move_towards(self.size, "x", self.width, 0.5, function() self.init_size = false end)
+  if(self.init_size == true and self.size.x ~= SidebarView.width) then
+    self:move_towards(self.size, "x", SidebarView.width, 0.5, function() self.init_size = false end)
   else 
     self.width = self.size.x -- Update for border movement
   end

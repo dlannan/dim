@@ -7,13 +7,11 @@ local keymap = require "core.keymap"
 local config = require "core.config"
 local style = require "core.style"
 
+-- my own vscode theme
 style = require("data.user.colors.vscode_dark")
 config.indent_size = 4
 -- config.project_path = "F:\\dev\\luajit\\LuaJIT"
 config.project_path = "."
-
--- light theme:
--- require "data.user.colors.fall"
 
 -- key binding:
 -- keymap.add { ["ctrl+escape"] = "core:quit" }

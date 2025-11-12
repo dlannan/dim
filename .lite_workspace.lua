@@ -1,1 +1,1 @@
-return {["type"]="leaf",["views"]={}}
+return {["views"]={},["type"]="leaf"}
