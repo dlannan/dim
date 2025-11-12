@@ -14,6 +14,9 @@ Color Themes: https://github.com/rxi/lite-colors
 
  (Note Dim has its own VSCode color theme that you can use in Lite or Lite XL).
 
+<img src="media/2025-11-04_18-54.png">
+
+
 [ 12-11-2025 Updates ]:
 
 Mostly working on workspaces, sidebar and focus implementation:
@@ -46,8 +49,6 @@ More updates. Mostly about new underlying rendering engine.
 
 Next Up:
 - Workspaces, plugin manager and finish binning for 3D viewer.
-
-<img src="media/2025-11-04_18-54.png">
 
 
 [ 31-10-2025 Updates ]:
