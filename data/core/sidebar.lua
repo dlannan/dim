@@ -6,56 +6,59 @@ local keymap = require "core.keymap"
 local style = require "core.style"
 local View = require "core.view"
 
-local ICON_SIZE     = 24.0 * SCALE
+local PanelView = require("plugins.sidebars.panels")
+
+local ICON_SIZE     = 20.0 * SCALE
 local SIDEBAR_SIZE  = 35.0 * SCALE
-local ICON_SPACING  = 8.0 * SCALE
+local ICON_SPACING  = 12.0 * SCALE
 
 local SidebarData = {
     -- Sidebar can be extended as needed. Add your panel here
     color = style.line_number,
     position = { x = 0, y = 0 },
     size = { x = SIDEBAR_SIZE, y = SIDEBAR_SIZE },
+    panel_select = 1,
     panels  = {
+        -- { 
+        --   id = 1, 
+        --   name = "workspaces", 
+        --   icon = "", 
+        --   module = "workspaces", 
+        --   config = {},  
+        --   split_dir = nil, 
+        --   split_node = nil, 
+        --   command = "workspaces:toggle" 
+        -- },
         { 
           id = 1, 
-          name = "workspaces", 
-          icon = "", 
-          module = "workspaces", 
-          config = {},  
-          split_dir = nil, 
-          split_node = nil, 
-          command = "workspaces:toggle" 
-        },
-        { 
-          id = 2, 
-          name = "panels", 
-          icon = nil, 
-          module = "panels", 
-          config = { title = config.project_path }, 
-          split_dir = "right", 
-          split_node = "Sidebar", 
-          command = nil
-        },
-        { 
-          id = 3, 
           name = "treeview", 
           icon = "", 
           module = "treeview", 
           config = {},  
           split_dir = "down", 
           split_node = "Panels", 
-          command = "treeview:toggle"
+          command = nil,
         },
-        -- { 
-        --   id = 4, 
-        --   name = "search", 
-        --   icon = "", 
-        --   module = "search", 
-        --   config = {},  
-        --   split_dir = "down", 
-        --   split_node = "Panels", 
-        --   command = "searchfiles:toggle" 
-        -- },
+        { 
+          id = 2, 
+          name = "search", 
+          icon = "", 
+          module = "search", 
+          config = {},  
+          split_dir = "down", 
+          split_node = "Panels", 
+          command = nil,
+        },
+        { 
+          id = 3, 
+          name = "plugin-manager", 
+          icon = "", 
+          module = "plugin_manager", 
+          config = {},  
+          split_dir = "down", 
+          split_node = "Panels", 
+          command = nil,
+        },
     },
 
     active_selected = 1,  -- Which item is actively selected (should always have one?)
@@ -78,6 +81,9 @@ end
 function SidebarView:load_modules()
   local no_errors = true
 
+  local view = PanelView({ title = config.project_path }) 
+  local child = core.root_view:get_view_node(core.sidebar_view):split("right", view, true)
+
   -- Process panel modules 
   --  Make the base structure for enabled panels
   for i, mod in ipairs(SidebarData.panels) do 
@@ -92,7 +98,8 @@ function SidebarView:load_modules()
           node = core.root_view:get_named_node(mod.split_node)
         end
         local view = ViewClass(mod.config) 
-        node:split(mod.split_dir, view, true)
+        local child = node:split(mod.split_dir, view, true)
+        mod.view = view
       end
     else
       no_errors = false
@@ -106,9 +113,9 @@ function SidebarView:get_cached(item)
     t = {}
     t.icon = item.icon
     t.id = item.id
-    t.selected = item.id == SidebarData.active_selected
     t.name = item.name
-    t.depth = 1
+    t.command = item.command
+    t.view = item.view
     self.cache[t.id] = t
   end
   return t
@@ -119,7 +126,7 @@ function SidebarView:get_name()
 end
 
 function SidebarView:get_item_height()
-  return style.fa_font:get_height() + style.padding.y
+  return ICON_SIZE + ICON_SPACING
 end
 
 function SidebarView:check_cache()
@@ -136,7 +143,7 @@ function SidebarView:each_item()
   return coroutine.wrap(function()
     self:check_cache()
     local ox, oy = self:get_content_offset()
-    local y = oy + style.padding.y
+    local y = oy + ICON_SPACING
     local w = self.size.x
     local h = self:get_item_height()
 
@@ -167,14 +174,17 @@ end
 function SidebarView:on_mouse_released(button, x, y)
   if not self.hovered_item then
     core.root_view:set_focus_view()
-  -- elseif self.hovered_item == "dir" then
+    -- elseif self.hovered_item == "dir" then
   --   self.hovered_item.expanded = not self.hovered_item.expanded
   else
     -- TODO: Open panel if it is closed
     local item = SidebarData.panels[self.hovered_item]
-    core.try(function()
-      command.perform(item.command)
-    end)
+    SidebarData.panel_select = self.hovered_item
+    if(item.command) then 
+      core.try(function()
+        command.perform(item.command)
+      end)
+    end
   end
 end
 
@@ -185,7 +195,6 @@ function SidebarView:update()
   else 
     self.width = self.size.x -- Update for border movement
   end
-
   SidebarView.super.update(self)
 end
 
@@ -195,29 +204,35 @@ function SidebarView:draw()
   for item, x,y,w,h in self:each_item() do
     local color = style.dim
 
+    -- Handle state for the panels - only 1 active at a time (for now)
+    -- if(SidebarData.panel_select == item.id) then 
+    --   item.view.visible = true
+    -- else 
+    --   item.view.visible = false
+    -- end
+
     -- highlight active_view doc
-    if item.selected == true then
+    if item.id == SidebarData.panel_select then
       color = style.accent
     end
-
+    
     -- hovered item background
     if item.id == self.hovered_item then
       renderer.draw_rect(x, y, w, h, style.line_highlight)
       color = style.icon_hover
     end
 
+    -- highlight active_view doc
+    if item.id == SidebarData.panel_select then
+      renderer.draw_rect(x, y, 2, h, style.text)
+    end
+    
     if(item.icon) then 
       x = x + ICON_SPACING
-      x = common.draw_text(style.fa_font, color, item.icon, nil, x, y, ICON_SIZE, ICON_SIZE)
+      x = common.draw_text(style.fa_font, color, item.icon, nil, x, y+ICON_SPACING * 0.5, ICON_SIZE, ICON_SIZE)
     end
   end
 end
-
--- The side bar sets up the whole display view.
--- First a sidebar is made. Then the Panels column, then the documents view.
--- local view = SidebarView()
--- local node = core.root_view:get_active_node()
--- local child = node:split("left", view, true)
 
 -- register commands and keymap
 command.add(nil, {
