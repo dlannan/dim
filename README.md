@@ -4,9 +4,13 @@ not so lite
 A lite based text editor running from sokol-luajit + nuklear.
 
 Lite links:
+
 Lite: https://github.com/rxi/lite/
+
 Plugins: https://github.com/rxi/lite-plugins
+
 Color Themes: https://github.com/rxi/lite-colors
+
 
  (Note Dim has its own VSCode color theme that you can use in Lite or Lite XL).
 
