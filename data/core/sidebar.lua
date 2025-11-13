@@ -17,54 +17,15 @@ local SidebarData = {
     color = style.line_number,
     position = { x = 0, y = 0 },
     size = { x = SIDEBAR_SIZE, y = SIDEBAR_SIZE },
-    panel_select = 1,
-    panels  = {
---         -- {
---         --   id = 1,
---         --   name = "workspaces",
---         --   icon = "",
---         --   module = "workspaces",
---         --   config = {},
---         --   split_dir = nil,
---         --   split_node = nil,
---         --   command = "workspaces:toggle"
---         -- },
---         {
---           id = 1,
---           name = "treeview",
---           icon = "",
---           module = "treeview",
---           config = {},
---           split_dir = "down",
---           split_node = "Panels",
---           command = nil,
---         },
---         {
---           id = 2,
---           name = "search",
---           icon = "",
---           module = "search",
---           config = {},
---           split_dir = "down",
---           split_node = "Panels",
---           command = nil,
---         },
---         {
---           id = 3,
---           name = "plugin-manager",
---           icon = "",
---           module = "plugin_manager",
---           config = {},
---           split_dir = "down",
---           split_node = "Panels",
---           command = nil,
---         },
-    },
 
-    active_selected = 1,  -- Which item is actively selected (should always have one?)
+    panel_select = 0,
+    -- The panels are filles out by the panel views (see treeview for example)
+    panels  = {},
+    -- Which item is actively selected (should always have one?)
+    active_selected = 1,  
 }
 
--- Add a font to style so other plugins can use it if needed
+-- Add font awesome to style so other plugins can use it if needed
 style.fa_font   = renderer.font.load(EXEDIR .. "/data/fonts/fontawesome-webfont.ttf", ICON_SIZE)
 
 local SidebarView = View:extend()
@@ -110,9 +71,8 @@ function SidebarView:init_panels()
       if(mod.split_node) then
         node = core.root_view:get_named_node(mod.split_node)
       end
-      local view = mod.view_class(mod.config)
-      local child = node:split(mod.split_dir, view, true)
-      mod.view = view
+      mod.view = mod.view_class(mod.config)
+      local child = node:split(mod.split_dir, mod.view, true)
     end 
   end
 end
@@ -187,13 +147,29 @@ function SidebarView:on_mouse_released(button, x, y)
     -- elseif self.hovered_item == "dir" then
   --   self.hovered_item.expanded = not self.hovered_item.expanded
   else
-    -- TODO: Open panel if it is closed
+
     local item = SidebarData.panels[self.hovered_item]
-    SidebarData.panel_select = self.hovered_item
-    if(item.command) then
-      core.try(function()
-        command.perform(item.command)
-      end)
+    if(item) then 
+      -- Open the panel (toggle panels usign show_panel method - must be implemented)
+      if(SidebarData.panel_select ~= self.hovered_item) then 
+        SidebarData.panel_select = self.hovered_item
+        -- Iterate panels and set correct one open
+        for k,v in ipairs(SidebarData.panels) do 
+          if(v.view) then 
+            if(SidebarData.panel_select == v.id) then 
+              if(v.view.show_panel) then v.view:show_panel(true) end
+            else 
+              if(v.view.show_panel) then v.view:show_panel(false) end
+            end
+          end
+        end
+      else 
+        if(item.command) then
+          core.try(function()
+            command.perform(item.command)
+          end)
+        end
+      end
     end
   end
 end

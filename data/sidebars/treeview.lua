@@ -147,6 +147,10 @@ function TreeView:update()
   TreeView.super.update(self)
 end
 
+function TreeView:show_panel(visible)
+  self.visible = visible 
+end
+
 function TreeView:draw()
   self:draw_background(style.background2)
   if(self.visible == false) then return end
