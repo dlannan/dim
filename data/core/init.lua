@@ -117,10 +117,13 @@ function core.init()
 
   core.add_thread(project_scan_thread)
   command.add_defaults()
+
+  core.sidebar_view:init()
+
   local got_plugin_error = not core.load_plugins()
   local got_user_error = not core.try(require, "user")
   local got_project_error = not core.load_project_module()
-  core.sidebar_view:load_modules()
+  local got_sidebar_error = not core.load_panels()
 
   for _, filename in ipairs(files) do
     core.root_view:open_doc(core.open_doc(filename))
@@ -193,6 +196,23 @@ function core.load_plugins()
   return no_errors
 end
 
+function core.load_panels()
+  local no_errors = true
+  local files = system.list_dir(EXEDIR .. "/data/sidebars")
+  for _, filename in ipairs(files) do
+    local modname = "sidebars." .. filename:gsub(".lua$", "")
+    local ok, ViewClass = core.try(require, modname)
+    if ok then
+      core.log_quiet("Loaded sidebar module %q", modname)
+      core.sidebar_view:load_panel(ViewClass)
+    else
+      no_errors = false
+    end
+  end
+  core.sidebar_view:init_panels()
+  return no_errors
+end
+
 
 function core.load_project_module()
   local filename = ".lite_project.lua"
@@ -227,13 +247,13 @@ function core.set_active_view(view, node)
   end
   if view and view._is_locked ~= true then
     local node = node or core.root_view:get_view_node(view)
-    if(node) then 
+    if(node) then
       -- print("setting focus:", view, node, view._is_locked, node.type, view:get_name())
-      if node.type == "leaf" then 
-        core.focus_view = view 
+      if node.type == "leaf" then
+        core.focus_view = view
       end
     end
-  end 
+  end
 end
 
 
@@ -423,7 +443,7 @@ function core.step()
     system.set_window_title(title)
     core.window_title = title
   end
-  return true 
+  return true
 end
 
 core.render = function()

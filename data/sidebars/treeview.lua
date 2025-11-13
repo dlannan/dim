@@ -13,7 +13,7 @@ local TreeViewData = {
 }
 
 local function get_depth(filename)
-  if(config.project_path ~= ".") then 
+  if(config.project_path ~= ".") then
     filename = filename:gsub(config.project_path.."\\","")
   end
   local n = 0
@@ -24,6 +24,15 @@ local function get_depth(filename)
 end
 
 local TreeView = View:extend()
+
+TreeView.id = 2
+TreeView.name = "treeview"
+TreeView.icon = ""
+TreeView.module = "treeview"
+TreeView.config = {}
+TreeView.split_dir = "down"
+TreeView.split_node = "Panels"
+TreeView.command = nil
 
 function TreeView:new()
   TreeView.super.new(self)
@@ -111,9 +120,9 @@ function TreeView:on_mouse_moved(px, py, dx, dy)
   end
 end
 
-function TreeView:on_mouse_pressed(button, x, y)
+function TreeView:on_mouse_released(button, x, y)
   if not self.hovered_item then
-    return 
+    return
   elseif self.hovered_item.type == "dir" then
     self.hovered_item.expanded = not self.hovered_item.expanded
   else
@@ -131,7 +140,7 @@ function TreeView:update()
 
   -- if(self.init_size == true and self.size.x < self.target_width) then
   --   self:move_towards(self.size, "x", self.target_width, 0.5, function() self.init_size = false end)
-  -- else 
+  -- else
   --   self.target_width = self.size.x -- Update for border movement
   -- end
 
@@ -140,7 +149,7 @@ end
 
 function TreeView:draw()
   self:draw_background(style.background2)
-  if(self.visible == false) then return end 
+  if(self.visible == false) then return end
 
   local icon_width = style.icon_font:get_width("D")
   local spacing = style.font:get_width(" ") * 2
@@ -151,15 +160,15 @@ function TreeView:draw()
   for item, x,y,w,h in self:each_item() do
     local color = style.text
 
-    -- highlight active_view doc
-    if item.abs_filename == active_filename then
-      color = style.accent
-    end
-
     -- hovered item background
     if item == self.hovered_item then
       renderer.draw_rect(x, y, w, h, style.line_highlight)
-      color = style.accent
+    end
+
+    -- highlight active_view doc
+    if item.abs_filename == active_filename then
+      color = style.editor_fileselect
+      renderer.draw_rect(x, y, w, h, style.editor_background)
     end
 
     -- icons
@@ -187,7 +196,7 @@ end
 command.add(nil, {
     ["treeview:toggle"] = function()
       TreeViewData.view.visible = not TreeViewData.view.visible
-      TreeViewData.height = TreeViewData.view.visible and TreeViewData.last_height or 0 
+      TreeViewData.height = TreeViewData.view.visible and TreeViewData.last_height or 0
       TreeViewData.init_size = true
     end,
 })

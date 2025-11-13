@@ -16,11 +16,14 @@ style.selection    = { common.color "#264F78" }
 style.line_number  = { common.color "#858585" }
 style.line_number2 = { common.color "#C6C6C6" }
 style.line_highlight = { common.color "#2A2A2A" }
-style.line_highlight = { common.color "#2A2A2A" }
 style.scrollbar    = { common.color "#424242" }
 style.scrollbar2   = { common.color "#686868" }
 
 style.icon_hover   = { common.color "#569CD6" }
+
+-- New styles for Dim - these will be required and moved into core at some stage
+style.editor_background = { common.color "#37373D" }
+style.editor_fileselect = { common.color "#9CDCFE" }
 
 -- Syntax highlighting (based on VS Code Dark+)
 style.syntax["normal"]   = { common.color "#D4D4D4" }
