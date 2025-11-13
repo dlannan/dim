@@ -8,6 +8,14 @@ local View = require "core.view"
 
 local PluginMgrView = View:extend()
 
+PluginMgrView.id = 4
+PluginMgrView.name = "plugin-manager"
+PluginMgrView.icon = ""
+PluginMgrView.module = "plugin_manager"
+PluginMgrView.config = {}
+PluginMgrView.split_dir = "down"
+PluginMgrView.split_node = "Panels"
+PluginMgrView.command = nil
 
 function PluginMgrView:new()
     PluginMgrView.super.new(self)

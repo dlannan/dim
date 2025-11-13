@@ -13,25 +13,25 @@ local ffi       = require("ffi")
 local utils     = require("lua.utils")
 
 -- Some platform specific calls for searching:
-local search_case_insensitive 
+local search_case_insensitive
 local search_case_sensitive
 
-if(ffi.os == "Windows") then 
+if(ffi.os == "Windows") then
 
     search_case_sensitive = [[findstr /S /R "%s" %s]]
     search_case_insensitive = [[findstr /I /S /R "%s" %s]]
-else 
+else
 
 
 end
 
-local function get_search( search_term, search_path ) 
+local function get_search( search_term, search_path )
     search_path = search_path or "./*"
     if(search_term == nil or string.len(search_term) == 0) then return {} end
     local results =system.exec( fmt(search_case_insensitive, search_term, search_path))
     local lines = utils.csplit(results, "\n")
     local items = {}
-    for k,v in ipairs(lines) do 
+    for k,v in ipairs(lines) do
         item = { filename = v, name = filename, id = k }
         tinsert(items, item)
     end
@@ -47,6 +47,15 @@ local SearchFilesData = {
 }
 
 local SearchFilesView = View:extend()
+
+SearchFilesView.id = 3
+SearchFilesView.name = "search"
+SearchFilesView.icon = ""
+SearchFilesView.module = "search"
+SearchFilesView.config = {}
+SearchFilesView.split_dir = "down"
+SearchFilesView.split_node = "Panels"
+SearchFilesView.command = nil
 
 -- Helper: create a new console doc
 function SearchFilesView:new()
@@ -140,7 +149,7 @@ end
 
 function SearchFilesView:on_mouse_pressed(button, x, y)
     if not self.hovered_item then
-        return 
+        return
     elseif self.hovered_item.type == "dir" then
         self.hovered_item.expanded = not self.hovered_item.expanded
     else
@@ -151,11 +160,11 @@ function SearchFilesView:on_mouse_pressed(button, x, y)
 end
 
 function SearchFilesView:update()
-  
+
     if(self.visible == true) then
         self.size.x = self.width
         self.size.y = 200
-    else 
+    else
         self.size.x = 0
         self.size.y = 0
     end
@@ -212,11 +221,11 @@ end
 command.add(nil, {
     ["searchfiles:toggle"] = function()
         local node = core.root_view:get_named_node("SearchFiles")
-        local view = node.active_view 
+        local view = node.active_view
         view.visible = not view.visible
     end
 })
-  
+
 keymap.add { ["ctrl+shift+f"] = "searchfiles:toggle" }
 
 
