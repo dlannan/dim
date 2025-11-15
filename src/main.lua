@@ -48,8 +48,6 @@ require("src.platform")
 -- lite core setup
 local core          = nil
 
-local SW_MAXIMIZE   = 3
-
 -- --------------------------------------------------------------------------------------
 -- To use luajits internal profiler - can be useful to find hotspots.
 local enabled_profile   = arg[1] == "-profile"
@@ -63,9 +61,8 @@ if(enabled_profile) then
 end
 
 -- --------------------------------------------------------------------------------------
-
-local width = 1920 
-local height = 1080
+--  Detect display size and use for width and height
+local width, height = win.DetectDisplay()
 if(arg[1] and arg[2]) then 
     width = tonumber(arg[1])
     height = tonumber(arg[2])
@@ -111,15 +108,12 @@ local function init()
    
     SCALE = sapp.sapp_dpi_scale()
 
-    if(sapp.sapp_isvalid() == true) then 
-        local hwnd = sapp.sapp_win32_get_hwnd()
-        win.ShowWindow(hwnd or WINDOW_NAME, SW_MAXIMIZE)
-    else 
-        print("SAPP isnt valid?")
-    end
-
     imageutils.make_defaults()
     binmgr.init()
+
+    local hwnd = sapp.sapp_win32_get_hwnd()
+    local dw, dh = width, height 
+    win.SetWindowPos(hwnd, dw/2 - 320, dh/2 - 100, 640, 200)
 end
 
 -- --------------------------------------------------------------------------------------
@@ -146,22 +140,55 @@ local function core_init(ctx)
     core.init()
     core.redraw = true
     core.ready = true
+
+    local hwnd = sapp.sapp_win32_get_hwnd()
+    win.ShowWindow(hwnd or WINDOW_NAME, 1)
+
     return core
 end
 
 -- -----------------------------------------------------------------------------------------
 
-local function core_run(ctx, core, winrect)
+local function core_run(ctx, core, winrect, custom)
 
     local window_flags =  bit.bor(nk.NK_WINDOW_NO_INPUT, nk.NK_WINDOW_NO_SCROLLBAR, nk.NK_WINDOW_BACKGROUND) 
     if (nk.nk_begin(ctx, "Dim", winrect[0], window_flags) == true) then
         renderer.canvas = nk.nk_window_get_canvas(ctx) 
         renderer.rect = nk.nk_window_get_content_region(ctx)
-        core.render()
+        if(custom) then custom() end 
     end
     renderer.set_cursor()
     nk.nk_end(ctx)
     return not nk.nk_window_is_closed(ctx, "Dim")    
+end
+
+-- --------------------------------------------------------------------------------------
+local frame_started = 0
+
+local function frame_startup(winrect)
+    
+    local ctx = nk.snk_new_frame(0)
+    renderer.ctx    = ctx 
+
+    -- Simple loading logo or image (no text, since fonts arent ready!)
+    -- 
+    core_run( ctx, nil, winrect, function()
+        local res = nk.nk_style_set_cursor(ctx, 0)
+        nk.nk_style_hide_cursor(ctx)
+    
+        local r = renderer.rect
+        nk.nk_layout_row_static(ctx, r.h, r.w, 1)
+        nk.nk_label(ctx, "loading dim...", nk.NK_TEXT_CENTERED)
+    end)
+
+    local pass = ffi.new("sg_pass[1]")
+    pass[0].action.colors[0].load_action = sg.SG_LOADACTION_CLEAR
+    pass[0].action.colors[0].clear_value = { 0.118, 0.118, 0.118, 1.0 }
+    pass[0].swapchain = slib.sglue_swapchain()
+    sg.sg_begin_pass(pass)
+    nk.snk_render(width, height)  
+    sg.sg_end_pass()
+    sg.sg_commit() 
 end
 
 -- --------------------------------------------------------------------------------------
@@ -177,6 +204,13 @@ local function frame()
 
     winrect[0].w = w
     winrect[0].h = h
+
+    -- Render stuff before core is started
+    if(core == nil and frame_started < 2) then 
+        frame_startup(winrect)
+        frame_started = frame_started + 1
+        return
+    end
 
     threed_renderer.load_models()
 
@@ -198,10 +232,11 @@ local function frame()
 
     if(core == nil) then     
         core = ErrorCheck( pcall( core_init, ctx, core ) )
-        -- nk.nk_style_show_cursor(ctx)   
     end 
     if(core and core.ready and did_draw == true) then 
-        ErrorCheck( pcall(core_run, ctx, core, winrect ) )
+        ErrorCheck( pcall(core_run, ctx, core, winrect, function()
+            core.render()
+        end) )
     end
 
     if (w > 0 and h > 0 and system.iconified == false) then
@@ -244,12 +279,14 @@ local icon_desc = ffi.new("sapp_icon_desc", {
 })
 
 local app_desc = ffi.new("sapp_desc[1]")
+
+
 app_desc[0].init_cb         = init
 app_desc[0].frame_cb        = frame
 app_desc[0].cleanup_cb      = cleanup
 app_desc[0].event_cb        = input
-app_desc[0].width           = width
-app_desc[0].height          = height
+app_desc[0].width           = 1
+app_desc[0].height          = 0
 app_desc[0].high_dpi        = true
 app_desc[0].window_title    = "Dim"
 app_desc[0].fullscreen      = false

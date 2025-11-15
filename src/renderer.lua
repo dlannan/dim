@@ -315,6 +315,14 @@ renderer.load_image_buffer = function(name, buf, bufsize, no_ui)
     -- return rencache.rencache_draw_text(font, text, x, y, color)
 end
   
+renderer.make_nk_handle  = function( sg_img_desc )
+    local new_img = sg.sg_make_image(sg_img_desc) 
+    local img_desc = ffi.new("snk_image_desc_t[1]")
+    img_desc[0].image = new_img
+    local snk_img = nk.snk_make_image(img_desc)
+    local nk_hnd = nk.snk_nkhandle(snk_img)
+    return nk.nk_image_handle(nk_hnd)
+end
 -- --------------------------------------------------------------------------------------
 
 renderer.draw_image      = function(image, x, y, w, h) 
