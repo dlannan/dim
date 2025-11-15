@@ -264,6 +264,7 @@ end
 local function cleanup()
     nk.snk_shutdown()
     sg.sg_shutdown()
+    core.quit()
 end
 
 -- --------------------------------------------------------------------------------------

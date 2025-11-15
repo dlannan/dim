@@ -1,4 +1,7 @@
 require "core.strict"
+
+local tinsert = table.insert
+
 local common = require "core.common"
 local config = require "core.config"
 local style = require "core.style"
@@ -11,7 +14,8 @@ local SidebarView
 local Doc
 
 local core = {}
-
+core.prerun_funcs = {}
+core.postrun_funcs = {}
 
 local function project_scan_thread()
   local function diff_files(a, b)
@@ -74,6 +78,13 @@ local function project_scan_thread()
   end
 end
 
+function core.add_prerun( pfunc )
+  tinsert(core.prerun_funcs, pfunc)
+end
+
+function core.add_postrun( pfunc )
+  tinsert(core.postrun_funcs, pfunc)
+end
 
 function core.init()
   command = require "core.command"
@@ -132,6 +143,8 @@ function core.init()
   if got_plugin_error or got_user_error or got_project_error then
     command.perform("core:open-log")
   end
+
+  for k,v in ipairs(core.prerun_funcs) do if(v) then v() end end  
 end
 
 
@@ -156,6 +169,7 @@ end
 
 function core.quit(force)
   if force then
+    for k,v in ipairs(core.postrun_funcs) do if(v) then v() end end
     delete_temp_files()
     os.exit()
   end
@@ -490,7 +504,6 @@ end)
 
 
 function core.run()
-
   -- while true do
     core.frame_start = system.get_time()
     local did_redraw = core.step()
