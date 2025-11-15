@@ -18,11 +18,9 @@ local SidebarData = {
     position = { x = 0, y = 0 },
     size = { x = SIDEBAR_SIZE, y = SIDEBAR_SIZE },
 
-    panel_select = 0,
+    panel_select = 2,
     -- The panels are filles out by the panel views (see treeview for example)
     panels  = {},
-    -- Which item is actively selected (should always have one?)
-    active_selected = 1,  
 }
 
 -- Add font awesome to style so other plugins can use it if needed
