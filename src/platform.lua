@@ -12,12 +12,47 @@ local shell32   = ffi.load("shell32")
 
 -- TODO: Need equivalents for OSX and Linux - probably should go in a systems utils.
 ffi.cdef[[
+    typedef const void * HWND;
+    typedef struct RECT {
+        int x, y, w, h;
+    } RECT;
+
     void Sleep(uint32_t ms);
-    int ShowWindow(const void * hWnd, int nCmdShow);
+
+    // Get the size of screen to the variable desktop
+    HWND GetDesktopWindow();
+    int GetWindowRect(HWND hwnd, RECT *hrect);    
+    int ShowWindow(HWND hWnd, int nCmdShow);
+    int SetWindowPos( HWND hWnd, int hWndInsertAfter, int X, int Y, int cx, int cy, uint32_t uFlags);
 ]]
 
-win.ShowWindow  = ffi.C.ShowWindow
+local HWND_TOP          = 0x00 
+
+local SWP_NOSIZE        = 0x01
+local SW_SHOWMINIMIZED  = 0x02
+local SW_MAXIMIZE       = 0x03
+
+
+win.ShowWindow  = function(hwnd, cmd)
+    if(cmd == 0) then
+        ffi.C.ShowWindow(hwnd, SW_SHOWMINIMIZED)
+    else 
+        ffi.C.ShowWindow(hwnd, SW_MAXIMIZE)
+    end
+end
 win.Sleep       = ffi.C.Sleep
+
+win.SetWindowPos = function(hwnd, x, y, w, h) 
+    ffi.C.SetWindowPos(hwnd, HWND_TOP, x, y, w, h, 0)
+end
+
+win.DetectDisplay = function()
+    local desktop = ffi.new("RECT[1]")
+    -- Get a handle to the desktop window
+    local hDesktop = ffi.C.GetDesktopWindow()
+    ffi.C.GetWindowRect(hDesktop, desktop)
+    return desktop[0].w, desktop[0].h
+end 
 
 end
 
@@ -27,7 +62,23 @@ end
 if ffi.os == "Linux" then
 
 ffi.cdef[[
-void usleep(unsigned int usec);
+typedef unsigned long Colormap;
+
+typedef struct _Screen {
+    int width;           /* width of the screen in pixels */
+    int height;          /* height of the screen in pixels */
+    int mwidth;          /* width of the screen in millimeters */
+    int mheight;         /* height of the screen in millimeters */
+    int root;            /* the root window of the screen */
+    int root_depth;      /* the depth of the root window */
+    void *root_visual;   /* the root window visual */
+    Colormap default_colormap;  /* the default colormap */
+    int white_pixel;     /* white pixel value */
+    int black_pixel;     /* black pixel value */
+    int my_num;          /* screen number */
+    bool is_installed;   /* indicates whether the screen is installed */
+    void *saver;         /* screen saver properties (if any) */
+} Screen;
 
 typedef unsigned long Atom;
 typedef unsigned long Window;
@@ -44,6 +95,8 @@ typedef struct _XEvent {
     };
 } XEvent;
 
+void usleep(unsigned int usec);
+
 Display* XOpenDisplay(const char* display_name);
 Window XRootWindow(Display* display, int screen_number);
 int XGetWindowProperty(Display* display, Window w, Atom property, long long_offset,
@@ -53,6 +106,7 @@ int XGetWindowProperty(Display* display, Window w, Atom property, long long_offs
 int XSendEvent(Display* display, Window w, int propagate, long event_mask, XEvent* event);
 Atom XInternAtom(Display* display, const char* name, int only_if_exists);
 int XCloseDisplay(Display* display);
+Screen *DefaultScreenOfDisplay(Display *display);
 
 // Constants
 #define AnyPropertyType 0
@@ -128,5 +182,14 @@ win.ShowWindow  = function(hwnd, state)
     end
     print("Window resized successfully.")
 end
+
+win.DetectDisplay = function()
+    local display = X11.XOpenDisplay(hwnd)
+    if display == nil then
+        error("Unable to open X display")
+    end
+    local s = X11.DefaultScreenOfDisplay(display)
+    return s.width, s.height
+end 
 
 end
