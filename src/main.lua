@@ -23,6 +23,9 @@ local ffi       = require("ffi")
 
 local binmgr 	= require("lua.geometry.bins")
 
+local smgr      = require("lua.engine.statemanager")
+local seq       = require("lua.engine.sequencer")
+
 -- --------------------------------------------------------------------------------------
 
 ARGS = arg 
@@ -36,6 +39,8 @@ EXEFILE         = string.format("%s%s", APPPATH, dirtools.sep)
 
 WINDOW_NAME     = "Dim v"..VERSION.."["..PLATFORM.."]"
 
+CLEAR_COLOR     = { 0.118, 0.118, 0.118, 1.0 }
+
 -- --------------------------------------------------------------------------------------
 -- Load in the methods lites registers for rendering and io and such.
 require("src.system")
@@ -45,8 +50,26 @@ require("src.threed")
 require("src.platform")
 
 -- --------------------------------------------------------------------------------------
+-- Builtin app icons
+local i16,icon16 = renderer.load_image("data/icons/dim_icon_cool_16x16.png")
+local i32,icon32 = renderer.load_image("data/icons/dim_icon_cool_32x32.png")
+local i64,icon64 = renderer.load_image("data/icons/dim_icon_cool_64x64.png")
+local icon_desc = ffi.new("sapp_icon_desc", {
+    images = {
+        { width = 16, height = 16, pixels = { ptr=icon16[0].data.subimage[0][0].ptr, size=icon16[0].data.subimage[0][0].size } },
+        { width = 32, height = 32, pixels = { ptr=icon32[0].data.subimage[0][0].ptr, size=icon32[0].data.subimage[0][0].size } },
+        { width = 64, height = 64, pixels = { ptr=icon64[0].data.subimage[0][0].ptr, size=icon64[0].data.subimage[0][0].size } },
+    }
+})
+
+-- --------------------------------------------------------------------------------------
 -- lite core setup
 local core          = nil
+
+-- --------------------------------------------------------------------------------------
+local warmupState    = smgr:NewState()
+local coreInitState  = smgr:NewState()
+local runningState   = smgr:NewState()
 
 -- --------------------------------------------------------------------------------------
 -- To use luajits internal profiler - can be useful to find hotspots.
@@ -105,15 +128,9 @@ local function init()
 
     sapp.sapp_show_mouse(true)
     sapp.sapp_set_window_title(WINDOW_NAME)
-   
-    SCALE = sapp.sapp_dpi_scale()
 
-    imageutils.make_defaults()
-    binmgr.init()
-
-    local hwnd = sapp.sapp_win32_get_hwnd()
-    local dw, dh = width, height 
-    win.SetWindowPos(hwnd, dw/2 - 320, dh/2 - 100, 640, 200)
+    -- Begins the state sequence
+    seq:Begin( { warmupState, coreInitState, runningState } )
 end
 
 -- --------------------------------------------------------------------------------------
@@ -127,25 +144,6 @@ end
 -- This is global too. But I dont think it needs to be. There are some potential 
 --     nk callbacks that might need it to be, so its here like this for the time being.
 winrect         = ffi.new("struct nk_rect[1]", {{0, 0, 1000, 600}})
-
-local function core_init(ctx)
-
-    SCALE = tonumber(os.getenv("LITE_SCALE")) or SCALE
-    PATHSEP = package.config:sub(1, 1)
-    EXEDIR = EXEFILE:match("^(.+)[/\\\\].*$")
-    package.path = EXEDIR .. '/data/?.lua;' .. package.path
-    package.path = EXEDIR .. '/data/?/init.lua;' .. package.path
-    
-    local core          = require('core')
-    core.init()
-    core.redraw = true
-    core.ready = true
-
-    local hwnd = sapp.sapp_win32_get_hwnd()
-    win.ShowWindow(hwnd or WINDOW_NAME, 1)
-
-    return core
-end
 
 -- -----------------------------------------------------------------------------------------
 
@@ -163,32 +161,23 @@ local function core_run(ctx, core, winrect, custom)
 end
 
 -- --------------------------------------------------------------------------------------
-local frame_started = 0
 
-local function frame_startup(winrect)
+local function core_init(ctx)
+
+    SCALE = tonumber(os.getenv("LITE_SCALE")) or SCALE
+    PATHSEP = package.config:sub(1, 1)
+    EXEDIR = EXEFILE:match("^(.+)[/\\\\].*$")
+    package.path = EXEDIR .. '/data/?.lua;' .. package.path
+    package.path = EXEDIR .. '/data/?/init.lua;' .. package.path
     
-    local ctx = nk.snk_new_frame(0)
-    renderer.ctx    = ctx 
+    local core          = require('core')
+    core.init()
+    core.redraw = true
+    core.ready = true
 
-    -- Simple loading logo or image (no text, since fonts arent ready!)
-    -- 
-    core_run( ctx, nil, winrect, function()
-        local res = nk.nk_style_set_cursor(ctx, 0)
-        nk.nk_style_hide_cursor(ctx)
-    
-        local r = renderer.rect
-        nk.nk_layout_row_static(ctx, r.h, r.w, 1)
-        nk.nk_label(ctx, "loading dim...", nk.NK_TEXT_CENTERED)
-    end)
-
-    local pass = ffi.new("sg_pass[1]")
-    pass[0].action.colors[0].load_action = sg.SG_LOADACTION_CLEAR
-    pass[0].action.colors[0].clear_value = { 0.118, 0.118, 0.118, 1.0 }
-    pass[0].swapchain = slib.sglue_swapchain()
-    sg.sg_begin_pass(pass)
-    nk.snk_render(width, height)  
-    sg.sg_end_pass()
-    sg.sg_commit() 
+    local hwnd = sapp.sapp_win32_get_hwnd()
+    win.ShowWindow(hwnd or WINDOW_NAME, 1)
+    return core
 end
 
 -- --------------------------------------------------------------------------------------
@@ -205,51 +194,19 @@ local function frame()
     winrect[0].w = w
     winrect[0].h = h
 
-    -- Render stuff before core is started
-    if(core == nil and frame_started < 2) then 
-        frame_startup(winrect)
-        frame_started = frame_started + 1
-        return
-    end
+    smgr.dt = dt
+    seq:Update()
 
-    threed_renderer.load_models()
-
-    -- This is a little messy. I had to split core run into run and render.
-    -- The reason is I need to _know_ if lite needs to be rendered or not.
-    -- If it doesnt, then we dont clear the buffer and nothing is drawn with core_run.
-    -- Thus the last nuklear buffer is continued to be shown.
-    local did_draw = true
-    if(core) then 
-        did_draw = core.run(w, h)
-    end
-
-    local clearflag = 0
-    if(did_draw == false) then clearflag = 1 end 
-    if(did_draw == true) then threed_renderer.render_queue = {} end 
-
-    local ctx = nk.snk_new_frame(clearflag)
-    renderer.ctx    = ctx 
-
-    if(core == nil) then     
-        core = ErrorCheck( pcall( core_init, ctx, core ) )
-    end 
-    if(core and core.ready and did_draw == true) then 
-        ErrorCheck( pcall(core_run, ctx, core, winrect, function()
-            core.render()
-        end) )
-    end
-
+    -- Only render if valid sizes and not iconified
     if (w > 0 and h > 0 and system.iconified == false) then
     -- // the sokol_gfx draw pass
     local pass = ffi.new("sg_pass[1]")
     pass[0].action.colors[0].load_action = sg.SG_LOADACTION_CLEAR
-    pass[0].action.colors[0].clear_value = { 0.25, 0.5, 0.7, 1.0 }
+    pass[0].action.colors[0].clear_value = CLEAR_COLOR
     pass[0].swapchain = slib.sglue_swapchain()
     sg.sg_begin_pass(pass)
-    nk.snk_render(w, h)
 
-    -- // Render 3D view rects here - will get rects from the docviews.
-    threed_renderer.render_rects(dt)
+    seq:Render(w, h)
 
     sg.sg_end_pass()
     sg.sg_commit()
@@ -262,25 +219,130 @@ end
 -- --------------------------------------------------------------------------------------
 
 local function cleanup()
+    seq:Finish()
+end
+
+-- --------------------------------------------------------------------------------------
+
+warmupState.Begin   = function(self)
+
+    SCALE = sapp.sapp_dpi_scale()
+
+    imageutils.make_defaults()
+    binmgr.init()
+
+    local hwnd = sapp.sapp_win32_get_hwnd()
+    local dw, dh = width, height 
+    win.SetWindowPos(hwnd, dw/2 - 320, dh/2 - 100, 640, 200)
+
+    self.frame_started = 0
+end
+
+-- --------------------------------------------------------------------------------------
+
+warmupState.Update = function(self)
+
+    local ctx = nk.snk_new_frame(0)
+    renderer.ctx    = ctx 
+
+    if(self.frame_started >= 3) then 
+        seq:NextState()
+    end 
+
+    -- Render stuff before core is started
+    if(core == nil and self.frame_started < 3) then 
+        self.frame_started = self.frame_started + 1
+    end
+
+    -- Simple loading logo or image (no text, since fonts arent ready!)
+    -- 
+    core_run( ctx, nil, winrect, function()
+        local res = nk.nk_style_set_cursor(ctx, 0)
+        nk.nk_style_hide_cursor(ctx)
+    
+        local r = renderer.rect
+        nk.nk_layout_row_static(ctx, r.h, r.w, 1)
+        nk.nk_label(ctx, "loading dim...", nk.NK_TEXT_CENTERED)
+    end)
+end    
+
+-- --------------------------------------------------------------------------------------
+
+warmupState.Render = function(self, w, h) 
+
+    nk.snk_render(w, h)      
+end
+
+-- --------------------------------------------------------------------------------------
+
+coreInitState.Update    = function(self)
+
+    local ctx = nk.snk_new_frame(0)
+    renderer.ctx    = ctx 
+
+    if(core == nil) then     
+        core = ErrorCheck( pcall( core_init, ctx, core ) )
+    else 
+        seq:NextState()
+    end 
+end
+
+-- --------------------------------------------------------------------------------------
+
+coreInitState.Render = function(self, w, h) 
+
+    nk.snk_render(w, h)      
+end
+
+-- --------------------------------------------------------------------------------------
+
+runningState.Update     = function(self)
+
+    threed_renderer.load_models()
+
+    -- This is a little messy. I had to split core run into run and render.
+    -- The reason is I need to _know_ if lite needs to be rendered or not.
+    -- If it doesnt, then we dont clear the buffer and nothing is drawn with core_run.
+    -- Thus the last nuklear buffer is continued to be shown.
+    local did_draw = true
+    if(core) then 
+        did_draw = core.run(width, height)
+    end
+
+    local clearflag = 0
+    if(did_draw == false) then clearflag = 1 end 
+    if(did_draw == true) then threed_renderer.render_queue = {} end 
+
+    local ctx = nk.snk_new_frame(clearflag)
+    renderer.ctx    = ctx 
+
+    if(core and core.ready and did_draw == true) then 
+        ErrorCheck( pcall(core_run, ctx, core, winrect, function()
+            core.render()
+        end) )
+    end
+end 
+
+-- --------------------------------------------------------------------------------------
+
+runningState.Render     = function(self, w, h)
+    nk.snk_render(w, h)   
+
+    -- // Render 3D view rects here - will get rects from the docviews.
+    threed_renderer.render_rects(self.dt)
+end 
+
+-- --------------------------------------------------------------------------------------
+
+runningState.Finish     = function(self)
     nk.snk_shutdown()
     sg.sg_shutdown()
     core.quit()
 end
 
 -- --------------------------------------------------------------------------------------
-local i16,icon16 = renderer.load_image("data/icons/dim_icon_cool_16x16.png")
-local i32,icon32 = renderer.load_image("data/icons/dim_icon_cool_32x32.png")
-local i64,icon64 = renderer.load_image("data/icons/dim_icon_cool_64x64.png")
-local icon_desc = ffi.new("sapp_icon_desc", {
-    images = {
-        { width = 16, height = 16, pixels = { ptr=icon16[0].data.subimage[0][0].ptr, size=icon16[0].data.subimage[0][0].size } },
-        { width = 32, height = 32, pixels = { ptr=icon32[0].data.subimage[0][0].ptr, size=icon32[0].data.subimage[0][0].size } },
-        { width = 64, height = 64, pixels = { ptr=icon64[0].data.subimage[0][0].ptr, size=icon64[0].data.subimage[0][0].size } },
-    }
-})
 
 local app_desc = ffi.new("sapp_desc[1]")
-
 
 app_desc[0].init_cb         = init
 app_desc[0].frame_cb        = frame

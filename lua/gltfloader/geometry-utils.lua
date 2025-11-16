@@ -54,7 +54,7 @@ end
 function geom:makeGeom(name, prim, mesh)
 
 	-- TODO: Needs to come from gltf refs
-	local material    = meshes.material(name, "lua/engine/base_texture.glsl", {})
+	local material    = meshes.material(name, "lua/engine/shaders/base_texture.glsl", {})
 	local prim_mat    = prim.material
 
 	local newgeom = {}
