@@ -55,7 +55,7 @@ local shader    = nil
 
 threed_renderer.make_cube = function()
 
-    shader    = shader or shc.compile("lua/engine/cube_simple.glsl")
+    shader    = shader or shc.compile("lua/engine/shaders/cube_simple.glsl")
     -- Make a fake model to use for testing
     local state = ffi.new("internal_state[1]")
     local binding = ffi.new("sg_bindings[1]", {})   
