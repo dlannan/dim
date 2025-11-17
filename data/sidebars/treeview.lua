@@ -41,9 +41,22 @@ function TreeView:new()
   self.visible = true
   self.init_size = true
   self.cache = {}
+
   self.size.x = config.treeview_size
+  self.item_count = 0
   TreeViewData.height = self.size.y
 end
+
+
+function TreeView:get_item_height()
+  return style.font:get_height() + style.padding.y
+end
+
+
+function TreeView:get_scrollable_size()
+  return self:get_item_height() * self.item_count
+end
+
 
 function TreeView:get_cached(item)
   local t = self.cache[item.filename]
@@ -61,10 +74,6 @@ end
 
 function TreeView:get_name()
   return "Project"
-end
-
-function TreeView:get_item_height()
-  return style.font:get_height() + style.padding.y
 end
 
 function TreeView:check_cache()
@@ -161,7 +170,9 @@ function TreeView:draw()
   local doc = core.active_view.doc
   local active_filename = doc and system.absolute_path(doc.filename or "")
 
+  self.item_count = 0
   for item, x,y,w,h in self:each_item() do
+    self.item_count = self.item_count + 1
     local color = style.text
 
     -- hovered item background
@@ -194,6 +205,7 @@ function TreeView:draw()
     x = x + spacing
     x = common.draw_text(style.font, color, item.name, nil, x, y, 0, h)
   end
+  self:draw_scrollbar()
 end
 
 -- register commands and keymap

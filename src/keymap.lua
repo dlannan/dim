@@ -127,6 +127,22 @@ end
 
 -- --------------------------------------------------------------------------------------
 
+local last_click_time = 0
+local double_click_threshold = 0.25 -- seconds
+
+local function doubleclick_mouse(btn)
+    local now = os.clock() -- or whatever timer you have
+    if btn == "left" then
+        if now - last_click_time < double_click_threshold then
+            return true 
+        end
+        last_click_time = now
+    end
+    return false
+end
+
+-- --------------------------------------------------------------------------------------
+
 local function process_inputs(event)
 
     local eventtype = tonumber(event.type)
@@ -193,26 +209,29 @@ local function process_inputs(event)
         local x, y = event.mouse_x, event.mouse_y
         local event_button = tonumber(event.mouse_button)
         local button = LITE_BUTTONS[event_button]
-        system_push_event({
+        local clicks = 1
+        if(doubleclick_mouse(button)) then clicks = 2 end
+        local btn_event = {
             type = LITE_EVENT[eventtype],
-            a = button, b = x-r.x, c = y-r.y, d = 1
-        })   
+            a = button, b = x-r.x, c = y-r.y, d = clicks
+        }
+        system_push_event(btn_event)   
 
     elseif eventtype == sapp.SAPP_EVENTTYPE_MOUSE_UP then
 
         local x, y = event.mouse_x, event.mouse_y
         local event_button = tonumber(event.mouse_button)
         local button = LITE_BUTTONS[event_button]
-        system_push_event({
+        local btn_event = {
             type = LITE_EVENT[eventtype],
             a = button, b = x-r.x, c = y-r.y, d = nil
-        })    
+        }
+        system_push_event(btn_event)    
 
     elseif eventtype == sapp.SAPP_EVENTTYPE_MOUSE_MOVE then
 
         local x, y = event.mouse_x, event.mouse_y
         local dx, dy = event.mouse_dx, event.mouse_dy
-
         -- print("Mouse event at", x, y, "delta", dx, dy, "button", button)
         system_push_event({
             type = LITE_EVENT[eventtype],
@@ -238,10 +257,11 @@ local function process_inputs(event)
         mods = LITE_KEYMODS[key]
         if(mods == nil) then mods = sapp_key_to_name(key) end
 
-        system_push_event({
+        local key_event = {
             type = LITE_EVENT[eventtype],
             a = mods, b = nil, c = nil, d = nil
-        })    
+        }
+        system_push_event(key_event)    
 
     elseif eventtype == sapp.SAPP_EVENTTYPE_KEY_DOWN then
 
@@ -251,10 +271,11 @@ local function process_inputs(event)
         mods = LITE_KEYMODS[key]
         if(mods == nil) then mods = sapp_key_to_name(key) end
 
-        system_push_event({
+        local key_event = {
             type = LITE_EVENT[eventtype],
             a = mods, b = nil, c = nil, d = nil
-        })    
+        }
+        system_push_event(key_event)    
 
     elseif eventtype == sapp.SAPP_EVENTTYPE_CHAR then
 
@@ -275,5 +296,5 @@ local function process_inputs(event)
 end 
 
 return {
-    process_inputs          = process_inputs
+    process_inputs          = process_inputs,
 }

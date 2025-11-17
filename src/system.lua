@@ -52,6 +52,9 @@ system = {
 	event_queue 		= {}, -- Back buffer events are always collected in.
 	has_focus 			= true,
     iconified           = false,
+    
+    keychanges          = {},       -- A buffer of most recent key pressed
+    mousechanges        = {},       -- A buffer of most recent mouse button presses
 }
 
 -- --------------------------------------------------------------------------------------
