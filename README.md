@@ -3,6 +3,16 @@ not so lite
 
 A lite based text editor running from sokol-luajit + nuklear.
 
+To run Win:
+
+``` ./bin/win64/luajit.exe ./src/main.lua```
+
+To run Linux:
+
+``` ./bin/linux/luajit ./src/main.lua```
+
+A release build will be made in the future once workspaces and plugin management is complete.
+
 Lite links:
 
 Lite: https://github.com/rxi/lite/
