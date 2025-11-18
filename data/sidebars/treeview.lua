@@ -9,7 +9,7 @@ local View = require "core.view"
 config.treeview_size = 200 * SCALE
 
 local TreeViewData = {
-  width = config.treeview_size
+  target_width = config.treeview_size
 }
 
 local function get_depth(filename)
@@ -41,8 +41,8 @@ function TreeView:new()
   self.visible = true
   self.init_size = true
   self.cache = {}
+  self.target_width = TreeViewData.target_width
 
-  self.size.x = config.treeview_size
   self.item_count = 0
   TreeViewData.height = self.size.y
 end
@@ -119,7 +119,14 @@ function TreeView:each_item()
   end)
 end
 
-function TreeView:on_mouse_moved(px, py, dx, dy)
+function TreeView:on_mouse_moved(px, py, ...)
+  if not self.visible then return end
+  if TreeView.super.on_mouse_moved(self, px, py, ...) then
+    -- mouse movement handled by the View (scrollbar)
+    self.hovered_item = nil
+    return
+  end
+
   self.hovered_item = nil
   for item, x,y,w,h in self:each_item() do
     if px > x and py > y and px <= x + w and py <= y + h then
@@ -143,21 +150,25 @@ end
 
 function TreeView:update()
 
+  local dest = self.visible and self.target_width or 0
   -- We have to maintain width to the parent panel!
-  self.size.x = TreeViewData.width
+  if(self.init_size) then
+    self.target_width = TreeViewData.target_width
+    self.init_size = false
+  else
+    self:move_towards(self.size, "x", self.target_width, 0.5, function() self.init_size = false end)
+  end
+
   if(self.size.y > 0) then TreeViewData.last_height = self.size.y end
 
   -- if(self.init_size == true and self.size.x < self.target_width) then
   --   self:move_towards(self.size, "x", self.target_width, 0.5, function() self.init_size = false end)
-  -- else
-  --   self.target_width = self.size.x -- Update for border movement
-  -- end
 
   TreeView.super.update(self)
 end
 
 function TreeView:show_panel(visible)
-  self.visible = visible 
+  self.visible = visible
 end
 
 function TreeView:draw()

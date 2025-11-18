@@ -273,10 +273,10 @@ function Node:get_locked_size()
     local x2, y2 = self.b:get_locked_size()
     if x1 and x2 and self.type == "hsplit" then
       local dsx = (x1 < 1 or x2 < 1) and 0 or style.divider_size
-      return x1 + x2 + dsx, y1
+      return x1 + x2 + dsx, y1 or y2
     elseif y1 and y2 and self.type == "vsplit" then
       local dsy = (y1 < 1 or y2 < 1) and 0 or style.divider_size
-      return x1, y1 + y2 + dsy
+      return x1 or x2, y1 + y2 + dsy
     end
   end
 end
@@ -389,7 +389,9 @@ function Node:draw()
     core.pop_clip_rect()
   else
     local x, y, w, h = self:get_divider_rect()
-    renderer.draw_rect(x, y, w, h, style.divider)
+    local color = style.divider 
+    if(self.is_hovered) then color = style.divider_hover end
+    renderer.draw_rect(x, y, w, h, color )
     self:propagate("draw")
   end
 end
@@ -470,6 +472,7 @@ end
 
 function RootView:on_mouse_released(...)
   if self.dragged_divider then
+    self.dragged_divider.is_hovered = nil
     self.dragged_divider = nil
   end
   self.root_node:on_mouse_released(...)
@@ -478,6 +481,7 @@ end
 
 function RootView:on_mouse_moved(x, y, dx, dy)
   if self.dragged_divider then
+    self.dragged_divider.is_hovered = true
     local node = self.dragged_divider
     if node.type == "hsplit" then
       node.divider = node.divider + dx / node.size.x

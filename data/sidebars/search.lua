@@ -161,14 +161,14 @@ end
 
 function SearchFilesView:update()
 
-    if(self.visible == true) then
-        self.size.x = self.width
-        self.size.y = 200
-    else
-        self.size.x = 0
-        self.size.y = 0
-    end
-    -- SearchFilesView.super.update(self)
+    -- if(self.visible == true) then
+    --     self.size.x = self.width
+    --     self.size.y = 200
+    -- else
+    --     self.size.x = 0
+    --     self.size.y = 0
+    -- end
+    SearchFilesView.super.update(self)
 end
 
 function SearchFilesView:draw()

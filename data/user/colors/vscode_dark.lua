@@ -19,7 +19,8 @@ style.line_highlight = { common.color "#2A2A2A" }
 style.scrollbar    = { common.color "#424242" }
 style.scrollbar2   = { common.color "#686868" }
 
-style.icon_hover   = { common.color "#569CD6" }
+style.icon_hover        = { common.color "#569CD6" }
+style.divider_hover     = { common.color "#569CD6" }
 
 -- New styles for Dim - these will be required and moved into core at some stage
 style.editor_background = { common.color "#37373D" }
