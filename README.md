@@ -74,15 +74,13 @@ TODO:
 - Rework the render engine to use my bin system (will allow sorting and ordering as well as priority)
 - Add in some better entity management (to be used in Thunc).
 
-<img src="media/2025-10-31_20-59.png">
-
 <img src="media/2025-10-31_21-01.png">
 
 
 [ 30-10-2025 Updates ]:
 
 The 3D viewer is mostly working! A basic 3D rendering system has been added (a 3D engine of sorts).
-<img src="media/2025-10-31_00-51.png">
+<img src="media/2025-10-30_20-56.png">
 
 I expect to have some nice features for this:
 - Selectable "up axis" for different model spaces.
