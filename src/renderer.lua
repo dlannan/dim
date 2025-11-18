@@ -3,8 +3,7 @@ local stb           = require("stb")
 local nk            = sg
 
 local utils         = require("lua.utils")
-local rencache      = require("src.rencache")
--- require("src.nuklear")
+require("src.nuklear")
 
 local ffi           = require("ffi")
 
@@ -84,9 +83,9 @@ end
 
 -- --------------------------------------------------------------------------------------
 
-local function fix_tab_glyph(glyph, space)
+local function fix_tab_glyph(glyph, space_size)
 
-    glyph[0].xadvance = space * 4
+    glyph[0].xadvance = space_size
     glyph[0].w, glyph[0].h = 0, 0
     glyph[0].x0, glyph[0].y0, glyph[0].x1, glyph[0].y1 = 0, 0, 0, 0
     glyph[0].u0, glyph[0].v0, glyph[0].u1, glyph[0].v1 = 0, 0, 0, 0
@@ -97,13 +96,12 @@ end
 local rune_ranges = ffi.new("nk_rune[9]", {
     0x0009, 0x000A, -- tab
     0x0020, 0x00FF, -- basic Latin + Latin-1
-    0x2500, 0x2BFF, -- box-drawing, arrows
     0xE000, 0xF8FF, -- private use / Nerd Font symbols
     0
 })
 
 local fa_rune_ranges = ffi.new("nk_rune[9]", {
-    0xE000, 0xF8FF, -- private use / Nerd Font symbols
+    0xE000, 0xF8FF, -- only font awesome glyph ranges
     0
 })
 
@@ -177,7 +175,7 @@ local function load_font(font_path, font_size)
         
         local glyph = find_glyph(font.font, 9)
         local space = get_glyph_xadvance(font.font.handle.userdata, 32)    
-        if(glyph) then fix_tab_glyph(glyph, space) end
+        if(glyph) then fix_tab_glyph(glyph, space * 4) end
         
         -- atlas[0].config.range = rune_ranges -- nk.nk_font_default_glyph_ranges()
     end 
@@ -190,7 +188,7 @@ local function load_font(font_path, font_size)
     image = nk.nk_font_atlas_bake(atlas, master_img_width, master_img_height, nk.NK_FONT_ATLAS_RGBA32)
     local glyph = find_glyph(new_font, 9)
     local space = get_glyph_xadvance(new_font.handle.userdata, 32)    
-    if(glyph) then fix_tab_glyph(glyph, space) end
+    if(glyph) then fix_tab_glyph(glyph, space * 4) end
 
 
     local nk_img = font_atlas_img(image, true)
@@ -203,7 +201,14 @@ local function load_font(font_path, font_size)
     local tab_size = get_glyph_xadvance(new_font.handle.userdata, 9)
 
     -- print(master_img_width[0], master_img_height[0], tab_size)
-    local new_font_tbl = { tab_width = tab_size, font = new_font, path = font_path, size = font_size, cfg = nil }
+    local new_font_tbl = { 
+        tab_width = tab_size, 
+        tab_glyph = glyph,
+        font = new_font, 
+        path = font_path, 
+        size = font_size, 
+        cfg = nil 
+    }
     tinsert(fonts, new_font_tbl)
 
     return new_font_tbl
@@ -222,7 +227,7 @@ renderer.font.load = function(path, size)
     if(new_font == nil) then return nil end
     new_font.set_tab_width = function(self, width) 
         if(width == self.tab_width) then return end
-        adjust_glyph( self.font.handle.userdata, 9, width )
+        fix_tab_glyph( self.tab_glyph, width )
         self.tab_width = width
     end
     new_font.get_tab_width = function(self, width)

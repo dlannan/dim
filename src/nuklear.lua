@@ -62,11 +62,12 @@ nuklear_renderer.draw_text      = function(font, text, x, y, color)
     -- local hcolor = nk.nk_rgba(color.r, color.g, color.b, color.a)
     local hcolor = nk.nk_rgba(color[1], color[2], color[3], color[4])
     local r = renderer.rect
+    local text = checkstring(text)
+
     local w = font:get_width(text)
     local h = font:get_height()
     local rect = nk.nk_rect(x+r.x, y+r.y, w, h)
     local font_handle = font.font.handle
-    local text = checkstring(text)
     local text_len = #text
     -- print("draw_text", x, y, text)
     if(text == "CRLF" or #text == 0) then return x end
