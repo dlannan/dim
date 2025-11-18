@@ -150,16 +150,15 @@ end
 
 function TreeView:update()
 
-  local dest = self.visible and self.target_width or 0
+  local dest = self.visible and TreeViewData.target_width or 0
   -- We have to maintain width to the parent panel!
-  if(self.init_size) then
-    self.target_width = TreeViewData.target_width
-    self.init_size = false
+  if(self.init_size and self.size.x ~= dest) then
+    self:move_towards(self.size, "x", dest, 0.5, function() self.init_size = false end)
   else
-    self:move_towards(self.size, "x", self.target_width, 0.5, function() self.init_size = false end)
+
   end
 
-  if(self.size.y > 0) then TreeViewData.last_height = self.size.y end
+  -- if(self.size.y > 0) then TreeViewData.last_height = self.size.y end
 
   -- if(self.init_size == true and self.size.x < self.target_width) then
   --   self:move_towards(self.size, "x", self.target_width, 0.5, function() self.init_size = false end)

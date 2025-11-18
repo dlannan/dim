@@ -24,4 +24,10 @@ function PluginMgrView:new()
     self.init_size = true
 end
 
+function PluginMgrView:update()
+
+    PluginMgrView.super.update(self)
+end
+
+
 return PluginMgrView

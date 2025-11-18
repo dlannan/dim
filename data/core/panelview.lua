@@ -33,8 +33,8 @@ function PanelsView:new(config)
   self.scrollable = true
   self.visible = true
   self.header = config.title or ""
-  self.size.x = PanelsView.width
-  self.size.y = style.font:get_height()
+  -- self.size.x = PanelsView.width
+  -- self.size.y = style.font:get_height()
   self.init_size = true
 end
 

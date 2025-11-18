@@ -175,9 +175,11 @@ end
 function SidebarView:update()
 
   if(self.init_size == true and self.size.x ~= SidebarView.width) then
-    self:move_towards(self.size, "x", SidebarView.width, 0.5, function() self.init_size = false end)
+    self:move_towards(self.size, "x", SidebarView.width, 0.5, function() 
+      self.init_size = false 
+    end)
   else
-    self.width = self.size.x -- Update for border movement
+    -- self.width = self.size.x -- Update for border movement
   end
   SidebarView.super.update(self)
 end

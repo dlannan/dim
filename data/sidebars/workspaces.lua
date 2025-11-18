@@ -205,10 +205,10 @@ function WorkspacesView:new(config)
   WorkspacesView.super.new(self)
   self.scrollable = true
   self.visible = true
-  self.header = config.title or ""
-  self.size.x = WorkspacesView.width
-  self.size.y = style.font:get_height()
+  self.header = config and config.title or ""
   self.init_size = true
+
+  self.size.y = style.font:get_height() + style.padding.y * 2
 end
 
 function WorkspacesView:get_scrollable_size()
@@ -238,8 +238,6 @@ function WorkspacesView:on_mouse_pressed(button, x, y)
 end
 
 function WorkspacesView:update()
-
-  self.size.y = style.font:get_height() + style.padding.y * 2
 
   if(self.init_size == true and self.size.x ~= WorkspacesView.width) then
     self:move_towards(self.size, "x", WorkspacesView.width, 0.5, function() 
