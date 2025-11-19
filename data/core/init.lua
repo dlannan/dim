@@ -129,8 +129,6 @@ function core.init()
   core.add_thread(project_scan_thread)
   command.add_defaults()
 
-  core.sidebar_view:init()
-
   local got_plugin_error = not core.load_plugins()
   local got_user_error = not core.try(require, "user")
   local got_project_error = not core.load_project_module()

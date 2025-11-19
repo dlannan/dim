@@ -48,7 +48,7 @@ local SearchFilesData = {
 
 local SearchFilesView = View:extend()
 
-SearchFilesView.id = 3
+SearchFilesView.id = 4
 SearchFilesView.name = "search"
 SearchFilesView.icon = ""
 SearchFilesView.module = "search"
@@ -69,7 +69,6 @@ function SearchFilesView:new()
 
     -- Initialize font
     SearchFilesView.font = SearchFilesData.font
-    self.width = 200
     return self
 end
 
@@ -160,7 +159,8 @@ function SearchFilesView:on_mouse_pressed(button, x, y)
 end
 
 function SearchFilesView:update()
-
+    if(self.visible == false) then return end
+    self.size.y = style.font:get_height() + style.padding.y * 2
     -- if(self.visible == true) then
     --     self.size.x = self.width
     --     self.size.y = 200
