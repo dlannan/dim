@@ -14,6 +14,15 @@ PanelsView.visible = true
 PanelsView.separator  = "      "
 PanelsView.separator2 = "   |   "
 
+PanelsView.id = 2
+PanelsView.name = "panels"
+PanelsView.icon = nil
+PanelsView.module = "panels"
+PanelsView.config = {}
+PanelsView.split_dir = "down"
+PanelsView.split_node = "Workspaces"
+PanelsView.command = nil
+
 
 -- Taken from Rootview - used for EmptyView
 local function draw_text(x, y, color)
@@ -28,19 +37,18 @@ local function draw_text(x, y, color)
 end
 
 
-function PanelsView:new(config)
+function PanelsView:new()
   PanelsView.super.new(self)
   self.scrollable = true
   self.visible = true
-  self.header = config.title or ""
   -- self.size.x = PanelsView.width
   -- self.size.y = style.font:get_height()
   self.init_size = true
 end
 
-function View:get_scrollable_size()
-    return style.font:get_height()
-  end
+function PanelsView:get_scrollable_size()
+    return PanelsView.super.get_scrollable_size(self)
+end
 
 function PanelsView:get_name()
     return "Panels"
@@ -51,8 +59,6 @@ function PanelsView:on_mouse_pressed(button, x, y)
 end
 
 function PanelsView:update()
-
-  self.size.y = style.font:get_height() + style.padding.y * 2
 
   if(self.init_size == true and self.size.x ~= PanelsView.width) then
     self:move_towards(self.size, "x", PanelsView.width, 0.5, function() 
@@ -67,20 +73,7 @@ end
 
 function PanelsView:draw()
     self:draw_background(style.background)
-    local w, h = draw_text(0, 0, { 0, 0, 0, 0 })
-    local x = self.position.x + style.padding.x
-    local y = self.position.y + style.padding.y
-    draw_text(x, y, style.text)
 end
-
-command.add(nil, {
-  ["panelsview:toggle"] = function()
-    PanelsView.visible = not PanelsView.visible
-    PanelsView.width = PanelsView.visible and PanelsView.max_width or 0 
-  end,
-})
-
-keymap.add { ["ctrl+\\"] = "panelsview:toggle" }
 
 
 return PanelsView

@@ -8,7 +8,7 @@ local View = require "core.view"
 
 local PluginMgrView = View:extend()
 
-PluginMgrView.id = 4
+PluginMgrView.id = 5
 PluginMgrView.name = "plugin-manager"
 PluginMgrView.icon = ""
 PluginMgrView.module = "plugin_manager"
@@ -25,8 +25,14 @@ function PluginMgrView:new()
 end
 
 function PluginMgrView:update()
-
+    if(self.visible == false) then return end
+    self.size.y = style.font:get_height() + style.padding.y * 2
     PluginMgrView.super.update(self)
+end
+
+function PluginMgrView:draw()
+    if(self.visible == false) then return end
+    self:draw_background(style.background)
 end
 
 

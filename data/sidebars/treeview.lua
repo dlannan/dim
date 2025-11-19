@@ -25,7 +25,7 @@ end
 
 local TreeView = View:extend()
 
-TreeView.id = 2
+TreeView.id = 3
 TreeView.name = "treeview"
 TreeView.icon = ""
 TreeView.module = "treeview"
@@ -44,19 +44,16 @@ function TreeView:new()
   self.target_width = TreeViewData.target_width
 
   self.item_count = 0
-  TreeViewData.height = self.size.y
+  self.size.y = 0
 end
-
 
 function TreeView:get_item_height()
   return style.font:get_height() + style.padding.y
 end
 
-
 function TreeView:get_scrollable_size()
-  return self:get_item_height() * self.item_count
+  return self:get_item_height() * self.item_count + style.padding.y * 2
 end
-
 
 function TreeView:get_cached(item)
   local t = self.cache[item.filename]
@@ -73,7 +70,7 @@ function TreeView:get_cached(item)
 end
 
 function TreeView:get_name()
-  return "Project"
+  return "TreeView"
 end
 
 function TreeView:check_cache()
@@ -142,21 +139,23 @@ function TreeView:on_mouse_released(button, x, y)
   elseif self.hovered_item.type == "dir" then
     self.hovered_item.expanded = not self.hovered_item.expanded
   else
-    core.try(function()
-      core.root_view:open_doc(core.open_doc(self.hovered_item.filename))
-    end)
+    if button == "left" and core.root_view.dragged_released == nil then 
+      core.try(function()
+        core.root_view:open_doc(core.open_doc(self.hovered_item.filename))
+      end)
+    end
   end
 end
 
 function TreeView:update()
 
-  local dest = self.visible and TreeViewData.target_width or 0
-  -- We have to maintain width to the parent panel!
-  if(self.init_size and self.size.x ~= dest) then
-    self:move_towards(self.size, "x", dest, 0.5, function() self.init_size = false end)
-  else
+  -- local dest = self.visible and TreeViewData.target_width or 0
+  -- -- We have to maintain width to the parent panel!
+  -- if(self.init_size and self.size.x ~= dest) then
+  --   self:move_towards(self.size, "x", dest, 0.5, function() self.init_size = false end)
+  -- else
 
-  end
+  -- end
 
   -- if(self.size.y > 0) then TreeViewData.last_height = self.size.y end
 

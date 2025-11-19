@@ -16,11 +16,12 @@ WorkspacesView.name = "workspaces"
 WorkspacesView.icon = ""
 WorkspacesView.module = "workspaces"
 WorkspacesView.config = {}
-WorkspacesView.split_dir = "up"
-WorkspacesView.split_node = "Panels"
+WorkspacesView.split_dir = "right"
+WorkspacesView.split_node = "Sidebar"
 WorkspacesView.command = nil
 
-WorkspacesView.width = 200
+WorkspacesView.max_width = 200
+WorkspacesView.width = WorkspacesView.max_width
 WorkspacesView.pad = 3
 
 local core = require "core"
@@ -209,10 +210,11 @@ function WorkspacesView:new(config)
   self.init_size = true
 
   self.size.y = style.font:get_height() + style.padding.y * 2
+  self.size.x = WorkspacesView.width
 end
 
 function WorkspacesView:get_scrollable_size()
-    return style.font:get_height()
+    return style.font:get_height() + style.padding.y * 2
   end
 
 function WorkspacesView:get_name()
@@ -231,22 +233,24 @@ function WorkspacesView:on_mouse_moved(px, py, dx, dy)
       break
     end
   end
+  WorkspacesView.super.on_mouse_moved(self, px, py, dx, dy)
 end
 
 function WorkspacesView:on_mouse_pressed(button, x, y)
   core.root_view:set_focus_view()
+  WorkspacesView.super.on_mouse_pressed(self, button, x, y)
 end
 
 function WorkspacesView:update()
-
-  if(self.init_size == true and self.size.x ~= WorkspacesView.width) then
-    self:move_towards(self.size, "x", WorkspacesView.width, 0.5, function() 
-      self.init_size = false 
-    end)
-  else 
-    -- PanelsView.max_width = self.size.x -- Update for border movement
-  end
-
+  self.size.y = style.font:get_height() + style.padding.y * 2
+  -- if(self.init_size == true and self.size.x ~= WorkspacesView.width) then
+  --   self:move_towards(self.size, "x", WorkspacesView.width, 0.5, function() 
+  --     self.init_size = false 
+  --   end)
+  -- else 
+  --   -- PanelsView.max_width = self.size.x -- Update for border movement
+  -- end
+  if(self.size.x > 0) then WorkspacesView.width = self.size.x end
   WorkspacesView.super.update(self)
 end
 
@@ -270,5 +274,17 @@ function WorkspacesView:draw()
     end
 end
 
+command.add(nil, {
+  ["workspaces:toggle"] = function()
+    local ws_node = core.root_view:get_named_node("Workspaces")
+    local ws_view = ws_node.views[1] -- only ever 1 view in a workspace!
+    if( ws_view.visible ) then WorkspacesView.max_width = ws_view.size.x end 
+    ws_view.visible = not ws_view.visible
+    ws_view.size.x = ws_view.visible and WorkspacesView.max_width or 0 
+    WorkspacesView.width = ws_view.size.x
+  end,
+})
+
+keymap.add { ["ctrl+\\"] = "workspaces:toggle" }
 
 return WorkspacesView

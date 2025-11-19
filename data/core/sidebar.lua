@@ -6,8 +6,6 @@ local keymap = require "core.keymap"
 local style = require "core.style"
 local View = require "core.view"
 
-local PanelView = require("core.panelview")
-
 local ICON_SIZE     = 20.0 * SCALE
 local SIDEBAR_SIZE  = 35.0 * SCALE
 local ICON_SPACING  = 12.0 * SCALE
@@ -18,7 +16,7 @@ local SidebarData = {
     position = { x = 0, y = 0 },
     size = { x = SIDEBAR_SIZE, y = SIDEBAR_SIZE },
 
-    panel_select = 2,
+    panel_select = 3,
     -- The panels are filles out by the panel views (see treeview for example)
     panels  = {},
 }
@@ -34,13 +32,8 @@ function SidebarView:new()
   self.visible = true
   self.init_size = true
   self.cache = {}
+  self.hovered_item = nil
   SidebarView.width  = SIDEBAR_SIZE + ICON_SPACING
-end
-
--- Setup sidebar panels
-function SidebarView:init()
-  local view = PanelView({ title = config.project_path })
-  local child = core.root_view:get_view_node(core.sidebar_view):split("right", view, true)
 end
 
 function SidebarView:load_panel(ViewClass)
@@ -51,6 +44,7 @@ function SidebarView:load_panel(ViewClass)
     if ViewClass then
     local mod = {
         id = ViewClass.id or #SidebarData.panels,
+        name = ViewClass.name,
         icon = ViewClass.icon,
         config = ViewClass.config,
         split_dir = ViewClass.split_dir,
@@ -63,6 +57,7 @@ function SidebarView:load_panel(ViewClass)
 end
 
 function SidebarView:init_panels()
+  local current_node = self.panels_node
   for k, mod in ipairs(SidebarData.panels) do
     if(mod.split_dir) then
       local node = core.root_view:get_active_node()
