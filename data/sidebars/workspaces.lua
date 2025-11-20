@@ -76,19 +76,19 @@ end
 
 
 local function save_view(view)
-  local mt = getmetatable(view)
-  if mt == DocView then
+  
+  if view.is_docview then
     return {
       type = "doc",
-      active = (core.active_view == view or core_active_view == view.parent),
+      active = (core.active_view == view or core.active_view == view.parent),
       filename = view.doc.filename,
       selection = { view.doc:get_selection() },
-      scroll = { x = view.scroll.to.x, y = view.scroll.to.y },
+      scroll = { x = view.view.scroll.to.x, y = view.view.scroll.to.y },
       text = not view.doc.filename and view.doc:get_text(1, 1, math.huge, math.huge)
     }
   end
   for name, mod in pairs(package.loaded) do
-    if mod == mt then
+    if mod == view then
       return {
         type = "view",
         active = (core.active_view == view),
@@ -109,8 +109,8 @@ local function load_view(t)
     if t.text then doc:insert(1, 1, t.text) end
     doc:set_selection(table.unpack(t.selection))
     dv.last_line, dv.last_col = doc:get_selection()
-    dv.scroll.x, dv.scroll.to.x = t.scroll.x, t.scroll.x
-    dv.scroll.y, dv.scroll.to.y = t.scroll.y, t.scroll.y
+    dv.view.scroll.x, dv.view.scroll.to.x = t.scroll.x, t.scroll.x
+    dv.view.scroll.y, dv.view.scroll.to.y = t.scroll.y, t.scroll.y
     return dv
   end
   return require(t.module)()
