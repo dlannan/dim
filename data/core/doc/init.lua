@@ -4,7 +4,10 @@ local config = require "core.config"
 local common = require "core.common"
 local utils   = require("lua.utils")
 
-local Doc = {}
+local Doc = {
+  loaders   = {},
+  savers    = {},
+}
 
 
 local function split_lines(text)
@@ -65,8 +68,18 @@ function Doc:reset_syntax()
   end
 end
 
+-- User can add loaders here if it returns non nil, then loaded the doc!
+function Doc:check_loaders(filename)
+  for k, loader in ipairs(Doc.loaders) do 
+    local res = loader(self, filename)
+    if(res) then  return true end 
+  end 
+  return nil
+end
+
 
 function Doc:load(filename)
+  if(self:check_loaders(filename)) then return end 
   local fp = assert( io.open(filename, "rb") )
   self:reset()
   self.filename = filename

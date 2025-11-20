@@ -280,10 +280,10 @@ command.add(nil, {
   ["workspaces:toggle"] = function()
     local ws_node = core.root_view:get_named_node("Workspaces")
     local ws_view = ws_node.views[1] -- only ever 1 view in a workspace!
-    if( ws_view.visible ) then WorkspacesView.max_width = ws_view.size.x end 
+    if( ws_view.visible ) then WorkspacesView.max_width = ws_view.view.size.x end 
     ws_view.visible = not ws_view.visible
-    ws_view.size.x = ws_view.visible and WorkspacesView.max_width or 0 
-    WorkspacesView.width = ws_view.size.x
+    ws_view.view.size.x = ws_view.visible and WorkspacesView.max_width or 0 
+    WorkspacesView.width = ws_view.view.size.x
   end,
 })
 

@@ -22,6 +22,9 @@ function StatusView:new()
   return new_statusview
 end
 
+function StatusView:get_name() 
+  return "StatusView"
+end
 
 function StatusView:on_mouse_pressed()
   core.set_active_view(core.last_active_view)

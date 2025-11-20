@@ -8,6 +8,8 @@ local utils   = require("lua.utils")
 
 local syntax = require "core.syntax"
 
+local tinsert     = table.insert
+
 local images = {
   files = { "%.glb$", "%.gltf$" },
 }
@@ -37,53 +39,48 @@ local function draw_states(model, pos, size)
 end
 
 -- Override the Doc loader - if its a png.. then load it, and make a png Image Viewer for it.
-local GLTFDoc = utils.deepcopy(Doc)
-
-local GLTF_load = function (self, filename)
+local function GLTF_load(self, filename)
   if ( find(filename, "files") ) then
     core.try(function()
       self.model = renderer.load_model(filename)
     end)
-    if(self.model == nil) then
-      GLTFDoc.load(self, filename)
-    else
+    if(self.model) then
       self.model.scale = 1.0
       self.filename = filename
+      return true
     end
-  else
-    GLTFDoc.load(self, filename)
   end
+  return nil
 end
 
-GLTFDoc.load  = GLTF_load
+tinsert(Doc.loaders, GLTF_load)
 
-local GLTFDocView = utils.deepcopy(DocView)
 
 local function GLTF_draw(self)
   if(self.doc.model) then
     self.view:draw_background(style.background)
     -- Work out aspect for image so it is always centered and correct aspect view
     local model = self.doc.model
-    local doc_size = self.size
-    local doc_pos = self.position
+    local doc_size = self.view.size
+    local doc_pos = self.view.position
 
     core.try(function()
       renderer.draw_model(model, doc_pos.x, doc_pos.y, doc_size.x, doc_size.y)
       draw_states(model, doc_pos, doc_size)
     end)
-  else
-    GLTFDocView.draw(self)
+    return true
   end
+  return nil
 end
 
 local function GLTF_on_mouse_wheel(self, y)
   if(self.doc.model) then
     local model = self.doc.model
     model.scale = model.scale + y / 100  -- 100 should be dpi or something I think.
-  else
-    GLTFDocView.on_mouse_wheel(self, y)
+    return true
   end
+  return nil
 end
 
-GLTFDocView.draw = GLTF_draw
-GLTFDocView.on_mouse_wheel = GLTF_on_mouse_wheel
+tinsert(DocView.drawers, GLTF_draw)
+tinsert(DocView.on_mouse_wheels, GLTF_on_mouse_wheel)

@@ -8,6 +8,8 @@ local utils   = require("lua.utils")
 local syntax = require "core.syntax"
 local utils   = require("lua.utils")
 
+local tinsert   = table.insert
+
 local images = {
   files = { "%.png$", "%.jpg$", "%.jpeg$", "%.tga$", "%.gif$" },
   file_types = { "png", "jpg", "jpeg", "tga", "gif" },
@@ -23,26 +25,20 @@ local function find(string, field)
 end
 
 -- Override the Doc loader - if its a png.. then load it, and make a png Image Viewer for it.
-local ImageDoc  = utils.deepcopy(Doc)
-
 local imagedoc_load = function(self, filename)
   local idx = find(filename, "files")
   if ( idx ) then 
     local image, image_info = renderer.load_image(filename)
-    if(image == nil) then 
-      ImageDoc.load(self, filename)
-    else
+    if(image) then 
       self.image = { nk_image = image, info = image_info, zoom = 1.0, itype = images.file_types[idx] }
       self.filename = filename
+      return true
     end
-  else
-    ImageDoc.load(self, filename)
   end
+  return nil
 end
 
-ImageDoc.load = imagedoc_load
-
-local ImageDocView = utils.deepcopy(DocView)
+tinsert(Doc.loaders, imagedoc_load)
 
 local function imagedocview_draw(self)
   if(self.doc.image) then 
@@ -50,8 +46,8 @@ local function imagedocview_draw(self)
     -- Work out aspect for image so it is always centered and correct aspect view
     local img = self.doc.image
     local image_aspect = img.info[0].width / img.info[0].height
-    local doc_size = self.size
-    local doc_pos = self.position
+    local doc_size = self.view.size
+    local doc_pos = self.view.position
 
     local doc_width,  doc_height = doc_size.x * img.zoom, doc_size.y * img.zoom
     local doc_aspect = doc_width / doc_height
@@ -85,27 +81,27 @@ local function imagedocview_draw(self)
     end
 
     renderer.draw_image(img.nk_image, x, y, scaled_width, scaled_height)
-  else
-    ImageDocView.draw(self)
+    return true 
   end
+  return nil
 end
 
-ImageDocView.draw = imagedocview_draw
+tinsert(DocView.drawers, imagedocview_draw)
 
-local ImageStatusView = utils.deepcopy(StatusView)
+local ImageStatusView = core.root_view:get_named_node("StatusView")
 
 local function imagestatusview_get_items(self)
   local dv = core.active_view
   if(not dv.doc) then 
-    return ImageStatusView.get_items(self)
+    return DocView.get_items(self)
   end
 
   local img = dv.doc.image
 
   if not img then
-    return ImageStatusView.get_items(self)
+    return DocView.get_items(self)
   end
-  local left, right = ImageStatusView.get_items(self)
+  local left, right = DocView.get_items(self)
 
   local itype, w, h = img.itype, img.info[0].width, img.info[0].height
 

@@ -25,11 +25,11 @@ function LogView:update()
   local item = core.log_items[#core.log_items]
   if self.last_item ~= item then
     self.last_item = item
-    self.scroll.to.y = 0
+    self.view.scroll.to.y = 0
     self.yoffset = -(style.font:get_height() + style.padding.y)
   end
 
-  self.view:move_towards("yoffset", 0)
+  self.view:move_towards(self, "yoffset", 0)
 
   self.view:update()
 end
