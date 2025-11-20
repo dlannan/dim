@@ -81,21 +81,23 @@ function ConsoleDoc:load(filename)
     end
 end
 
-local ConsoleDocView = utils.deepcopy(DocView)
+local ConsoleDocView = {}
 
 -- Helper: create a new console doc
 function ConsoleDocView:new(doc)
 
-    doc = doc or ConsoleDoc:new()
-    doc.name = string.format("Console_%s", #ConsoleData.consoles)
-    self.module = "data.plugins.console"
-    self.doc:new(self, doc)
-    doc:insert(1, 1, doc.prompt)
+    local new_consoledocview = utils.deepcopy(ConsoleDocView)
+    new_consoledocview.view = DocView:new()
+    new_consoledocview.doc = doc or ConsoleDoc:new()
+    new_consoledocview.doc.name = string.format("Console_%s", #ConsoleData.consoles)
+    new_consoledocview.module = "data.plugins.console"
+    new_consoledocview.doc:new(self, doc)
+    new_consoledocview.doc:insert(1, 1, doc.prompt)
     -- Initialize prompt
-    ConsoleDocView.font = "console_font"
-    doc.console_id = #ConsoleData.consoles + 1
+    new_consoledocview.font = "console_font"
+    new_consoledocview.console_id = #ConsoleData.consoles + 1
     tinsert(ConsoleData.consoles, doc)
-    return doc
+    return new_consoledocview
 end
 
 function ConsoleDocView:get_name()
