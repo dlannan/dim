@@ -24,31 +24,34 @@ local function get_depth(filename)
   return n
 end
 
-local TreeView = {}
-
-TreeView.id = 3
-TreeView.name = "treeview"
-TreeView.icon = ""
-TreeView.module = "treeview"
-TreeView.config = {}
-TreeView.split_dir = "down"
-TreeView.split_node = "Panels"
-TreeView.locked = true
-TreeView.command = nil
+local TreeView = {
+  id = 3,
+  name = "treeview",
+  icon = "",
+  module = "treeview",
+  config = {},
+  split_dir = "down",
+  split_node = "Panels",
+  locked = true,
+  command = nil,
+}
 
 function TreeView:new()
-  local new_treeview = utils.deepcopy(TreeView)
-  new_treeview.view = View:new()
+  local new_treeview  = utils.deepcopy(TreeView)
+  new_treeview.view         = View:new()
   new_treeview.view.scrollable = true
-  new_treeview.visible = true
-  new_treeview.init_size = true
-  new_treeview.cache = {}
+  new_treeview.view.get_scrollable_size = function() return new_treeview:get_scrollable_size() end
+  new_treeview.visible      = true
+  new_treeview.init_size    = true
+  new_treeview.cache        = {}
   new_treeview.target_width = TreeViewData.target_width
 
-  new_treeview.item_count = 0
-  new_treeview.view.size.y = 0
+  new_treeview.item_count   = 0
+  -- new_treeview.view.size.x = 200
+  -- new_treeview.view.size.y = 1000
 
-  TreeViewData.view = new_treeview
+  TreeViewData.view         = new_treeview
+  return new_treeview
 end
 
 function TreeView:get_item_height()
@@ -92,7 +95,7 @@ function TreeView:each_item()
     self:check_cache()
     local ox, oy = self.view:get_content_offset()
     local y = oy + style.padding.y
-    local w = self.size.x
+    local w = self.view.size.x
     local h = self:get_item_height()
     local i = 1
     while i <= #core.project_files do
@@ -174,8 +177,9 @@ function TreeView:show_panel(visible)
 end
 
 function TreeView:draw()
-  self.view:draw_background(style.background2)
+  
   if(self.visible == false) then return end
+  self.view:draw_background(style.background2)
 
   local icon_width = style.icon_font:get_width("D")
   local spacing = style.font:get_width(" ") * 2

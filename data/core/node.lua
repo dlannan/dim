@@ -57,9 +57,9 @@ local Node = {
     divider = 0.5,
 }
 
-function Node:new(type)
+function Node:new(node_type)
     local new_node = utils.deepcopy(Node)
-    new_node.type = type or "leaf"
+    new_node.type = node_type or "leaf"
     if new_node.type == "leaf" then
         new_node:add_view(EmptyView:new())
     end
@@ -190,12 +190,11 @@ end
 function Node:get_named_node(name)
   for _, v in ipairs(self.views) do
     local vname = v.get_name and v:get_name() or nil
-    if vname and vname == name then return self end
+    if vname == name then return self end
   end
   if self.type ~= "leaf" then
     return self.a:get_named_node(name) or self.b:get_named_node(name)
   end
-  return nil
 end
 
 function Node:get_parent_node(root)
@@ -271,35 +270,24 @@ function Node:get_divider_rect()
   end
 end
 
--- Return two values for x and y axis and each of them is either falsy or a number.
--- A falsy value indicate no fixed size along the corresponding direction.
 function Node:get_locked_size()
     if self.type == "leaf" then
-      if self.locked then
+        if self.locked then
         local size = self.active_view.view.size
         return size.x, size.y
-      end
+        end
     else
-      local x1, y1 = self.a:get_locked_size()
-      local x2, y2 = self.b:get_locked_size()
-      -- The values below should be either a falsy value or a number
-      local sx, sy
-      if self.type == 'hsplit' then
-        if x1 and x2 then
-          local dsx = (x1 < 1 or x2 < 1) and 0 or style.divider_size
-          sx = x1 + x2 + dsx
+        local x1, y1 = self.a:get_locked_size()
+        local x2, y2 = self.b:get_locked_size()
+        if x1 and x2 and self.type == "hsplit" then
+            local dsx = (x1 < 1 or x2 < 1) and 0 or style.divider_size
+            return x1 + x2 + dsx, y1 or y2
+        elseif y1 and y2 and self.type == "vsplit" then
+            local dsy = (y1 < 1 or y2 < 1) and 0 or style.divider_size
+            return x1 or x2, y1 + y2 + dsy
         end
-        sy = y1 or y2
-      else
-        if y1 and y2 then
-          local dsy = (y1 < 1 or y2 < 1) and 0 or style.divider_size
-          sy = y1 + y2 + dsy
-        end
-        sx = x1 or x2
-      end
-      return sx, sy
     end
-  end
+end
 
 
 local function copy_position_and_size(dst, src)
@@ -311,8 +299,15 @@ end
 -- calculating the sizes is the same for hsplits and vsplits, except the x/y
 -- axis are swapped; this function lets us use the same code for both
 local function calc_split_sizes(self, x, y, x1, x2)
-    local ds = ((x1 and x1 < 1) or (x2 and x2 < 1)) and 0 or style.divider_size
-    local n = x1 and x1 + ds or (x2 and self.size[x] - x2 or math.floor(self.size[x] * self.divider))
+    local n
+    local ds = (x1 and x1 < 1 or x2 and x2 < 1) and 0 or style.divider_size
+    if x1 then
+      n = x1 + ds
+    elseif x2 then
+      n = self.size[x] - x2
+    else
+      n = math.floor(self.size[x] * self.divider)
+    end
     self.a.position[x] = self.position[x]
     self.a.position[y] = self.position[y]
     self.a.size[x] = n - ds

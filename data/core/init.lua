@@ -123,8 +123,8 @@ function core.init()
   core.sidebar_view = SidebarView:new()
 
   local curr_node = core.root_view.root_node
-  curr_node = curr_node:split("down", core.command_view, true)
-  curr_node:split("down", core.status_view, true)
+  curr_node:split("down", core.command_view, true)
+  curr_node.b:split("down", core.status_view, true)
   curr_node.a:split("left", core.sidebar_view, true)
 
   core.add_thread(project_scan_thread)
