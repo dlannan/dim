@@ -80,7 +80,7 @@ local function save_view(view)
   if mt == DocView then
     return {
       type = "doc",
-      active = (core.active_view == view),
+      active = (core.active_view == view or core_active_view == view.parent),
       filename = view.doc.filename,
       selection = { view.doc:get_selection() },
       scroll = { x = view.scroll.to.x, y = view.scroll.to.y },
@@ -206,7 +206,7 @@ core.add_postrun( function() print("Saving....");save_workspace() end)
 function WorkspacesView:new(config)
   local new_workspacesview        = utils.deepcopy(WorkspacesView)
   new_workspacesview.view         = View:new()
-  new_workspacesview.scrollable   = true
+  new_workspacesview.view.scrollable   = true
   new_workspacesview.visible      = true
   new_workspacesview.header       = config and config.title or ""
   new_workspacesview.init_size    = true
@@ -235,7 +235,7 @@ function WorkspacesView:on_mouse_moved(px, py, dx, dy)
       break
     end
   end
-  self.view:on_mouse_moved(self, px, py, dx, dy)
+  self.view:on_mouse_moved(px, py, dx, dy)
 end
 
 function WorkspacesView:on_mouse_pressed(button, x, y)

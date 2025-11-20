@@ -22,10 +22,14 @@ PluginMgrView.command = nil
 function PluginMgrView:new()
     local new_pluginmgrview = utils.deepcopy(PluginMgrView)
     new_pluginmgrview.view = View:new()
-    new_pluginmgrview.scrollable = true
+    new_pluginmgrview.view.scrollable = true
     new_pluginmgrview.visible = false
     new_pluginmgrview.init_size = true
     return new_pluginmgrview
+end
+
+function PluginMgrView:get_name()
+    return "PluginMgr"
 end
 
 function PluginMgrView:update()

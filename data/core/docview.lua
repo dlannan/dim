@@ -276,7 +276,7 @@ function DocView:update()
   -- scroll to make caret visible and reset blink timer if it moved
   local line, col = self.doc:get_selection()
   if (line ~= self.last_line or col ~= self.last_col) and self.view.size.x > 0 then
-    if core.active_view == self then
+    if core.active_view == self or core.active_view == self.parent then
       self:scroll_to_make_visible(line, col)
     end
     self.blink_timer = 0
@@ -330,7 +330,7 @@ function DocView:draw_line_body(idx, x, y)
 
   -- draw line highlight if caret is on this line
   if config.highlight_current_line and not self.doc:has_selection()
-  and line == idx and core.active_view == self then
+  and line == idx and (core.active_view == self or core.active_view == self.parent) then
     self:draw_line_highlight(x + self.view.scroll.x, y)
   end
 
@@ -338,7 +338,7 @@ function DocView:draw_line_body(idx, x, y)
   self:draw_line_text(idx, x, y)
 
   -- draw caret if it overlaps this line
-  if line == idx and core.active_view == self 
+  if line == idx and (core.active_view == self or core.active_view == self.parent)
     and self.blink_timer < blink_period / 2
     and system.window_has_focus() then
     local lh = self:get_line_height()

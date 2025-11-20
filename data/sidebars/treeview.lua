@@ -39,7 +39,7 @@ TreeView.command = nil
 function TreeView:new()
   local new_treeview = utils.deepcopy(TreeView)
   new_treeview.view = View:new()
-  new_treeview.scrollable = true
+  new_treeview.view.scrollable = true
   new_treeview.visible = true
   new_treeview.init_size = true
   new_treeview.cache = {}
@@ -122,7 +122,7 @@ end
 
 function TreeView:on_mouse_moved(px, py, ...)
   if not self.visible then return end
-  if self.view.on_mouse_moved(self, px, py, ...) then
+  if self.view:on_mouse_moved(px, py, ...) then
     -- mouse movement handled by the View (scrollbar)
     self.hovered_item = nil
     return

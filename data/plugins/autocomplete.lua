@@ -124,7 +124,7 @@ end
 
 
 local function get_partial_symbol()
-  local doc = core.active_view.view.doc
+  local doc = core.active_view.doc
   local line2, col2 = doc:get_selection()
   local line1, col1 = doc:position_offset(line2, col2, translate.start_of_word)
   return doc:get_text(line1, col1, line2, col2)

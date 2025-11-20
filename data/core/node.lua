@@ -189,12 +189,13 @@ end
 
 function Node:get_named_node(name)
   for _, v in ipairs(self.views) do
-    local vname = v.view and v:get_name() or ""
-    if vname == name then return self end
+    local vname = v.get_name and v:get_name() or nil
+    if vname and vname == name then return self end
   end
   if self.type ~= "leaf" then
     return self.a:get_named_node(name) or self.b:get_named_node(name)
   end
+  return nil
 end
 
 function Node:get_parent_node(root)
@@ -368,7 +369,7 @@ function Node:draw_tabs()
 
   for i, view in ipairs(self.views) do
     local x, y, w, h = self:get_tab_rect(i)
-    local text = view.view:get_name()
+    local text = view:get_name()
     local color = style.dim
     if view == self.active_view then
       color = style.text

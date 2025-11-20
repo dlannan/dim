@@ -13,7 +13,6 @@ function SingleLineDoc:insert(line, col, text)
   self:insert(line, col, text:gsub("\n", ""))
 end
 
-
 local CommandView = {}
 
 local max_suggestions = 10
@@ -30,8 +29,10 @@ local default_state = {
 function CommandView:new()
   local new_commandview = utils.deepcopy(CommandView)
   new_commandview.docview = DocView:new(SingleLineDoc:new())
+  new_commandview.docview.parent = new_commandview
   new_commandview.doc = new_commandview.docview.doc
   new_commandview.view = new_commandview.docview.view
+
   new_commandview.suggestion_idx = 1
   new_commandview.suggestions = {}
   new_commandview.suggestions_height = 0
@@ -166,8 +167,12 @@ function CommandView:update_suggestions()
 end
 
 
+function CommandView:on_text_input(text)
+  self.doc:text_input(text)
+end
+
 function CommandView:update()
-  self.view:update()
+  self.docview:update()
 
   if core.active_view ~= self and self.state ~= default_state then
     self:exit(false, true)

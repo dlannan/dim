@@ -120,12 +120,12 @@ function core.init()
   core.root_view = RootView:new()
   core.command_view = CommandView:new()
   core.status_view = StatusView:new()
-  -- core.sidebar_view = SidebarView:new()
+  core.sidebar_view = SidebarView:new()
 
   local curr_node = core.root_view.root_node
   curr_node = curr_node:split("down", core.command_view, true)
   curr_node:split("down", core.status_view, true)
-  -- curr_node.a:split("left", core.sidebar_view, true)
+  curr_node.a:split("left", core.sidebar_view, true)
 
   core.add_thread(project_scan_thread)
   command.add_defaults()
@@ -133,13 +133,13 @@ function core.init()
   local got_plugin_error = not core.load_plugins()
   local got_user_error = not core.try(require, "user")
   local got_project_error = not core.load_project_module()
-  -- local got_sidebar_error = not core.load_panels()
+  local got_sidebar_error = not core.load_panels()
 
   for _, filename in ipairs(files) do
     core.root_view:open_doc(core.open_doc(filename))
   end
 
-  if got_plugin_error or got_user_error or got_project_error then
+  if got_plugin_error or got_user_error or got_project_error or got_sidebar_error then
     command.perform("core:open-log")
   end
 

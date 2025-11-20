@@ -30,8 +30,9 @@ local SidebarView = {}
 function SidebarView:new()
   local new_sidebar = utils.deepcopy(SidebarView)
   new_sidebar.view = View:new()
-  new_sidebar.scrollable = true
+  new_sidebar.view.scrollable = true
   new_sidebar.visible = true
+
   new_sidebar.init_size = true
   new_sidebar.cache = {}
   new_sidebar.hovered_item = nil
@@ -66,8 +67,7 @@ function SidebarView:init_panels()
     if(mod.split_dir) then
       local node = core.root_view:get_active_node()
       if(mod.split_node) then
-        local snode = core.root_view:get_named_node(mod.split_node)
-        if(snode) then node = snode end 
+        node = core.root_view:get_named_node(mod.split_node)
       end
       mod.view = mod.view_class:new(mod.config)
       local child = node:split(mod.split_dir, mod.view, mod.locked)
@@ -84,6 +84,7 @@ function SidebarView:get_cached(item)
     t.name = item.name
     t.command = item.command
     t.view = item.view
+    t.locked = item.locked
     self.cache[t.id] = t
   end
   return t
@@ -112,7 +113,7 @@ function SidebarView:each_item()
     self:check_cache()
     local ox, oy = self.view:get_content_offset()
     local y = oy + ICON_SPACING
-    local w = self.size.x
+    local w = self.view.size.x
     local h = self:get_item_height()
 
     local i = 1
@@ -181,7 +182,7 @@ function SidebarView:update()
   else
     -- self.width = self.size.x -- Update for border movement
   end
-  self.view:update()
+  -- self.view:update()
 end
 
 function SidebarView:draw()
