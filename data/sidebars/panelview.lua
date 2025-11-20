@@ -42,11 +42,12 @@ end
 function PanelsView:new()
   local new_panelsview = utils.deepcopy(PanelsView)
   new_panelsview.view = View:new()
-  new_panelsview.scrollable = true
+  new_panelsview.view.scrollable = true
   new_panelsview.visible = true
   -- self.size.x = PanelsView.width
   -- self.size.y = style.font:get_height()
   new_panelsview.init_size = true
+  return new_panelsview
 end
 
 function PanelsView:get_scrollable_size()

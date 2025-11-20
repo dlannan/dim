@@ -89,7 +89,7 @@ function ConsoleDocView:new(doc)
     doc = doc or ConsoleDoc:new()
     doc.name = string.format("Console_%s", #ConsoleData.consoles)
     self.module = "data.plugins.console"
-    self.doc.new(self, doc)
+    self.doc:new(self, doc)
     doc:insert(1, 1, doc.prompt)
     -- Initialize prompt
     ConsoleDocView.font = "console_font"

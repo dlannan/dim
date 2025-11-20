@@ -7,7 +7,7 @@ local DocView = require "core.docview"
 
 
 local function dv()
-  return core.active_view.view
+  return core.active_view
 end
 
 

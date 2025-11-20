@@ -62,7 +62,7 @@ SearchFilesView.command = nil
 function SearchFilesView:new()
     local new_searchfilesview = utils.deepcopy(SearchFilesView)
     new_searchfilesview.view = View:new()
-    new_searchfilesview.scrollable = true
+    new_searchfilesview.view.scrollable = true
     new_searchfilesview.visible = false
     new_searchfilesview.init_size = true
     new_searchfilesview.search_id = #SearchFilesData.searched
@@ -108,7 +108,7 @@ function SearchFilesView:each_item()
         self:check_cache()
         local ox, oy = self.view:get_content_offset()
         local y = oy + style.padding.y
-        local w = self.size.x
+        local w = self.view.size.x
         local h = self:get_item_height()
 
         local i = 1
@@ -161,7 +161,7 @@ end
 
 function SearchFilesView:update()
     if(self.visible == false) then return end
-    self.size.y = style.font:get_height() + style.padding.y * 2
+    self.view.size.y = style.font:get_height() + style.padding.y * 2
     -- if(self.visible == true) then
     --     self.size.x = self.width
     --     self.size.y = 200
