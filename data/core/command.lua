@@ -13,7 +13,7 @@ function command.add(predicate, map)
   end
   if type(predicate) == "table" then
     local class = predicate
-    predicate = function() return core.active_view:is(class) end
+    predicate = function() return core.active_view.view end
   end
   for name, fn in pairs(map) do
     assert(not command.map[name], "command already exists: " .. name)

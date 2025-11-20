@@ -97,7 +97,7 @@ end
 
 
 local function update_suggestions()
-  local doc = core.active_view.doc
+  local doc = core.active_view.view.doc
   local filename = doc and doc.filename or ""
 
   -- get all relevant suggestions for given filename
@@ -124,7 +124,7 @@ end
 
 
 local function get_partial_symbol()
-  local doc = core.active_view.doc
+  local doc = core.active_view.view.doc
   local line2, col2 = doc:get_selection()
   local line1, col1 = doc:position_offset(line2, col2, translate.start_of_word)
   return doc:get_text(line1, col1, line2, col2)
@@ -250,7 +250,7 @@ end
 
 command.add(predicate, {
   ["autocomplete:complete"] = function()
-    local doc = core.active_view.doc
+    local doc = core.active_view.view.doc
     local line, col = doc:get_selection()
     local text = suggestions[suggestions_idx].text
     doc:insert(line, col, text)

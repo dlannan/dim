@@ -5,8 +5,9 @@ local config = require "core.config"
 local style = require "core.style"
 local keymap = require "core.keymap"
 local View = require "core.view"
+local utils   = require("lua.utils")
 
-local PanelsView = View:extend()
+local PanelsView = {}
 
 PanelsView.width = 200
 PanelsView.max_width = PanelsView.width
@@ -21,6 +22,7 @@ PanelsView.module = "panels"
 PanelsView.config = {}
 PanelsView.split_dir = "down"
 PanelsView.split_node = "Workspaces"
+PanelsView.locked = true
 PanelsView.command = nil
 
 
@@ -38,16 +40,17 @@ end
 
 
 function PanelsView:new()
-  PanelsView.super.new(self)
-  self.scrollable = true
-  self.visible = true
+  local new_panelsview = utils.deepcopy(PanelsView)
+  new_panelsview.view = View:new()
+  new_panelsview.scrollable = true
+  new_panelsview.visible = true
   -- self.size.x = PanelsView.width
   -- self.size.y = style.font:get_height()
-  self.init_size = true
+  new_panelsview.init_size = true
 end
 
 function PanelsView:get_scrollable_size()
-    return PanelsView.super.get_scrollable_size(self)
+    return self.view.get_scrollable_size(self)
 end
 
 function PanelsView:get_name()
@@ -60,19 +63,19 @@ end
 
 function PanelsView:update()
 
-  if(self.init_size == true and self.size.x ~= PanelsView.width) then
-    self:move_towards(self.size, "x", PanelsView.width, 0.5, function() 
+  if(self.init_size == true and self.view.size.x ~= PanelsView.width) then
+    self.view:move_towards(self.view.size, "x", PanelsView.width, 0.5, function() 
       self.init_size = false 
     end)
   else 
     -- PanelsView.max_width = self.size.x -- Update for border movement
   end
 
-  PanelsView.super.update(self)
+  self.view:update()
 end
 
 function PanelsView:draw()
-    self:draw_background(style.background)
+    self.view:draw_background(style.background)
 end
 
 

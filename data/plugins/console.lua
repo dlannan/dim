@@ -6,6 +6,7 @@ local keymap    = require "core.keymap"
 local style     = require "core.style"
 local DocView   = require "core.docview"
 local Doc       = require "core.doc"
+local utils     = require("lua.utils")
 
 local fmt       = string.format
 local tinsert   = table.insert
@@ -17,15 +18,16 @@ local ConsoleData = {
     consoles = {},
 }
 
-local ConsoleDoc = Doc:extend()
+local ConsoleDoc = {}
 
 function ConsoleDoc:new()
-    ConsoleDoc.super.new(self)
-    ConsoleDoc.super.reset(self)
-    self.prompt = "> "
-    self.console_lines = {}
+    local new_consoledoc = utils.deepcopy(ConsoleDoc)
+    new_consoledoc.doc = Doc:new()
+    new_consoledoc.doc:reset()
+    new_consoledoc.prompt = "> "
+    new_consoledoc.console_lines = {}
     style.console_font = ConsoleData.font
-    return self
+    return new_consoledoc
 end
 
 function ConsoleDoc:get_name()
@@ -38,8 +40,8 @@ function ConsoleDoc:append_line(text, col)
     col = col or psize
 
     if(tonumber(col) < psize) then col = psize end
-    ConsoleDoc.super.insert(self, last_line, col, text)
-    ConsoleDoc.super.move_to(self, #self.lines, col)
+    self.doc.insert(self, last_line, col, text)
+    self.doc.move_to(self, #self.lines, col)
     return #self.lines
 end
 
@@ -64,7 +66,7 @@ function ConsoleDoc:insert(line, col, text)
         self:execute_current_line()
     end
     if(tonumber(col) < psize) then col = psize end
-    ConsoleDoc.super.move_to(self, #self.lines, col)
+    self.doc.move_to(self, #self.lines, col)
 end
 
 -- Write a line to the console
@@ -79,15 +81,15 @@ function ConsoleDoc:load(filename)
     end
 end
 
-local ConsoleDocView = DocView:extend()
+local ConsoleDocView = utils.deepcopy(DocView)
 
 -- Helper: create a new console doc
 function ConsoleDocView:new(doc)
 
-    doc = doc or ConsoleDoc()
+    doc = doc or ConsoleDoc:new()
     doc.name = string.format("Console_%s", #ConsoleData.consoles)
     self.module = "data.plugins.console"
-    ConsoleDocView.super.new(self, doc)
+    self.doc.new(self, doc)
     doc:insert(1, 1, doc.prompt)
     -- Initialize prompt
     ConsoleDocView.font = "console_font"
@@ -105,8 +107,8 @@ end
 command.add(nil, {
     ["console:new"] = function()
         local node = core.root_view:get_active_node()
-        local doc = ConsoleDoc()
-        node:add_view(ConsoleDocView(doc))
+        local doc = ConsoleDoc:new()
+        node:add_view(ConsoleDocView:new(doc))
     end
 })
 

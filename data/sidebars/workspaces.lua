@@ -9,7 +9,7 @@ local View = require "core.view"
 local json  = require("lua.json")
 local utils = require("lua.utils")
 
-local WorkspacesView = View:extend()
+local WorkspacesView = {}
 
 WorkspacesView.id = 1
 WorkspacesView.name = "workspaces"
@@ -18,6 +18,7 @@ WorkspacesView.module = "workspaces"
 WorkspacesView.config = {}
 WorkspacesView.split_dir = "right"
 WorkspacesView.split_node = "Sidebar"
+WorkspacesView.locked = true
 WorkspacesView.command = nil
 
 WorkspacesView.max_width = 200
@@ -28,9 +29,9 @@ local core = require "core"
 local DocView = require "core.docview"
 
 
--- Unlike original workspace plugin, this holds multiple workspaces. 
+-- Unlike original workspace plugin, this holds multiple workspaces.
 -- Allows user to jump between them and store them.
--- These will be selectable on startup too. 
+-- These will be selectable on startup too.
 
 -- New workspace structure:
 local WorkspaceData         = {
@@ -102,9 +103,9 @@ local function load_view(t)
   if t.type == "doc" then
     local ok, doc = pcall(core.open_doc, t.filename)
     if not ok then
-      return DocView(core.open_doc())
+      return DocView:new(core.open_doc())
     end
-    local dv = DocView(doc)
+    local dv = DocView:new(doc)
     if t.text then doc:insert(1, 1, t.text) end
     doc:set_selection(table.unpack(t.selection))
     dv.last_line, dv.last_col = doc:get_selection()
@@ -203,14 +204,15 @@ core.add_prerun( function() core.try(load_workspace) end )
 core.add_postrun( function() print("Saving....");save_workspace() end)
 
 function WorkspacesView:new(config)
-  WorkspacesView.super.new(self)
-  self.scrollable = true
-  self.visible = true
-  self.header = config and config.title or ""
-  self.init_size = true
-
-  self.size.y = style.font:get_height() + style.padding.y * 2
-  self.size.x = WorkspacesView.width
+  local new_workspacesview        = utils.deepcopy(WorkspacesView)
+  new_workspacesview.view         = View:new()
+  new_workspacesview.scrollable   = true
+  new_workspacesview.visible      = true
+  new_workspacesview.header       = config and config.title or ""
+  new_workspacesview.init_size    = true
+  new_workspacesview.view.size.y  = style.font:get_height() + style.padding.y * 2
+  new_workspacesview.view.size.x  = WorkspacesView.width
+  return new_workspacesview
 end
 
 function WorkspacesView:get_scrollable_size()
@@ -223,8 +225,8 @@ end
 
 function WorkspacesView:on_mouse_moved(px, py, dx, dy)
   self.hovered_item = nil
-  local bx, by, bw, bh = self:get_content_bounds()
-  local ox, oy = self:get_content_offset()
+  local bx, by, bw, bh = self.view:get_content_bounds()
+  local ox, oy = self.view:get_content_offset()
   local cw, ch = WorkspacesView.width/4, style.font:get_height()
   for i=0, 3 do 
     local x, y = i * cw + ox, oy 
@@ -233,16 +235,16 @@ function WorkspacesView:on_mouse_moved(px, py, dx, dy)
       break
     end
   end
-  WorkspacesView.super.on_mouse_moved(self, px, py, dx, dy)
+  self.view:on_mouse_moved(self, px, py, dx, dy)
 end
 
 function WorkspacesView:on_mouse_pressed(button, x, y)
   core.root_view:set_focus_view()
-  WorkspacesView.super.on_mouse_pressed(self, button, x, y)
+  self.view:on_mouse_pressed(self, button, x, y)
 end
 
 function WorkspacesView:update()
-  self.size.y = style.font:get_height() + style.padding.y * 2
+  self.view.size.y = style.font:get_height() + style.padding.y * 2
   -- if(self.init_size == true and self.size.x ~= WorkspacesView.width) then
   --   self:move_towards(self.size, "x", WorkspacesView.width, 0.5, function() 
   --     self.init_size = false 
@@ -250,14 +252,14 @@ function WorkspacesView:update()
   -- else 
   --   -- PanelsView.max_width = self.size.x -- Update for border movement
   -- end
-  if(self.size.x > 0) then WorkspacesView.width = self.size.x end
-  WorkspacesView.super.update(self)
+  if(self.view.size.x > 0) then WorkspacesView.width = self.view.size.x end
+  self.view:update()
 end
 
 function WorkspacesView:draw()
-    self:draw_background(style.background)
-    local bx, by, bw, bh = self:get_content_bounds()
-    local ox, oy = self:get_content_offset()
+    self.view:draw_background(style.background)
+    local bx, by, bw, bh = self.view:get_content_bounds()
+    local ox, oy = self.view:get_content_offset()
     local cw, ch = WorkspacesView.width/4, style.font:get_height()
     local pd = WorkspacesView.pad
     for i=0, 3 do 

@@ -4,20 +4,22 @@ local command = require "core.command"
 local common = require "core.common"
 local config = require "core.config"
 local View = require "core.view"
-
+local utils   = require("lua.utils")
 
 config.bigclock_time_format = "%H:%M:%S"
 config.bigclock_date_format = "%A, %d %B %Y"
 config.bigclock_scale = 1
 
 
-local ClockView = View:extend()
+local ClockView = {}
 
 
 function ClockView:new()
-  ClockView.super.new(self)
-  self.time_text = ""
-  self.date_text = ""
+  local new_clockview = utils.deepcopy(ClockView)
+  new_clockview.view = utils.deepcopy(View)
+  new_clockview.time_text = ""
+  new_clockview.date_text = ""
+  return new_clockview
 end
 
 
@@ -46,13 +48,13 @@ function ClockView:update()
     self.time_text = time_text
     self.date_text = date_text
   end
-  ClockView.super.update(self)
+  self.view:update()
 end
 
 
 function ClockView:draw()
   self:update_fonts()
-  self:draw_background(style.background)
+  self.view:draw_background(style.background)
   local x, y = self.position.x, self.position.y
   local w, h = self.size.x, self.size.y
   local _, y = common.draw_text(self.time_font, style.text, self.time_text, "center", x, y, w, h)
@@ -64,7 +66,7 @@ end
 command.add(nil, {
   ["big-clock:open"] = function()
     local node = core.root_view:get_active_node()
-    node:add_view(ClockView())
+    node:add_view(ClockView:new())
   end,
 })
 

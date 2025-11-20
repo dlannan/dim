@@ -1,40 +1,42 @@
 local core = require "core"
 local config = require "core.config"
 local tokenizer = require "core.tokenizer"
-local Object = require "core.object"
+local utils   = require("lua.utils")
 
-
-local Highlighter = Object:extend()
+local Highlighter = {}
 
 
 function Highlighter:new(doc)
-  self.doc = doc
-  self:reset()
+  local new_highlighter = utils.deepcopy(Highlighter)
+  new_highlighter.doc = doc
+  new_highlighter:reset()
 
   -- init incremental syntax highlighting
   core.add_thread(function()
     while true do
-      if self.first_invalid_line > self.max_wanted_line then
-        self.max_wanted_line = 0
+      if new_highlighter.first_invalid_line > new_highlighter.max_wanted_line then
+        new_highlighter.max_wanted_line = 0
         coroutine.yield(1 / config.fps)
 
       else
-        local max = math.min(self.first_invalid_line + 40, self.max_wanted_line)
+        local max = math.min(new_highlighter.first_invalid_line + 40, new_highlighter.max_wanted_line)
 
-        for i = self.first_invalid_line, max do
-          local state = (i > 1) and self.lines[i - 1].state
-          local line = self.lines[i]
+        for i = new_highlighter.first_invalid_line, max do
+          local state = (i > 1) and new_highlighter.lines[i - 1].state
+          local line = new_highlighter.lines[i]
           if not (line and line.init_state == state) then
-            self.lines[i] = self:tokenize_line(i, state)
+            new_highlighter.lines[i] = new_highlighter:tokenize_line(i, state)
           end
         end
 
-        self.first_invalid_line = max + 1
+        new_highlighter.first_invalid_line = max + 1
         core.redraw = true
         coroutine.yield()
       end
     end
-  end, self)
+  end, new_highlighter)
+
+  return new_highlighter
 end
 
 

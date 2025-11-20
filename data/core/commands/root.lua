@@ -77,7 +77,7 @@ for _, dir in ipairs { "left", "right", "up", "down" } do
     local node = core.root_view:get_active_node()
     local av = node.active_view
     node:split(dir)
-    if av:is(DocView) then
+    if av.is_docview then
       core.root_view:open_doc(av.doc)
     end
   end

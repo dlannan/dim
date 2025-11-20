@@ -4,6 +4,7 @@ local common = require "core.common"
 local Doc = require "core.doc"
 local DocView = require "core.docview"
 local View = require "core.view"
+local utils   = require("lua.utils")
 
 local syntax = require "core.syntax"
 
@@ -36,7 +37,7 @@ local function draw_states(model, pos, size)
 end
 
 -- Override the Doc loader - if its a png.. then load it, and make a png Image Viewer for it.
-local GLTFDoc = Doc:extend()
+local GLTFDoc = utils.deepcopy(Doc)
 
 local GLTF_load = function (self, filename)
   if ( find(filename, "files") ) then
@@ -44,25 +45,23 @@ local GLTF_load = function (self, filename)
       self.model = renderer.load_model(filename)
     end)
     if(self.model == nil) then
-      GLTFDoc.__override.load(self, filename)
+      GLTFDoc.load(self, filename)
     else
       self.model.scale = 1.0
       self.filename = filename
     end
   else
-    GLTFDoc.__override.load(self, filename)
+    GLTFDoc.load(self, filename)
   end
 end
 
-GLTFDoc:override( Doc, {
-  load  = GLTF_load,
-})
+GLTFDoc.load  = GLTF_load
 
-local GLTFDocView = DocView:extend()
+local GLTFDocView = utils.deepcopy(DocView)
 
 local function GLTF_draw(self)
   if(self.doc.model) then
-    self:draw_background(style.background)
+    self.view:draw_background(style.background)
     -- Work out aspect for image so it is always centered and correct aspect view
     local model = self.doc.model
     local doc_size = self.size
@@ -73,7 +72,7 @@ local function GLTF_draw(self)
       draw_states(model, doc_pos, doc_size)
     end)
   else
-    GLTFDocView.__override.draw(self)
+    GLTFDocView.draw(self)
   end
 end
 
@@ -82,11 +81,9 @@ local function GLTF_on_mouse_wheel(self, y)
     local model = self.doc.model
     model.scale = model.scale + y / 100  -- 100 should be dpi or something I think.
   else
-    GLTFDocView.__override.on_mouse_wheel(self, y)
+    GLTFDocView.on_mouse_wheel(self, y)
   end
 end
 
-GLTFDocView:override( DocView, {
-  draw = GLTF_draw,
-  on_mouse_wheel = GLTF_on_mouse_wheel,
-})
+GLTFDocView.draw = GLTF_draw
+GLTFDocView.on_mouse_wheel = GLTF_on_mouse_wheel

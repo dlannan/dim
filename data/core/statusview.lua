@@ -6,18 +6,20 @@ local style = require "core.style"
 local DocView = require "core.docview"
 local LogView = require "core.logview"
 local View = require "core.view"
+local utils   = require("lua.utils")
 
-
-local StatusView = View:extend()
+local StatusView = {}
 
 StatusView.separator  = "      "
 StatusView.separator2 = "   |   "
 
 
 function StatusView:new()
-  StatusView.super.new(self)
-  self.message_timeout = 0
-  self.message = {}
+  local new_statusview = utils.deepcopy(StatusView)
+  new_statusview.view = View:new()
+  new_statusview.message_timeout = 0
+  new_statusview.message = {}
+  return new_statusview
 end
 
 
@@ -40,15 +42,15 @@ end
 
 
 function StatusView:update()
-  self.size.y = style.font:get_height() + style.padding.y * 2
+  self.view.size.y = style.font:get_height() + style.padding.y * 2
 
   if system.get_time() < self.message_timeout then
-    self.scroll.to.y = self.size.y
+    self.view.scroll.to.y = self.view.size.y
   else
-    self.scroll.to.y = 0
+    self.view.scroll.to.y = 0
   end
 
-  StatusView.super.update(self)
+  self.view:update()
 end
 
 
@@ -62,7 +64,7 @@ local function draw_items(self, items, x, y, draw_fn)
     elseif type(item) == "table" then
       color = item
     else
-      x = draw_fn(font, color, item, nil, x, y, 0, self.size.y)
+      x = draw_fn(font, color, item, nil, x, y, 0, self.view.size.y)
     end
   end
 
@@ -76,11 +78,11 @@ end
 
 
 function StatusView:draw_items(items, right_align, yoffset)
-  local x, y = self:get_content_offset()
+  local x, y = self.view:get_content_offset()
   y = y + (yoffset or 0)
   if right_align then
     local w = draw_items(self, items, 0, 0, text_width)
-    x = x + self.size.x - w - style.padding.x
+    x = x + self.view.size.x - w - style.padding.x
     draw_items(self, items, x, y, common.draw_text)
   else
     x = x + style.padding.x
@@ -126,10 +128,10 @@ end
 
 
 function StatusView:draw()
-  self:draw_background(style.background2)
+  self.view:draw_background(style.background2)
 
   if self.message then
-    self:draw_items(self.message, false, self.size.y)
+    self:draw_items(self.message, false, self.view.size.y)
   end
 
   local left, right = self:get_items()

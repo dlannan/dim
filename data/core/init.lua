@@ -117,14 +117,15 @@ function core.init()
   core.project_files = {}
   core.redraw = true
 
-  core.root_view = RootView()
-  core.command_view = CommandView()
-  core.status_view = StatusView()
-  core.sidebar_view = SidebarView()
+  core.root_view = RootView:new()
+  core.command_view = CommandView:new()
+  core.status_view = StatusView:new()
+  -- core.sidebar_view = SidebarView:new()
 
-  core.root_view.root_node:split("down", core.command_view, true)
-  core.root_view.root_node.b:split("down", core.status_view, true)
-  core.root_view.root_node.a:split("left", core.sidebar_view, true)
+  local curr_node = core.root_view.root_node
+  curr_node = curr_node:split("down", core.command_view, true)
+  curr_node:split("down", core.status_view, true)
+  -- curr_node.a:split("left", core.sidebar_view, true)
 
   core.add_thread(project_scan_thread)
   command.add_defaults()
@@ -132,7 +133,7 @@ function core.init()
   local got_plugin_error = not core.load_plugins()
   local got_user_error = not core.try(require, "user")
   local got_project_error = not core.load_project_module()
-  local got_sidebar_error = not core.load_panels()
+  -- local got_sidebar_error = not core.load_panels()
 
   for _, filename in ipairs(files) do
     core.root_view:open_doc(core.open_doc(filename))
@@ -306,7 +307,7 @@ function core.open_doc(filename)
     end
   end
   -- no existing doc for filename; create new
-  local doc = Doc(filename)
+  local doc = Doc:new(filename)
   table.insert(core.docs, doc)
   core.log_quiet(filename and "Opened doc \"%s\"" or "Opened new doc", filename)
   return doc
@@ -434,7 +435,7 @@ function core.step()
 
   local width, height = renderer.get_size()
   -- update
-  core.root_view.size.x, core.root_view.size.y = width, height
+  core.root_view.view.size.x, core.root_view.view.size.y = width, height
   core.root_view:update()
   if not core.redraw then return false end
   core.redraw = false
@@ -449,7 +450,7 @@ function core.step()
   end
 
   -- update window title
-  local name = core.active_view:get_name()
+  local name = core.active_view.view:get_name()
   local title = (name ~= "---") and (name .. " - dim") or  "dim"
   if title ~= core.window_title then
     system.set_window_title(title)

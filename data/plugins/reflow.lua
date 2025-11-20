@@ -25,7 +25,7 @@ end
 
 command.add("core.docview", {
   ["reflow:reflow"] = function()
-    local doc = core.active_view.doc
+    local doc = core.active_view.view.doc
     doc:replace(function(text)
       local prefix_set = "[^%w\n%[%](){}`'\"]*"
 

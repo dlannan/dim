@@ -81,7 +81,7 @@ command.add(nil, {
 
   ["core:open-log"] = function()
     local node = core.root_view:get_active_node()
-    node:add_view(LogView())
+    node:add_view(LogView:new())
   end,
 
   ["core:open-user-module"] = function()

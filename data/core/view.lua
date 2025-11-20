@@ -2,18 +2,18 @@ local core = require "core"
 local config = require "core.config"
 local style = require "core.style"
 local common = require "core.common"
-local Object = require "core.object"
+local utils   = require("lua.utils")
 
-
-local View = Object:extend()
-
+local View = {
+  position = { x = 0, y = 0 },
+  size = { x = 0, y = 0 },
+  scroll = { x = 0, y = 0, to = { x = 0, y = 0 } },
+  cursor = "arrow",
+  scrollable = false,
+}
 
 function View:new()
-  self.position = { x = 0, y = 0 }
-  self.size = { x = 0, y = 0 }
-  self.scroll = { x = 0, y = 0, to = { x = 0, y = 0 } }
-  self.cursor = "arrow"
-  self.scrollable = false
+  return utils.deepcopy(View)
 end
 
 
