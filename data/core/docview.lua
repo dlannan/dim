@@ -7,7 +7,10 @@ local translate = require "core.doc.translate"
 local View = require "core.view"
 local utils   = require("lua.utils")
 
-local DocView = {}
+local DocView = {
+  drawers           = {},
+  on_mouse_wheels   = {},
+}
 
 
 local function move_to_line_offset(dv, line, col, offset)
@@ -263,6 +266,10 @@ function DocView:on_mouse_released(button)
 end
 
 function DocView:on_mouse_wheel(...)
+  for k,mouse_wheel in ipairs(DocView.on_mouse_wheels) do 
+    local res = mouse_wheel(self, ...)
+    if(res) then return end 
+  end 
   self.view:on_mouse_wheel(...)
 end
 
@@ -361,6 +368,12 @@ end
 
 
 function DocView:draw()
+
+  for k,drawer in ipairs(DocView.drawers) do 
+    local res = drawer(self)
+    if(res) then return end 
+  end 
+
   self.view:draw_background(style.background)
 
   local font = self:get_font()
