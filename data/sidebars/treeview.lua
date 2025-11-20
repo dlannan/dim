@@ -140,6 +140,10 @@ function TreeView:on_mouse_moved(px, py, ...)
   end
 end
 
+function TreeView:on_mouse_wheel(...)
+  self.view:on_mouse_wheel(...)
+end
+
 function TreeView:on_mouse_released(button, x, y)
   if not self.hovered_item then
     return
