@@ -207,6 +207,7 @@ function WorkspacesView:new(config)
   local new_workspacesview        = utils.deepcopy(WorkspacesView)
   new_workspacesview.view         = View:new()
   new_workspacesview.view.scrollable   = true
+  new_workspacesview.view.get_scrollable_size = function() return new_workspacesview:get_scrollable_size() end 
   new_workspacesview.visible      = true
   new_workspacesview.header       = config and config.title or ""
   new_workspacesview.init_size    = true
@@ -240,7 +241,7 @@ end
 
 function WorkspacesView:on_mouse_pressed(button, x, y)
   core.root_view:set_focus_view()
-  self.view:on_mouse_pressed(self, button, x, y)
+  self.view:on_mouse_pressed(button, x, y)
 end
 
 function WorkspacesView:update()

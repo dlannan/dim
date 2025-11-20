@@ -20,6 +20,7 @@ local SidebarData = {
     panel_select = 3,
     -- The panels are filles out by the panel views (see treeview for example)
     panels  = {},
+    pcount  = 0,
 }
 
 -- Add font awesome to style so other plugins can use it if needed
@@ -58,19 +59,20 @@ function SidebarView:load_panel(ViewClass)
         locked = ViewClass.locked,
     }
     SidebarData.panels[mod.id] = mod 
+    SidebarData.pcount = SidebarData.pcount + 1
   end
 end
 
 function SidebarView:init_panels()
-  local current_node = self.panels_node
   for k, mod in ipairs(SidebarData.panels) do
     if(mod.split_dir) then
       local node = core.root_view:get_active_node()
       if(mod.split_node) then
         node = core.root_view:get_named_node(mod.split_node)
       end
+      print(mod.name)
       mod.view = mod.view_class:new(mod.config)
-      local child = node:split(mod.split_dir, mod.view, mod.locked)
+      mod.child = node:split(mod.split_dir, mod.view, mod.locked)
     end 
   end
 end
@@ -98,26 +100,16 @@ function SidebarView:get_item_height()
   return ICON_SIZE + ICON_SPACING
 end
 
-function SidebarView:check_cache()
-  -- invalidate cache's skip values if project_files has changed
-  if core.project_files ~= self.last_project_files then
-    for _, v in pairs(self.cache) do
-      v.skip = nil
-    end
-    self.last_project_files = core.project_files
-  end
-end
-
 function SidebarView:each_item()
+
   return coroutine.wrap(function()
-    self:check_cache()
     local ox, oy = self.view:get_content_offset()
     local y = oy + ICON_SPACING
     local w = self.view.size.x
     local h = self:get_item_height()
 
     local i = 1
-    while i <= #SidebarData.panels do
+    while i <= SidebarData.pcount do
       local item = SidebarData.panels[i]
       if(item.icon) then
         local cached = self:get_cached(item)
@@ -187,7 +179,7 @@ end
 
 function SidebarView:draw()
   self.view:draw_background(style.background2)
-  local doc = core.active_view.view.doc
+  local doc = core.active_view.doc
   for item, x,y,w,h in self:each_item() do
     local color = style.dim
 

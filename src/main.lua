@@ -28,7 +28,7 @@ local seq       = require("lua.engine.sequencer")
 
 -- --------------------------------------------------------------------------------------
 
-ARGS = arg 
+ARGS = arg
 
 VERSION         = "1.11"
 PLATFORM        = ffi.os
@@ -75,7 +75,7 @@ local runningState   = smgr:NewState()
 -- To use luajits internal profiler - can be useful to find hotspots.
 local enabled_profile   = arg[1] == "-profile"
 local profile           = nil
-if(enabled_profile) then 
+if(enabled_profile) then
     profile = require("jit.profile")
     function cb(thread, samples, vmstate)
         print(profile.dumpstack(thread, "l\n", 1))
@@ -86,7 +86,7 @@ end
 -- --------------------------------------------------------------------------------------
 --  Detect display size and use for width and height
 local width, height = win.DetectDisplay()
-if(arg[1] and arg[2]) then 
+if(arg[1] and arg[2]) then
     width = tonumber(arg[1])
     height = tonumber(arg[2])
 end
@@ -95,11 +95,11 @@ print("Display: "..width .. " x ".. height)
 -- --------------------------------------------------------------------------------------
 
 local function ErrorCheck(status, err)
-    if(status == false) then 
+    if(status == false) then
         print("[Error] ", err)
         print(debug.traceback())
         os.exit()
-    else 
+    else
         return err
     end
 end
@@ -136,12 +136,12 @@ end
 -- --------------------------------------------------------------------------------------
 -- Global? yes.. so lite can access it.
 
-local function input(event) 
+local function input(event)
     keymap.process_inputs(event)
 end
 
 -- -----------------------------------------------------------------------------------------
--- This is global too. But I dont think it needs to be. There are some potential 
+-- This is global too. But I dont think it needs to be. There are some potential
 --     nk callbacks that might need it to be, so its here like this for the time being.
 winrect         = ffi.new("struct nk_rect[1]", {{0, 0, 1000, 600}})
 
@@ -149,15 +149,15 @@ winrect         = ffi.new("struct nk_rect[1]", {{0, 0, 1000, 600}})
 
 local function core_run(ctx, core, winrect, custom)
 
-    local window_flags =  bit.bor(nk.NK_WINDOW_NO_INPUT, nk.NK_WINDOW_NO_SCROLLBAR, nk.NK_WINDOW_BACKGROUND) 
+    local window_flags =  bit.bor(nk.NK_WINDOW_NO_INPUT, nk.NK_WINDOW_NO_SCROLLBAR, nk.NK_WINDOW_BACKGROUND)
     if (nk.nk_begin(ctx, "Dim", winrect[0], window_flags) == true) then
-        renderer.canvas = nk.nk_window_get_canvas(ctx) 
+        renderer.canvas = nk.nk_window_get_canvas(ctx)
         renderer.rect = nk.nk_window_get_content_region(ctx)
-        if(custom) then custom() end 
+        if(custom) then custom() end
     end
     renderer.set_cursor()
     nk.nk_end(ctx)
-    return not nk.nk_window_is_closed(ctx, "Dim")    
+    return not nk.nk_window_is_closed(ctx, "Dim")
 end
 
 -- --------------------------------------------------------------------------------------
@@ -169,7 +169,7 @@ local function core_init(ctx)
     EXEDIR = EXEFILE:match("^(.+)[/\\\\].*$")
     package.path = EXEDIR .. '/data/?.lua;' .. package.path
     package.path = EXEDIR .. '/data/?/init.lua;' .. package.path
-    
+
     local core          = require('core')
     core.init()
     core.redraw = true
@@ -232,7 +232,7 @@ warmupState.Begin   = function(self)
     binmgr.init()
 
     local hwnd = sapp.sapp_win32_get_hwnd()
-    local dw, dh = width, height 
+    local dw, dh = width, height
     win.SetWindowPos(hwnd, dw/2 - 320, dh/2 - 100, 640, 200)
 
     self.frame_started = 0
@@ -243,34 +243,34 @@ end
 warmupState.Update = function(self)
 
     local ctx = nk.snk_new_frame(0)
-    renderer.ctx    = ctx 
+    renderer.ctx    = ctx
 
-    if(self.frame_started >= 3) then 
+    if(self.frame_started >= 3) then
         seq:NextState()
-    end 
+    end
 
     -- Render stuff before core is started
-    if(core == nil and self.frame_started < 3) then 
+    if(core == nil and self.frame_started < 3) then
         self.frame_started = self.frame_started + 1
     end
 
     -- Simple loading logo or image (no text, since fonts arent ready!)
-    -- 
+    --
     core_run( ctx, nil, winrect, function()
         local res = nk.nk_style_set_cursor(ctx, 0)
         nk.nk_style_hide_cursor(ctx)
-    
+
         local r = renderer.rect
         nk.nk_layout_row_static(ctx, r.h, r.w, 1)
         nk.nk_label(ctx, "loading dim...", nk.NK_TEXT_CENTERED)
     end)
-end    
+end
 
 -- --------------------------------------------------------------------------------------
 
-warmupState.Render = function(self, w, h) 
+warmupState.Render = function(self, w, h)
 
-    nk.snk_render(w, h)      
+    nk.snk_render(w, h)
 end
 
 -- --------------------------------------------------------------------------------------
@@ -278,20 +278,20 @@ end
 coreInitState.Update    = function(self)
 
     local ctx = nk.snk_new_frame(0)
-    renderer.ctx    = ctx 
+    renderer.ctx    = ctx
 
-    if(core == nil) then     
+    if(core == nil) then
         core = ErrorCheck( pcall( core_init, ctx, core ) )
-    else 
+    else
         seq:NextState()
-    end 
+    end
 end
 
 -- --------------------------------------------------------------------------------------
 
-coreInitState.Render = function(self, w, h) 
+coreInitState.Render = function(self, w, h)
 
-    nk.snk_render(w, h)      
+    nk.snk_render(w, h)
 end
 
 -- --------------------------------------------------------------------------------------
@@ -305,32 +305,32 @@ runningState.Update     = function(self)
     -- If it doesnt, then we dont clear the buffer and nothing is drawn with core_run.
     -- Thus the last nuklear buffer is continued to be shown.
     local did_draw = true
-    if(core) then 
+    if(core) then
         did_draw = core.run(width, height)
     end
 
     local clearflag = 0
-    if(did_draw == false) then clearflag = 1 end 
-    if(did_draw == true) then threed_renderer.render_queue = {} end 
+    if(did_draw == false) then clearflag = 1 end
+    if(did_draw == true) then threed_renderer.render_queue = {} end
 
     local ctx = nk.snk_new_frame(clearflag)
-    renderer.ctx    = ctx 
+    renderer.ctx    = ctx
 
-    if(core and core.ready and did_draw == true) then 
+    if(core and core.ready and did_draw == true) then
         ErrorCheck( pcall(core_run, ctx, core, winrect, function()
             core.render()
         end) )
     end
-end 
+end
 
 -- --------------------------------------------------------------------------------------
 
 runningState.Render     = function(self, w, h)
-    nk.snk_render(w, h)   
+    nk.snk_render(w, h)
 
     -- // Render 3D view rects here - will get rects from the docviews.
     threed_renderer.render_rects(self.dt)
-end 
+end
 
 -- --------------------------------------------------------------------------------------
 
@@ -357,7 +357,7 @@ app_desc[0].icon            = icon_desc
 
 app_desc[0].enable_clipboard = true
 app_desc[0].ios_keyboard_resizes_canvas = false
-app_desc[0].logger.func = slib.slog_func 
+app_desc[0].logger.func = slib.slog_func
 
 -- Drag and drop specific settings
 app_desc[0].enable_dragndrop    = true

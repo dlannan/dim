@@ -97,7 +97,7 @@ end
 
 
 local function update_suggestions()
-  local doc = core.active_view.view.doc
+  local doc = core.active_view.doc
   local filename = doc and doc.filename or ""
 
   -- get all relevant suggestions for given filename
@@ -132,7 +132,7 @@ end
 
 
 local function get_active_view()
-  if getmetatable(core.active_view) == DocView then
+  if core.active_view.is_docview then
     return core.active_view
   end
 end
@@ -210,9 +210,9 @@ RootView.on_text_input = function(...)
 
     -- scroll if rect is out of bounds of view
     local _, y, _, h = get_suggestions_rect(av)
-    local limit = av.position.y + av.size.y
+    local limit = av.view.position.y + av.view.size.y
     if y + h > limit then
-      av.scroll.to.y = av.scroll.y + y + h - limit
+      av.view.scroll.to.y = av.view.scroll.y + y + h - limit
     end
   end
 end
@@ -250,7 +250,7 @@ end
 
 command.add(predicate, {
   ["autocomplete:complete"] = function()
-    local doc = core.active_view.view.doc
+    local doc = core.active_view.doc
     local line, col = doc:get_selection()
     local text = suggestions[suggestions_idx].text
     doc:insert(line, col, text)
