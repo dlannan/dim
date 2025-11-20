@@ -8,7 +8,7 @@ local max_previous_finds = 50
 
 
 local function doc()
-  return core.active_view.doc
+  return core.active_view.view.doc
 end
 
 
@@ -86,8 +86,8 @@ end
 
 
 local function has_selection()
-  return core.active_view:is(DocView)
-     and core.active_view.doc:has_selection()
+  return core.active_view.view and core.active_view.view.doc
+     and core.active_view.view.doc:has_selection()
 end
 
 command.add(has_selection, {

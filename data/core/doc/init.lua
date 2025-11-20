@@ -1,11 +1,10 @@
-local Object = require "core.object"
 local Highlighter = require "core.doc.highlighter"
 local syntax = require "core.syntax"
 local config = require "core.config"
 local common = require "core.common"
+local utils   = require("lua.utils")
 
-
-local Doc = Object:extend()
+local Doc = {}
 
 
 local function split_lines(text)
@@ -37,10 +36,12 @@ end
 
 
 function Doc:new(filename)
-  self:reset()
+  local new_doc = utils.deepcopy(Doc)
+  new_doc:reset()
   if filename then
-    self:load(filename)
+    new_doc:load(filename)
   end
+  return new_doc
 end
 
 
@@ -50,7 +51,7 @@ function Doc:reset()
   self.undo_stack = { idx = 1 }
   self.redo_stack = { idx = 1 }
   self.clean_change_id = 1
-  self.highlighter = Highlighter(self)
+  self.highlighter = Highlighter:new(self)
   self:reset_syntax()
 end
 

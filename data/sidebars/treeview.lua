@@ -5,6 +5,7 @@ local config = require "core.config"
 local keymap = require "core.keymap"
 local style = require "core.style"
 local View = require "core.view"
+local utils   = require("lua.utils")
 
 config.treeview_size = 200 * SCALE
 
@@ -23,7 +24,7 @@ local function get_depth(filename)
   return n
 end
 
-local TreeView = View:extend()
+local TreeView = {}
 
 TreeView.id = 3
 TreeView.name = "treeview"
@@ -32,19 +33,22 @@ TreeView.module = "treeview"
 TreeView.config = {}
 TreeView.split_dir = "down"
 TreeView.split_node = "Panels"
+TreeView.locked = true
 TreeView.command = nil
 
 function TreeView:new()
-  TreeView.super.new(self)
-  TreeViewData.view = self
-  self.scrollable = true
-  self.visible = true
-  self.init_size = true
-  self.cache = {}
-  self.target_width = TreeViewData.target_width
+  local new_treeview = utils.deepcopy(TreeView)
+  new_treeview.view = View:new()
+  new_treeview.scrollable = true
+  new_treeview.visible = true
+  new_treeview.init_size = true
+  new_treeview.cache = {}
+  new_treeview.target_width = TreeViewData.target_width
 
-  self.item_count = 0
-  self.size.y = 0
+  new_treeview.item_count = 0
+  new_treeview.view.size.y = 0
+
+  TreeViewData.view = new_treeview
 end
 
 function TreeView:get_item_height()
@@ -86,7 +90,7 @@ end
 function TreeView:each_item()
   return coroutine.wrap(function()
     self:check_cache()
-    local ox, oy = self:get_content_offset()
+    local ox, oy = self.view:get_content_offset()
     local y = oy + style.padding.y
     local w = self.size.x
     local h = self:get_item_height()
@@ -118,7 +122,7 @@ end
 
 function TreeView:on_mouse_moved(px, py, ...)
   if not self.visible then return end
-  if TreeView.super.on_mouse_moved(self, px, py, ...) then
+  if self.view.on_mouse_moved(self, px, py, ...) then
     -- mouse movement handled by the View (scrollbar)
     self.hovered_item = nil
     return
@@ -162,7 +166,7 @@ function TreeView:update()
   -- if(self.init_size == true and self.size.x < self.target_width) then
   --   self:move_towards(self.size, "x", self.target_width, 0.5, function() self.init_size = false end)
 
-  TreeView.super.update(self)
+  self.view:update()
 end
 
 function TreeView:show_panel(visible)
@@ -170,13 +174,13 @@ function TreeView:show_panel(visible)
 end
 
 function TreeView:draw()
-  self:draw_background(style.background2)
+  self.view:draw_background(style.background2)
   if(self.visible == false) then return end
 
   local icon_width = style.icon_font:get_width("D")
   local spacing = style.font:get_width(" ") * 2
 
-  local doc = core.active_view.doc
+  local doc = core.active_view.view.doc
   local active_filename = doc and system.absolute_path(doc.filename or "")
 
   self.item_count = 0
@@ -214,7 +218,7 @@ function TreeView:draw()
     x = x + spacing
     x = common.draw_text(style.font, color, item.name, nil, x, y, 0, h)
   end
-  self:draw_scrollbar()
+  self.view:draw_scrollbar()
 end
 
 -- register commands and keymap

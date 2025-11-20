@@ -1,16 +1,18 @@
 local core = require "core"
 local style = require "core.style"
 local View = require "core.view"
+local utils   = require("lua.utils")
 
-
-local LogView = View:extend()
+local LogView = {}
 
 
 function LogView:new()
-  LogView.super.new(self)
-  self.last_item = core.log_items[#core.log_items]
-  self.scrollable = true
-  self.yoffset = 0
+  local new_logview = utils.deepcopy(LogView)
+  new_logview.view = View:new()
+  new_logview.last_item = core.log_items[#core.log_items]
+  new_logview.scrollable = true
+  new_logview.yoffset = 0
+  return new_logview
 end
 
 
@@ -27,9 +29,9 @@ function LogView:update()
     self.yoffset = -(style.font:get_height() + style.padding.y)
   end
 
-  self:move_towards("yoffset", 0)
+  self.view:move_towards("yoffset", 0)
 
-  LogView.super.update(self)
+  self.view:update()
 end
 
 
@@ -46,9 +48,9 @@ end
 
 
 function LogView:draw()
-  self:draw_background(style.background)
+  self.view:draw_background(style.background)
 
-  local ox, oy = self:get_content_offset()
+  local ox, oy = self.view:get_content_offset()
   local th = style.font:get_height()
   local y = oy + style.padding.y + self.yoffset
 

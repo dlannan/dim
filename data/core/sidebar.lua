@@ -5,6 +5,7 @@ local config = require "core.config"
 local keymap = require "core.keymap"
 local style = require "core.style"
 local View = require "core.view"
+local utils   = require("lua.utils")
 
 local ICON_SIZE     = 20.0 * SCALE
 local SIDEBAR_SIZE  = 35.0 * SCALE
@@ -24,16 +25,18 @@ local SidebarData = {
 -- Add font awesome to style so other plugins can use it if needed
 style.fa_font   = renderer.font.load(EXEDIR .. "/data/fonts/fontawesome-webfont.ttf", ICON_SIZE)
 
-local SidebarView = View:extend()
+local SidebarView = {}
 
 function SidebarView:new()
-  SidebarView.super.new(self)
-  self.scrollable = true
-  self.visible = true
-  self.init_size = true
-  self.cache = {}
-  self.hovered_item = nil
+  local new_sidebar = utils.deepcopy(SidebarView)
+  new_sidebar.view = View:new()
+  new_sidebar.scrollable = true
+  new_sidebar.visible = true
+  new_sidebar.init_size = true
+  new_sidebar.cache = {}
+  new_sidebar.hovered_item = nil
   SidebarView.width  = SIDEBAR_SIZE + ICON_SPACING
+  return new_sidebar
 end
 
 function SidebarView:load_panel(ViewClass)
@@ -51,6 +54,7 @@ function SidebarView:load_panel(ViewClass)
         split_node = ViewClass.split_node,
         command = ViewClass.command,
         view_class = ViewClass,
+        locked = ViewClass.locked,
     }
     SidebarData.panels[mod.id] = mod 
   end
@@ -62,10 +66,11 @@ function SidebarView:init_panels()
     if(mod.split_dir) then
       local node = core.root_view:get_active_node()
       if(mod.split_node) then
-        node = core.root_view:get_named_node(mod.split_node)
+        local snode = core.root_view:get_named_node(mod.split_node)
+        if(snode) then node = snode end 
       end
-      mod.view = mod.view_class(mod.config)
-      local child = node:split(mod.split_dir, mod.view, true)
+      mod.view = mod.view_class:new(mod.config)
+      local child = node:split(mod.split_dir, mod.view, mod.locked)
     end 
   end
 end
@@ -105,7 +110,7 @@ end
 function SidebarView:each_item()
   return coroutine.wrap(function()
     self:check_cache()
-    local ox, oy = self:get_content_offset()
+    local ox, oy = self.view:get_content_offset()
     local y = oy + ICON_SPACING
     local w = self.size.x
     local h = self:get_item_height()
@@ -169,19 +174,19 @@ end
 
 function SidebarView:update()
 
-  if(self.init_size == true and self.size.x ~= SidebarView.width) then
-    self:move_towards(self.size, "x", SidebarView.width, 0.5, function() 
+  if(self.init_size == true and self.view.size.x ~= SidebarView.width) then
+    self.view:move_towards(self.view.size, "x", SidebarView.width, 0.5, function() 
       self.init_size = false 
     end)
   else
     -- self.width = self.size.x -- Update for border movement
   end
-  SidebarView.super.update(self)
+  self.view:update()
 end
 
 function SidebarView:draw()
-  self:draw_background(style.background2)
-  local doc = core.active_view.doc
+  self.view:draw_background(style.background2)
+  local doc = core.active_view.view.doc
   for item, x,y,w,h in self:each_item() do
     local color = style.dim
 

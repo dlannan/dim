@@ -5,9 +5,9 @@ local style = require "core.style"
 local keymap = require "core.keymap"
 local translate = require "core.doc.translate"
 local View = require "core.view"
+local utils   = require("lua.utils")
 
-
-local DocView = View:extend()
+local DocView = {}
 
 
 local function move_to_line_offset(dv, line, col, offset)
@@ -51,13 +51,19 @@ local blink_period = 0.8
 
 
 function DocView:new(doc)
-  DocView.super.new(self)
-  self.cursor = "ibeam"
-  self.scrollable = true
-  self.doc = assert(doc)
-  self.font = "code_font"
-  self.last_x_offset = {}
-  self.blink_timer = 0
+  local new_docview = utils.deepcopy(DocView)
+  new_docview.view = View:new()
+  new_docview.view.get_scrollable_size = function() return new_docview:get_scrollable_size() end
+  new_docview.view.get_line_height = function() return new_docview:get_line_height() end
+  new_docview.view.cursor = "ibeam"
+  new_docview.view.scrollable = true
+  
+  new_docview.doc = assert(doc)
+  new_docview.font = "code_font"
+  new_docview.last_x_offset = {}
+  new_docview.blink_timer = 0
+  new_docview.is_docview = true
+  return new_docview
 end
 
 
@@ -91,7 +97,7 @@ end
 
 
 function DocView:get_scrollable_size()
-  return self:get_line_height() * (#self.doc.lines - 1) + self.size.y
+  return self:get_line_height() * (#self.doc.lines - 1) + self.view.size.y
 end
 
 
@@ -111,7 +117,7 @@ end
 
 
 function DocView:get_line_screen_position(idx)
-  local x, y = self:get_content_offset()
+  local x, y = self.view:get_content_offset()
   local lh = self:get_line_height()
   local gw = self:get_gutter_width()
   return x + gw, y + (idx-1) * lh + style.padding.y
@@ -126,7 +132,7 @@ end
 
 
 function DocView:get_visible_line_range()
-  local x, y, x2, y2 = self:get_content_bounds()
+  local x, y, x2, y2 = self.view:get_content_bounds()
   local lh = self:get_line_height()
   local minline = math.max(1, math.floor(y / lh))
   local maxline = math.min(#self.doc.lines, math.floor(y2 / lh) + 1)
@@ -172,9 +178,9 @@ function DocView:scroll_to_line(line, ignore_if_visible, instant)
   local min, max = self:get_visible_line_range()
   if not (ignore_if_visible and line > min and line < max) then
     local lh = self:get_line_height()
-    self.scroll.to.y = math.max(0, lh * (line - 1) - self.size.y / 2)
+    self.view.scroll.to.y = math.max(0, lh * (line - 1) - self.view.size.y / 2)
     if instant then
-      self.scroll.y = self.scroll.to.y
+      self.view.scroll.y = self.view.scroll.to.y
     end
   end
 end
@@ -182,13 +188,13 @@ end
 
 function DocView:scroll_to_make_visible(line, col)
   local min = self:get_line_height() * (line - 1)
-  local max = self:get_line_height() * (line + 2) - self.size.y
-  self.scroll.to.y = math.min(self.scroll.to.y, min)
-  self.scroll.to.y = math.max(self.scroll.to.y, max)
+  local max = self:get_line_height() * (line + 2) - self.view.size.y
+  self.view.scroll.to.y = math.min(self.view.scroll.to.y, min)
+  self.view.scroll.to.y = math.max(self.view.scroll.to.y, max)
   local gw = self:get_gutter_width()
   local xoffset = self:get_col_x_offset(line, col)
-  local max = xoffset - self.size.x + gw + self.size.x / 5
-  self.scroll.to.x = math.max(0, max)
+  local max = xoffset - self.view.size.x + gw + self.view.size.x / 5
+  self.view.scroll.to.x = math.max(0, max)
 end
 
 
@@ -214,7 +220,7 @@ end
 
 
 function DocView:on_mouse_pressed(button, x, y, clicks)
-  local caught = DocView.super.on_mouse_pressed(self, button, x, y, clicks)
+  local caught = self.view:on_mouse_pressed(button, x, y, clicks)
   if caught then
     return
   end
@@ -234,9 +240,9 @@ end
 
 
 function DocView:on_mouse_moved(x, y, ...)
-  DocView.super.on_mouse_moved(self, x, y, ...)
+  self.view:on_mouse_moved(x, y, ...)
 
-  if self:scrollbar_overlaps_point(x, y) or self.dragging_scrollbar then
+  if self.view:scrollbar_overlaps_point(x, y) or self.dragging_scrollbar then
     self.cursor = "arrow"
   else
     self.cursor = "ibeam"
@@ -252,8 +258,12 @@ end
 
 
 function DocView:on_mouse_released(button)
-  DocView.super.on_mouse_released(self, button)
+  self.view:on_mouse_released(button)
   self.mouse_selecting = nil
+end
+
+function DocView:on_mouse_wheel(...)
+  self.view:on_mouse_wheel(...)
 end
 
 
@@ -265,7 +275,7 @@ end
 function DocView:update()
   -- scroll to make caret visible and reset blink timer if it moved
   local line, col = self.doc:get_selection()
-  if (line ~= self.last_line or col ~= self.last_col) and self.size.x > 0 then
+  if (line ~= self.last_line or col ~= self.last_col) and self.view.size.x > 0 then
     if core.active_view == self then
       self:scroll_to_make_visible(line, col)
     end
@@ -283,13 +293,13 @@ function DocView:update()
     end
   end
 
-  DocView.super.update(self)
+  self.view:update()
 end
 
 
 function DocView:draw_line_highlight(x, y)
   local lh = self:get_line_height()
-  renderer.draw_rect(x, y, self.size.x, lh, style.line_highlight)
+  renderer.draw_rect(x, y, self.view.size.x, lh, style.line_highlight)
 end
 
 
@@ -321,7 +331,7 @@ function DocView:draw_line_body(idx, x, y)
   -- draw line highlight if caret is on this line
   if config.highlight_current_line and not self.doc:has_selection()
   and line == idx and core.active_view == self then
-    self:draw_line_highlight(x + self.scroll.x, y)
+    self:draw_line_highlight(x + self.view.scroll.x, y)
   end
 
   -- draw line's text
@@ -351,7 +361,7 @@ end
 
 
 function DocView:draw()
-  self:draw_background(style.background)
+  self.view:draw_background(style.background)
 
   local font = self:get_font()
   font:set_tab_width(font:get_width(" ") * config.indent_size)
@@ -360,7 +370,7 @@ function DocView:draw()
   local lh = self:get_line_height()
 
   local _, y = self:get_line_screen_position(minline)
-  local x = self.position.x
+  local x = self.view.position.x
   for i = minline, maxline do
     self:draw_line_gutter(i, x, y)
     y = y + lh
@@ -368,15 +378,15 @@ function DocView:draw()
 
   local x, y = self:get_line_screen_position(minline)
   local gw = self:get_gutter_width()
-  local pos = self.position
-  core.push_clip_rect(pos.x + gw, pos.y, self.size.x, self.size.y)
+  local pos = self.view.position
+  core.push_clip_rect(pos.x + gw, pos.y, self.view.size.x, self.view.size.y)
   for i = minline, maxline do
     self:draw_line_body(i, x, y)
     y = y + lh
   end
   core.pop_clip_rect()
 
-  self:draw_scrollbar()
+  self.view:draw_scrollbar()
 end
 
 

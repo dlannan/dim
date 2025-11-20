@@ -76,8 +76,8 @@ local command = require "core.command"
 
 command.add("core.docview", {
   ["doc:save"] = function()
-    core.active_view.doc:save()
-    core.log("Saved '%s', core.active_view.doc.filename)
+    core.active_view.view.doc:save()
+    core.log("Saved '%s', core.active_view.view.doc.filename)
   end
 })
 ```

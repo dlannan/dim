@@ -5,8 +5,9 @@ local config = require "core.config"
 local style = require "core.style"
 local keymap = require "core.keymap"
 local View = require "core.view"
+local utils   = require("lua.utils")
 
-local PluginMgrView = View:extend()
+local PluginMgrView = {}
 
 PluginMgrView.id = 5
 PluginMgrView.name = "plugin-manager"
@@ -15,24 +16,27 @@ PluginMgrView.module = "plugin_manager"
 PluginMgrView.config = {}
 PluginMgrView.split_dir = "down"
 PluginMgrView.split_node = "Panels"
+PluginMgrView.locked = true
 PluginMgrView.command = nil
 
 function PluginMgrView:new()
-    PluginMgrView.super.new(self)
-    self.scrollable = true
-    self.visible = false
-    self.init_size = true
+    local new_pluginmgrview = utils.deepcopy(PluginMgrView)
+    new_pluginmgrview.view = View:new()
+    new_pluginmgrview.scrollable = true
+    new_pluginmgrview.visible = false
+    new_pluginmgrview.init_size = true
+    return new_pluginmgrview
 end
 
 function PluginMgrView:update()
     if(self.visible == false) then return end
     self.size.y = style.font:get_height() + style.padding.y * 2
-    PluginMgrView.super.update(self)
+    self.view:update()
 end
 
 function PluginMgrView:draw()
     if(self.visible == false) then return end
-    self:draw_background(style.background)
+    self.view:draw_background(style.background)
 end
 
 

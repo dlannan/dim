@@ -2,11 +2,18 @@ local core = require "core"
 local common = require "core.common"
 local style = require "core.style"
 local keymap = require "core.keymap"
-local Object = require "core.object"
 local View = require "core.view"
 local DocView = require "core.docview"
+local utils   = require("lua.utils")
 
-local EmptyView = View:extend()
+local EmptyView = {}
+
+function EmptyView:new() 
+    local new_emptyview = utils.deepcopy(EmptyView)
+    new_emptyview.view = View:new()
+    new_emptyview.is_empty = true 
+    return new_emptyview
+end
 
 local function draw_text(x, y, color)
   local th = style.big_font:get_height()
@@ -35,24 +42,28 @@ local function draw_text(x, y, color)
 end
 
 function EmptyView:draw()
-  self:draw_background(style.background)
+  self.view:draw_background(style.background)
   local w, h = draw_text(0, 0, { 0, 0, 0, 0 })
-  local x = self.position.x + math.max(style.padding.x, (self.size.x - w) / 2)
-  local y = self.position.y + (self.size.y - h) / 2
+  local x = self.view.position.x + math.max(style.padding.x, (self.view.size.x - w) / 2)
+  local y = self.view.position.y + (self.view.size.y - h) / 2
   draw_text(x, y, style.dim)
 end
 
-local Node = Object:extend()
+local Node = {
+    type = "leaf",
+    position = { x = 0, y = 0 },
+    size = { x = 0, y = 0 },
+    views = {},
+    divider = 0.5,
+}
 
 function Node:new(type)
-  self.type = type or "leaf"
-  self.position = { x = 0, y = 0 }
-  self.size = { x = 0, y = 0 }
-  self.views = {}
-  self.divider = 0.5
-  if self.type == "leaf" then
-    self:add_view(EmptyView())
-  end
+    local new_node = utils.deepcopy(Node)
+    new_node.type = type or "leaf"
+    if new_node.type == "leaf" then
+        new_node:add_view(EmptyView:new())
+    end
+    return new_node
 end
 
 
@@ -65,7 +76,7 @@ end
 function Node:on_mouse_moved(x, y, ...)
   self.hovered_tab = self:get_tab_overlapping_point(x, y)
   if self.type == "leaf" then
-    self.active_view:on_mouse_moved(x, y, ...)
+    local ok = self.active_view.on_mouse_moved and self.active_view:on_mouse_moved(x, y, ...)
   else
     self:propagate("on_mouse_moved", x, y, ...)
   end
@@ -74,7 +85,7 @@ end
 
 function Node:on_mouse_released(...)
   if self.type == "leaf" then
-    self.active_view:on_mouse_released(...)
+    local ok = self.active_view.on_mouse_released and self.active_view:on_mouse_released(...)
   else
     self:propagate("on_mouse_released", ...)
   end
@@ -91,14 +102,13 @@ local type_map = { up="vsplit", down="vsplit", left="hsplit", right="hsplit" }
 
 function Node:split(dir, view, locked)
   assert(self.type == "leaf", "Tried to split non-leaf node")
-  local type = assert(type_map[dir], "Invalid direction")
+  local node_type = assert(type_map[dir], "Invalid direction")
   local last_active = core.active_view
-  local child = Node()
+  local child = Node:new()
   child:consume(self)
-  self:consume(Node(type))
+  self:consume(Node:new(node_type))
   self.a = child
-  self.b = Node()
-  
+  self.b = Node:new()
   if view then 
     view._is_locked = locked -- dodgy "prelock lock!"
     self.b:add_view(view) 
@@ -109,8 +119,9 @@ function Node:split(dir, view, locked)
   end
   if dir == "up" or dir == "left" then
     self.a, self.b = self.b, self.a
+    return self.a
   end
-  return child
+  return self.b
 end
 
 
@@ -126,7 +137,7 @@ function Node:close_active_view(root)
       local other = parent[is_a and "b" or "a"]
       if other:get_locked_size() then
         self.views = {}
-        self:add_view(EmptyView())
+        self:add_view(EmptyView:new())
       else
         parent:consume(other)
         local p = parent
@@ -138,14 +149,14 @@ function Node:close_active_view(root)
     end
     core.last_active_view = nil
   end
-  self.active_view:try_close(do_close)
+  self.active_view.view:try_close(do_close)
 end
 
 
 function Node:add_view(view)
   assert(self.type == "leaf", "Tried to add view to non-leaf node")
   assert(not self.locked, "Tried to add view to locked node")
-  if self.views[1] and self.views[1]:is(EmptyView) then
+  if self.views[1] and self.views[1].is_empty then
     table.remove(self.views)
   end
   table.insert(self.views, view)
@@ -178,7 +189,7 @@ end
 
 function Node:get_named_node(name)
   for _, v in ipairs(self.views) do
-    local vname = v:get_name()
+    local vname = v.view and v:get_name() or ""
     if vname == name then return self end
   end
   if self.type ~= "leaf" then
@@ -259,24 +270,35 @@ function Node:get_divider_rect()
   end
 end
 
+-- Return two values for x and y axis and each of them is either falsy or a number.
+-- A falsy value indicate no fixed size along the corresponding direction.
 function Node:get_locked_size()
-  if self.type == "leaf" then
-    if self.locked then
-      local size = self.active_view.size
-      return size.x, size.y
-    end
-  else
-    local x1, y1 = self.a:get_locked_size()
-    local x2, y2 = self.b:get_locked_size()
-    if x1 and x2 and self.type == "hsplit" then
-      local dsx = (x1 < 1 or x2 < 1) and 0 or style.divider_size
-      return x1 + x2 + dsx, y1 or y2
-    elseif y1 and y2 and self.type == "vsplit" then
-      local dsy = (y1 < 1 or y2 < 1) and 0 or style.divider_size
-      return x1 or x2, y1 + y2 + dsy
+    if self.type == "leaf" then
+      if self.locked then
+        local size = self.active_view.view.size
+        return size.x, size.y
+      end
+    else
+      local x1, y1 = self.a:get_locked_size()
+      local x2, y2 = self.b:get_locked_size()
+      -- The values below should be either a falsy value or a number
+      local sx, sy
+      if self.type == 'hsplit' then
+        if x1 and x2 then
+          local dsx = (x1 < 1 or x2 < 1) and 0 or style.divider_size
+          sx = x1 + x2 + dsx
+        end
+        sy = y1 or y2
+      else
+        if y1 and y2 then
+          local dsy = (y1 < 1 or y2 < 1) and 0 or style.divider_size
+          sy = y1 + y2 + dsy
+        end
+        sx = x1 or x2
+      end
+      return sx, sy
     end
   end
-end
 
 
 local function copy_position_and_size(dst, src)
@@ -288,29 +310,22 @@ end
 -- calculating the sizes is the same for hsplits and vsplits, except the x/y
 -- axis are swapped; this function lets us use the same code for both
 local function calc_split_sizes(self, x, y, x1, x2)
-  local n
-  local ds = (x1 and x1 < 1 or x2 and x2 < 1) and 0 or style.divider_size
-  if x1 then
-    n = x1 + ds
-  elseif x2 then
-    n = self.size[x] - x2
-  else
-    n = math.floor(self.size[x] * self.divider)
-  end
-  self.a.position[x] = self.position[x]
-  self.a.position[y] = self.position[y]
-  self.a.size[x] = n - ds
-  self.a.size[y] = self.size[y]
-  self.b.position[x] = self.position[x] + n
-  self.b.position[y] = self.position[y]
-  self.b.size[x] = self.size[x] - n
-  self.b.size[y] = self.size[y]
+    local ds = ((x1 and x1 < 1) or (x2 and x2 < 1)) and 0 or style.divider_size
+    local n = x1 and x1 + ds or (x2 and self.size[x] - x2 or math.floor(self.size[x] * self.divider))
+    self.a.position[x] = self.position[x]
+    self.a.position[y] = self.position[y]
+    self.a.size[x] = n - ds
+    self.a.size[y] = self.size[y]
+    self.b.position[x] = self.position[x] + n
+    self.b.position[y] = self.position[y]
+    self.b.size[x] = self.size[x] - n
+    self.b.size[y] = self.size[y]
 end
 
 
 function Node:update_layout()
   if self.type == "leaf" then
-    local av = self.active_view
+    local av = self.active_view.view
     if #self.views > 1 then
       local _, _, _, th = self:get_tab_rect(1)
       av.position.x, av.position.y = self.position.x, self.position.y + th
@@ -335,7 +350,7 @@ end
 function Node:update()
   if self.type == "leaf" then
     for _, view in ipairs(self.views) do
-      view:update()
+      local ok = view.update and view:update()
     end
   else
     self.a:update()
@@ -353,7 +368,7 @@ function Node:draw_tabs()
 
   for i, view in ipairs(self.views) do
     local x, y, w, h = self:get_tab_rect(i)
-    local text = view:get_name()
+    local text = view.view:get_name()
     local color = style.dim
     if view == self.active_view then
       color = style.text
@@ -380,7 +395,7 @@ function Node:draw()
     if #self.views > 1 then
       self:draw_tabs()
     end
-    local pos, size = self.active_view.position, self.active_view.size
+    local pos, size = self.active_view.view.position, self.active_view.view.size
     core.push_clip_rect(pos.x, pos.y, size.x + pos.x % 1, size.y + pos.y % 1)
     self.active_view:draw()
     core.pop_clip_rect()

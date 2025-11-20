@@ -4,16 +4,17 @@ local style = require "core.style"
 local Doc = require "core.doc"
 local DocView = require "core.docview"
 local View = require "core.view"
+local utils   = require("lua.utils")
 
 
-local SingleLineDoc = Doc:extend()
+local SingleLineDoc = utils.deepcopy(Doc)
 
 function SingleLineDoc:insert(line, col, text)
-  SingleLineDoc.super.insert(self, line, col, text:gsub("\n", ""))
+  self:insert(line, col, text:gsub("\n", ""))
 end
 
 
-local CommandView = DocView:extend()
+local CommandView = {}
 
 local max_suggestions = 10
 
@@ -27,31 +28,38 @@ local default_state = {
 
 
 function CommandView:new()
-  CommandView.super.new(self, SingleLineDoc())
-  self.suggestion_idx = 1
-  self.suggestions = {}
-  self.suggestions_height = 0
-  self.last_change_id = 0
-  self.gutter_width = 0
-  self.gutter_text_brightness = 0
-  self.selection_offset = 0
-  self.state = default_state
-  self.font = "font"
-  self.size.y = 0
-  self.label = ""
+  local new_commandview = utils.deepcopy(CommandView)
+  new_commandview.docview = DocView:new(SingleLineDoc:new())
+  new_commandview.doc = new_commandview.docview.doc
+  new_commandview.view = new_commandview.docview.view
+  new_commandview.suggestion_idx = 1
+  new_commandview.suggestions = {}
+  new_commandview.suggestions_height = 0
+  new_commandview.last_change_id = 0
+  new_commandview.gutter_width = 0
+  new_commandview.gutter_text_brightness = 0
+  new_commandview.selection_offset = 0
+  new_commandview.state = default_state
+  new_commandview.font = "font"
+  new_commandview.view.size.y = 0
+  new_commandview.label = ""
+
+  new_commandview.view.get_scrollable_size = function() return 0 end 
+  new_commandview.view.scroll_to_make_visible = function() end 
+  return new_commandview
 end
 
 
 function CommandView:get_name()
-  return View.get_name(self)
+  return "CommandView"
 end
 
 
 function CommandView:get_line_screen_position()
-  local x = CommandView.super.get_line_screen_position(self, 1)
-  local _, y = self:get_content_offset()
-  local lh = self:get_line_height()
-  return x, y + (self.size.y - lh) / 2
+  local x = self.docview:get_line_screen_position(1)
+  local _, y = self.view:get_content_offset()
+  local lh = self.docview:get_line_height()
+  return x, y + (self.view.size.y - lh) / 2
 end
 
 
@@ -137,7 +145,7 @@ end
 
 
 function CommandView:get_suggestion_line_height()
-  return self:get_font():get_height() + style.padding.y
+  return self.docview:get_font():get_height() + style.padding.y
 end
 
 
@@ -159,7 +167,7 @@ end
 
 
 function CommandView:update()
-  CommandView.super.update(self)
+  self.view:update()
 
   if core.active_view ~= self and self.state ~= default_state then
     self:exit(false, true)
@@ -172,31 +180,31 @@ function CommandView:update()
   end
 
   -- update gutter text color brightness
-  self:move_towards("gutter_text_brightness", 0, 0.1)
+  self.view:move_towards(self, "gutter_text_brightness", 0, 0.1)
 
   -- update gutter width
-  local dest = self:get_font():get_width(self.label) + style.padding.x
-  if self.size.y <= 0 then
+  local dest = self.docview:get_font():get_width(self.label) + style.padding.x
+  if self.view.size.y <= 0 then
     self.gutter_width = dest
   else
-    self:move_towards("gutter_width", dest)
+    self.view:move_towards(self, "gutter_width", dest)
   end
 
   -- update suggestions box height
   local lh = self:get_suggestion_line_height()
   local dest = #self.suggestions * lh
-  self:move_towards("suggestions_height", dest)
+  self.view:move_towards(self, "suggestions_height", dest)
 
   -- update suggestion cursor offset
   local dest = self.suggestion_idx * self:get_suggestion_line_height()
-  self:move_towards("selection_offset", dest)
+  self.view:move_towards(self, "selection_offset", dest)
 
   -- update size based on whether this is the active_view
   local dest = 0
   if self == core.active_view then
     dest = style.font:get_height() + style.padding.y * 2
   end
-  self:move_towards(self.size, "y", dest)
+  self.view:move_towards(self.view.size, "y", dest)
 end
 
 
@@ -207,11 +215,11 @@ end
 
 function CommandView:draw_line_gutter(idx, x, y)
   local yoffset = self:get_line_text_y_offset()
-  local pos = self.position
+  local pos = self.view.position
   local color = common.lerp(style.text, style.accent, self.gutter_text_brightness / 100)
   core.push_clip_rect(pos.x, pos.y, self:get_gutter_width(), self.size.y)
   x = x + style.padding.x
-  renderer.draw_text(self:get_font(), self.label, x, y + yoffset, color)
+  renderer.draw_text(self.docview:get_font(), self.label, x, y + yoffset, color)
   core.pop_clip_rect()
 end
 
@@ -221,13 +229,13 @@ local function draw_suggestions_box(self)
   local dh = style.divider_size
   local x, _ = self:get_line_screen_position()
   local h = math.ceil(self.suggestions_height)
-  local rx, ry, rw, rh = self.position.x, self.position.y - h - dh, self.size.x, h
+  local rx, ry, rw, rh = self.view.position.x, self.view.position.y - h - dh, self.view.size.x, h
 
   -- draw suggestions background
   if #self.suggestions > 0 then
     renderer.draw_rect(rx, ry, rw, rh, style.background3)
     renderer.draw_rect(rx, ry - dh, rw, dh, style.divider)
-    local y = self.position.y - self.selection_offset - dh
+    local y = self.view.position.y - self.selection_offset - dh
     renderer.draw_rect(rx, y, rw, lh, style.line_highlight)
   end
 
@@ -235,12 +243,12 @@ local function draw_suggestions_box(self)
   core.push_clip_rect(rx, ry, rw, rh)
   for i, item in ipairs(self.suggestions) do
     local color = (i == self.suggestion_idx) and style.accent or style.text
-    local y = self.position.y - i * lh - dh
-    common.draw_text(self:get_font(), color, item.text, nil, x, y, 0, lh)
+    local y = self.view.position.y - i * lh - dh
+    common.draw_text(self.docview:get_font(), color, item.text, nil, x, y, 0, lh)
 
     if item.info then
-      local w = self.size.x - x - style.padding.x
-      common.draw_text(self:get_font(), style.dim, item.info, "right", x, y, w, lh)
+      local w = self.view.size.x - x - style.padding.x
+      common.draw_text(self.docview:get_font(), style.dim, item.info, "right", x, y, w, lh)
     end
   end
   core.pop_clip_rect()
@@ -248,7 +256,7 @@ end
 
 
 function CommandView:draw()
-  CommandView.super.draw(self)
+  self.docview:draw()
   core.root_view:defer_draw(draw_suggestions_box, self)
 end
 

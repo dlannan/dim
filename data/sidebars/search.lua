@@ -46,7 +46,7 @@ local SearchFilesData = {
     child           = nil,
 }
 
-local SearchFilesView = View:extend()
+local SearchFilesView = {}
 
 SearchFilesView.id = 4
 SearchFilesView.name = "search"
@@ -55,21 +55,22 @@ SearchFilesView.module = "search"
 SearchFilesView.config = {}
 SearchFilesView.split_dir = "down"
 SearchFilesView.split_node = "Panels"
+SearchFilesView.locked = true
 SearchFilesView.command = nil
 
 -- Helper: create a new console doc
 function SearchFilesView:new()
-    SearchFilesView.super.new(self)
-
-    self.scrollable = true
-    self.visible = false
-    self.init_size = true
-    self.search_id = #SearchFilesData.searched
-    self.cache = {}
+    local new_searchfilesview = utils.deepcopy(SearchFilesView)
+    new_searchfilesview.view = View:new()
+    new_searchfilesview.scrollable = true
+    new_searchfilesview.visible = false
+    new_searchfilesview.init_size = true
+    new_searchfilesview.search_id = #SearchFilesData.searched
+    new_searchfilesview.cache = {}
 
     -- Initialize font
     SearchFilesView.font = SearchFilesData.font
-    return self
+    return new_searchfilesview
 end
 
 function SearchFilesView:get_cached(item)
@@ -105,7 +106,7 @@ end
 function SearchFilesView:each_item()
     return coroutine.wrap(function()
         self:check_cache()
-        local ox, oy = self:get_content_offset()
+        local ox, oy = self.view:get_content_offset()
         local y = oy + style.padding.y
         local w = self.size.x
         local h = self:get_item_height()
@@ -168,18 +169,18 @@ function SearchFilesView:update()
     --     self.size.x = 0
     --     self.size.y = 0
     -- end
-    SearchFilesView.super.update(self)
+    self.view:update()
 end
 
 function SearchFilesView:draw()
 
     if(self.visible == false) then return end
-    self:draw_background(style.background2)
+    self.view:draw_background(style.background2)
 
     local icon_width = style.icon_font:get_width("D")
     local spacing = style.font:get_width(" ") * 2
 
-    local doc = core.active_view.doc
+    local doc = core.active_view.view.doc
     local active_filename = doc and system.absolute_path(doc.filename or "")
 
     for item, x,y,w,h in self:each_item() do

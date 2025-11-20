@@ -2,23 +2,26 @@ local core = require "core"
 local common = require "core.common"
 local style = require "core.style"
 local keymap = require "core.keymap"
-local Object = require "core.object"
 local View = require "core.view"
 local DocView = require "core.docview"
 local Node = require "core.node"
+
+local utils   = require("lua.utils")
 
 local function copy_position_and_size(dst, src)
   dst.position.x, dst.position.y = src.position.x, src.position.y
   dst.size.x, dst.size.y = src.size.x, src.size.y
 end
 
-local RootView = View:extend()
+local RootView = {}
 
 function RootView:new()
-  RootView.super.new(self)
-  self.root_node = Node()
-  self.deferred_draws = {}
-  self.mouse = { x = 0, y = 0 }
+  local new_rootview = utils.deepcopy(RootView)
+  new_rootview.view = View:new()
+  new_rootview.root_node = Node:new()
+  new_rootview.deferred_draws = {}
+  new_rootview.mouse = { x = 0, y = 0 }
+  return new_rootview
 end
 
 
@@ -57,7 +60,7 @@ function RootView:open_doc(doc)
       return view
     end
   end
-  local view = DocView(doc)
+  local view = DocView:new(doc)
   node:add_view(view)
   self.root_node:update_layout()
   view:scroll_to_line(view.doc:get_selection(), true, true)
@@ -80,7 +83,11 @@ function RootView:on_mouse_pressed(button, x, y, clicks)
     end
   else
     core.set_active_view(node.active_view)
-    node.active_view:on_mouse_pressed(button, x, y, clicks)
+    if(node.active_view.on_mouse_pressed) then 
+      node.active_view:on_mouse_pressed(button, x, y, clicks)
+    else
+      node.active_view.view:on_mouse_pressed(button, x, y, clicks)
+    end
   end
 end
 
@@ -118,7 +125,7 @@ function RootView:on_mouse_moved(x, y, dx, dy)
   elseif node:get_tab_overlapping_point(x, y) then
     system.set_cursor("arrow", node)
   else
-    system.set_cursor(node.active_view.cursor, node)
+    system.set_cursor(node.active_view.view.cursor, node)
   end
 end
 
@@ -127,17 +134,17 @@ function RootView:on_mouse_wheel(...)
   local x, y = self.mouse.x, self.mouse.y
   self.dragged_released = nil
   local node = self.root_node:get_child_overlapping_point(x, y)
-  node.active_view:on_mouse_wheel(...)
+  local ok = node.active_view.on_mouse_wheel and node.active_view:on_mouse_wheel(...)
 end
 
 
 function RootView:on_text_input(...)
-  core.active_view:on_text_input(...)
+  local ok = core.active_view.on_text_input and core.active_view:on_text_input(...)
 end
 
 
 function RootView:update()
-  copy_position_and_size(self.root_node, self)
+  copy_position_and_size(self.root_node, self.view)
   self.root_node:update()
   self.root_node:update_layout()
 end

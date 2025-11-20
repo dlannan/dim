@@ -3,7 +3,7 @@ local command = require "core.command"
 local CommandView = require "core.commandview"
 
 local function has_commandview()
-  return core.active_view:is(CommandView)
+  return core.active_view.get_name and core.active_view:get_name() == "CommandView" or false
 end
 
 
