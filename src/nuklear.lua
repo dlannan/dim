@@ -132,8 +132,8 @@ nuklear_renderer.load_image_buffer = function( name, buf, bufsize, no_ui )
         print("[STB]: failed to load image: ", name)
         return nil, nil 
     end
-    print("Original channels in file:", n[0])
-    print("Image Buffer Loaded: "..name.."      Width: "..x[0].."  Height: "..y[0].."  Channels: "..n[0])
+    -- print("Original channels in file:", n[0])
+    -- print("Image Buffer Loaded: "..name.."      Width: "..x[0].."  Height: "..y[0].."  Channels: "..n[0])
 
     local pixformat =  sg.SG_PIXELFORMAT_RGBA8
 
