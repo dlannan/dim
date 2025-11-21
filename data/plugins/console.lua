@@ -21,9 +21,15 @@ local ConsoleData = {
 local ConsoleDoc = {}
 
 function ConsoleDoc:new()
-    local new_consoledoc = utils.deepcopy(ConsoleDoc)
-    new_consoledoc.doc = Doc:new()
-    new_consoledoc.doc.insert = function(...) new_consoledoc:insert(...) end
+    local new_consoledoc = Doc:new()
+    
+    new_consoledoc.get_name = ConsoleDoc.get_name
+    new_consoledoc.append_line = ConsoleDoc.append_line 
+    new_consoledoc.execute_current_line = ConsoleDoc.execute_current_line
+    new_consoledoc.insert = ConsoleDoc.insert 
+    new_consoledoc.write_line = ConsoleDoc.write_line
+    new_consoledoc.load = ConsoleDoc.load 
+
     new_consoledoc.prompt = "> "
     new_consoledoc.console_lines = {}
     style.console_font = ConsoleData.font
@@ -31,25 +37,25 @@ function ConsoleDoc:new()
 end
 
 function ConsoleDoc:get_name()
-    return self.doc.name
+    return self.name
 end
 
 function ConsoleDoc:append_line(text, col)
-    local last_line = #self.doc.lines
+    local last_line = #self.lines
     local psize = #self.prompt + 1
     col = col or psize
 
     if(tonumber(col) < psize) then col = psize end
-    self.doc.redo_stack = { idx = 1 }
-    local line, col = self.doc:sanitize_position(last_line, col)
-    self.doc:raw_insert(line, col, text, self.doc.undo_stack, system.get_time())
-    self.doc:move_to( #self.doc.lines, col)
-    return #self.doc.lines
+    self.redo_stack = { idx = 1 }
+    local line, col = self:sanitize_position(last_line, col)
+    self:raw_insert(line, col, text, self.undo_stack, system.get_time())
+    self:move_to( #self.lines, col)
+    return #self.lines
 end
 
 -- Handle Enter key: execute command
 function ConsoleDoc:execute_current_line()
-    local line = self.doc.lines[#self.doc.lines-1]:sub(#self.prompt + 1)
+    local line = self.lines[#self.lines-1]:sub(#self.prompt + 1)
     line = line:gsub("\n", "")
 
     -- Simple echo for now; you can extend to Lua evaluation
@@ -68,7 +74,7 @@ function ConsoleDoc:insert(line, col, text)
         self:execute_current_line()
     end
     if(tonumber(col) < psize) then col = psize end
-    self.doc:move_to( #self.doc.lines, col)
+    self:move_to( #self.lines, col)
 end
 
 -- Write a line to the console
@@ -90,9 +96,10 @@ function ConsoleDocView:new()
 
     local new_consoledocview = utils.deepcopy(ConsoleDocView)
     local doc = ConsoleDoc:new()
+
     new_consoledocview.docview = DocView:new(doc)
     new_consoledocview.docview.parent = new_consoledocview
-    new_consoledocview.doc = new_consoledocview.docview.doc 
+    new_consoledocview.doc = new_consoledocview.docview.doc
     new_consoledocview.view = new_consoledocview.docview.view
 
     new_consoledocview.doc.name = string.format("Console_%s", #ConsoleData.consoles)
@@ -111,8 +118,24 @@ function ConsoleDocView:get_name()
     return fmt("Console_%d", id)
 end
 
+function ConsoleDocView:get_scrollable_size()
+    return self.docview:get_scrollable_size()
+end
+
+function ConsoleDocView:update(...) 
+    self.docview:update(...)
+end
+
+function ConsoleDocView:on_text_input(text)
+    self.doc:text_input(text)
+end
+
+function ConsoleDocView:on_mouse_wheel(...)
+    self.docview:on_mouse_wheel(...)
+end
+
+
 function ConsoleDocView:draw() 
-    print(self.docview.doc.lines)
     self.docview:draw()
 end
 
@@ -120,7 +143,8 @@ end
 command.add(nil, {
     ["console:new"] = function()
         local node = core.root_view:get_active_node()
-        node:add_view(ConsoleDocView:new())
+        local consoledoc = ConsoleDocView:new()
+        node:add_view(consoledoc)
     end
 })
 

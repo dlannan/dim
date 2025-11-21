@@ -311,8 +311,7 @@ function gltfloader:processdata( model, gochildname, thisnode, parent )
 
 				prim.geom = geom:makeGeom(primmesh, prim, prim.mesh_buffers)
 				tinsert(model.all_geom, prim.geom)
-			
-				print("Added mesh buffer", prim.primmesh)
+				-- print("Added mesh buffer", prim.primmesh)
 			end
 		else 
 			-- Should habndle vert buffers naively

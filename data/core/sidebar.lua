@@ -70,7 +70,6 @@ function SidebarView:init_panels()
       if(mod.split_node) then
         node = core.root_view:get_named_node(mod.split_node)
       end
-      print(mod.name)
       mod.view = mod.view_class:new(mod.config)
       mod.child = node:split(mod.split_dir, mod.view, mod.locked)
     end 
