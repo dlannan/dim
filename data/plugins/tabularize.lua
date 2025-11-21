@@ -44,7 +44,7 @@ command.add("core.docview", {
     core.command_view:enter("Tabularize On Delimiter", function(delim)
       if delim == "" then delim = " " end
 
-      local doc = core.active_view.view.doc
+      local doc = core.active_view.doc
       local line1, col1, line2, col2, swap = doc:get_selection(true)
       line1, col1 = doc:position_offset(line1, col1, translate.start_of_line)
       line2, col2 = doc:position_offset(line2, col2, translate.end_of_line)

@@ -29,7 +29,7 @@ end
 
 
 function ClockView:update_fonts()
-  local size = math.floor(self.size.x * 0.15 / 15) * 15 * config.bigclock_scale
+  local size = math.floor(self.view.size.x * 0.15 / 15) * 15 * config.bigclock_scale
   if self.font_size ~= size then
     self.time_font = renderer.font.load(EXEDIR .. "/data/fonts/font.ttf", size)
     self.date_font = renderer.font.load(EXEDIR .. "/data/fonts/font.ttf", size * 0.3)
@@ -55,8 +55,8 @@ end
 function ClockView:draw()
   self:update_fonts()
   self.view:draw_background(style.background)
-  local x, y = self.position.x, self.position.y
-  local w, h = self.size.x, self.size.y
+  local x, y = self.view.position.x, self.view.position.y
+  local w, h = self.view.size.x, self.view.size.y
   local _, y = common.draw_text(self.time_font, style.text, self.time_text, "center", x, y, w, h)
   local th = self.date_font:get_height()
   common.draw_text(self.date_font, style.dim, self.date_text, "center", x, y, w, th)

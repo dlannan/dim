@@ -5,7 +5,6 @@ local command = require "core.command"
 local style = require "core.style"
 local keymap = require "core.keymap"
 local translate = require "core.doc.translate"
-local RootView = require "core.rootview"
 local DocView = require "core.docview"
 
 config.autocomplete_max_suggestions = 6
@@ -189,10 +188,11 @@ end
 
 
 -- patch event logic into RootView
+local RootView  = core.root_view
+
 local on_text_input = RootView.on_text_input
 local update = RootView.update
 local draw = RootView.draw
-
 
 RootView.on_text_input = function(...)
   on_text_input(...)

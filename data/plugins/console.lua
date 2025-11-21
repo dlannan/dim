@@ -134,7 +134,6 @@ function ConsoleDocView:on_mouse_wheel(...)
     self.docview:on_mouse_wheel(...)
 end
 
-
 function ConsoleDocView:draw() 
     self.docview:draw()
 end
