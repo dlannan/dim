@@ -23,7 +23,7 @@ local ConsoleDoc = {}
 function ConsoleDoc:new()
     local new_consoledoc = utils.deepcopy(ConsoleDoc)
     new_consoledoc.doc = Doc:new()
-    new_consoledoc.doc:reset()
+    new_consoledoc.doc.insert = function(...) new_consoledoc:insert(...) end
     new_consoledoc.prompt = "> "
     new_consoledoc.console_lines = {}
     style.console_font = ConsoleData.font
@@ -31,23 +31,25 @@ function ConsoleDoc:new()
 end
 
 function ConsoleDoc:get_name()
-    return self.name
+    return self.doc.name
 end
 
 function ConsoleDoc:append_line(text, col)
-    local last_line = #self.lines
+    local last_line = #self.doc.lines
     local psize = #self.prompt + 1
     col = col or psize
 
     if(tonumber(col) < psize) then col = psize end
-    self.doc.insert(self, last_line, col, text)
-    self.doc.move_to(self, #self.lines, col)
-    return #self.lines
+    self.doc.redo_stack = { idx = 1 }
+    local line, col = self.doc:sanitize_position(last_line, col)
+    self.doc:raw_insert(line, col, text, self.doc.undo_stack, system.get_time())
+    self.doc:move_to( #self.doc.lines, col)
+    return #self.doc.lines
 end
 
 -- Handle Enter key: execute command
 function ConsoleDoc:execute_current_line()
-    local line = self.lines[#self.lines-1]:sub(#self.prompt + 1)
+    local line = self.doc.lines[#self.doc.lines-1]:sub(#self.prompt + 1)
     line = line:gsub("\n", "")
 
     -- Simple echo for now; you can extend to Lua evaluation
@@ -66,12 +68,12 @@ function ConsoleDoc:insert(line, col, text)
         self:execute_current_line()
     end
     if(tonumber(col) < psize) then col = psize end
-    self.doc.move_to(self, #self.lines, col)
+    self.doc:move_to( #self.doc.lines, col)
 end
 
 -- Write a line to the console
 function ConsoleDoc:write_line(line)
-    table.insert(self.console_lines, line)
+    tinsert(self.console_lines, line)
 --     print(line)
 end
 
@@ -84,33 +86,41 @@ end
 local ConsoleDocView = {}
 
 -- Helper: create a new console doc
-function ConsoleDocView:new(doc)
+function ConsoleDocView:new()
 
     local new_consoledocview = utils.deepcopy(ConsoleDocView)
-    new_consoledocview.view = DocView:new()
-    new_consoledocview.doc = doc or ConsoleDoc:new()
+    local doc = ConsoleDoc:new()
+    new_consoledocview.docview = DocView:new(doc)
+    new_consoledocview.docview.parent = new_consoledocview
+    new_consoledocview.doc = new_consoledocview.docview.doc 
+    new_consoledocview.view = new_consoledocview.docview.view
+
     new_consoledocview.doc.name = string.format("Console_%s", #ConsoleData.consoles)
     new_consoledocview.module = "data.plugins.console"
-    new_consoledocview.doc:new(self, doc)
     new_consoledocview.doc:insert(1, 1, doc.prompt)
+
     -- Initialize prompt
     new_consoledocview.font = "console_font"
     new_consoledocview.console_id = #ConsoleData.consoles + 1
-    tinsert(ConsoleData.consoles, doc)
+    tinsert(ConsoleData.consoles, new_consoledocview)
     return new_consoledocview
 end
 
 function ConsoleDocView:get_name()
-    local id = self.doc.console_id
+    local id = self.console_id
     return fmt("Console_%d", id)
+end
+
+function ConsoleDocView:draw() 
+    print(self.docview.doc.lines)
+    self.docview:draw()
 end
 
 -- Command to open a console
 command.add(nil, {
     ["console:new"] = function()
         local node = core.root_view:get_active_node()
-        local doc = ConsoleDoc:new()
-        node:add_view(ConsoleDocView:new(doc))
+        node:add_view(ConsoleDocView:new())
     end
 })
 
