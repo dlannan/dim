@@ -239,9 +239,13 @@ function WorkspacesView:on_mouse_moved(px, py, dx, dy)
   self.view:on_mouse_moved(px, py, dx, dy)
 end
 
-function WorkspacesView:on_mouse_pressed(button, x, y)
+function WorkspacesView:on_mouse_pressed(...)
   core.root_view:set_focus_view()
-  self.view:on_mouse_pressed(button, x, y)
+  self.view:on_mouse_pressed(...)
+end
+
+function WorkspacesView:on_mouse_released(...)
+  self.view:on_mouse_released(...)
 end
 
 function WorkspacesView:update()
@@ -276,6 +280,7 @@ function WorkspacesView:draw()
       end
     end
 end
+
 
 command.add(nil, {
   ["workspaces:toggle"] = function()

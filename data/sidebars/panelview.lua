@@ -57,8 +57,17 @@ function PanelsView:get_name()
     return "Panels"
 end
 
-function PanelsView:on_mouse_pressed(button, x, y)
+function PanelsView:on_mouse_pressed(...)
   core.root_view:set_focus_view()
+  self.view:on_mouse_pressed(...)
+end
+
+function PanelsView:on_mouse_released(...)
+  self.view:on_mouse_released(...)
+end
+
+function PanelsView:on_mouse_moved(...)
+  self.view:on_mouse_moved(...)
 end
 
 function PanelsView:update()
