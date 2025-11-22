@@ -15,7 +15,7 @@ function command.add(predicate, map)
     local class = predicate
     predicate = function() 
       if(class.is_docview) then 
-        return (class.is_docview == core.active_view.is_docview) 
+        return class.is_docview == core.active_view.is_docview
       else 
         return core.active_view:get_name() == class:get_name()
       end

@@ -228,6 +228,14 @@ function WorkspacesView:new(config)
   return new_workspacesview
 end
 
+function WorkspacesView:change_space(idx)
+  local wkspace = WorkspaceData.spaces[idx]
+  if(wkspace) then 
+    WorkspaceData.new_current = idx
+    core.restarting = true -- this only starts restart at begining of next update!
+  end
+end
+
 function WorkspacesView:get_scrollable_size()
     return style.font:get_height() + style.padding.y * 2
   end
@@ -256,11 +264,7 @@ function WorkspacesView:on_mouse_pressed(...)
 
   if(self.hovered_item) then 
     if(self.hovered_item ~= WorkspaceData.current) then 
-      local wkspace = WorkspaceData.spaces[self.hovered_item]
-      if(wkspace) then 
-        WorkspaceData.new_current = self.hovered_item
-        core.restarting = true -- this only starts restart at begining of next update!
-      end
+      self:change_space(self.hovered_item)
     end
   end
   self.view:on_mouse_pressed(...)
@@ -304,7 +308,6 @@ function WorkspacesView:draw()
     end
 end
 
-
 command.add(nil, {
   ["workspaces:toggle"] = function()
     local ws_node = core.root_view:get_named_node("Workspaces")
@@ -314,8 +317,35 @@ command.add(nil, {
     ws_view.view.size.x = ws_view.visible and WorkspacesView.max_width or 0 
     WorkspacesView.width = ws_view.view.size.x
   end,
+
+  ["workspaces:space1"] = function()
+    local ws_node = core.root_view:get_named_node("Workspaces")
+    local ws_view = ws_node.views[1] -- only ever 1 view in a workspace!
+    ws_view:change_space(1)
+  end,
+  ["workspaces:space2"] = function()
+    local ws_node = core.root_view:get_named_node("Workspaces")
+    local ws_view = ws_node.views[1] -- only ever 1 view in a workspace!
+    ws_view:change_space(2)
+  end,
+  ["workspaces:space3"] = function()
+    local ws_node = core.root_view:get_named_node("Workspaces")
+    local ws_view = ws_node.views[1] -- only ever 1 view in a workspace!
+    ws_view:change_space(3)
+  end,
+  ["workspaces:space4"] = function()
+    local ws_node = core.root_view:get_named_node("Workspaces")
+    local ws_view = ws_node.views[1] -- only ever 1 view in a workspace!
+    ws_view:change_space(4)
+  end,
 })
 
-keymap.add { ["ctrl+\\"] = "workspaces:toggle" }
+keymap.add { 
+  ["ctrl+\\"] = "workspaces:toggle",
+  ["ctrl+shift+1"] = "workspaces:space1",
+  ["ctrl+shift+2"] = "workspaces:space2",
+  ["ctrl+shift+3"] = "workspaces:space3",
+  ["ctrl+shift+4"] = "workspaces:space4",
+}
 
 return WorkspacesView
