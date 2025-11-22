@@ -13,6 +13,7 @@ local TreeViewData = {
   target_width = config.treeview_size
 }
 
+
 local function get_depth(filename)
   if(config.project_path ~= ".") then
     filename = filename:gsub(config.project_path.."\\","")
@@ -36,6 +37,15 @@ local TreeView = {
   command = nil,
 }
 
+
+function TreeView:set_header()
+  local projectstr = system.absolute_path(config.project_path)
+  local clean = projectstr:gsub("[\\/]+$", "")
+  local hdrstr = clean:match("([^\\/]+)$")
+  local line = { fmt = "%s", text = hdrstr }
+  TreeViewData.header = string.format(line.fmt, line.text)
+end
+
 function TreeView:new()
   local new_treeview  = utils.deepcopy(TreeView)
   new_treeview.view         = View:new()
@@ -51,6 +61,7 @@ function TreeView:new()
   -- new_treeview.view.size.y = 1000
 
   TreeViewData.view         = new_treeview
+  self:set_header()
   return new_treeview
 end
 
@@ -59,7 +70,22 @@ function TreeView:get_item_height()
 end
 
 function TreeView:get_scrollable_size()
-  return self:get_item_height() * self.item_count + style.padding.y * 2
+  return self:get_item_height() * (self.item_count + 1) + style.padding.y * 2
+end
+
+-- Taken from Rootview - used for EmptyView
+function TreeView:draw_item_text(color)
+
+  local ox, oy = self.view:get_content_offset()
+  local x, y = ox, oy
+  local h = self:get_item_height() + style.padding.y
+  local w = self.view.size.x
+
+  color = style.editor_fileselect
+  renderer.draw_rect(x, y, w, h, style.background)
+
+  w = renderer.draw_text(style.font, TreeViewData.header, x + style.padding.x, y + style.padding.y, color)
+  return w
 end
 
 function TreeView:get_cached(item)
@@ -94,7 +120,7 @@ function TreeView:each_item()
   return coroutine.wrap(function()
     self:check_cache()
     local ox, oy = self.view:get_content_offset()
-    local y = oy + style.padding.y
+    local y = oy + style.padding.y + self:get_item_height()
     local w = self.view.size.x
     local h = self:get_item_height()
     local i = 1
@@ -184,6 +210,8 @@ function TreeView:draw()
   
   if(self.visible == false) then return end
   self.view:draw_background(style.background2)
+
+  self:draw_item_text(style.text)
 
   local icon_width = style.icon_font:get_width("D")
   local spacing = style.font:get_width(" ") * 2

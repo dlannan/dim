@@ -27,18 +27,6 @@ local PanelsView = {
 
 PanelsView.max_width = PanelsView.width
 
--- Taken from Rootview - used for EmptyView
-local function draw_text(x, y, color)
-    local th = style.font:get_height()
-    local dh = th + style.padding.y * 2
-    local w = 0
-
-    local line = { fmt = "[%s] ", text = config.project_path }
-    local text = string.format(line.fmt, line.text)
-    w = renderer.draw_text(style.font, text, x + style.padding.x, y, color)
-    return w, dh
-end
-
 
 function PanelsView:new()
   local new_panelsview = utils.deepcopy(PanelsView)
