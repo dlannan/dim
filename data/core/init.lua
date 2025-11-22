@@ -450,7 +450,7 @@ function core.step()
   end
 
   -- update window title
-  local name = core.active_view.view:get_name()
+  local name = core.active_view:get_name()
   local title = (name ~= "---") and (name .. " - dim") or  "dim"
   if title ~= core.window_title then
     system.set_window_title(title)

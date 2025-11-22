@@ -180,7 +180,7 @@ function SearchFilesView:draw()
     local icon_width = style.icon_font:get_width("D")
     local spacing = style.font:get_width(" ") * 2
 
-    local doc = core.active_view.view.doc
+    local doc = core.active_view.doc
     local active_filename = doc and system.absolute_path(doc.filename or "")
 
     for item, x,y,w,h in self:each_item() do

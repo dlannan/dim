@@ -8,10 +8,10 @@ local utils   = require("lua.utils")
 
 local EmptyView = {}
 
-function EmptyView:new() 
+function EmptyView:new()
     local new_emptyview = utils.deepcopy(EmptyView)
     new_emptyview.view = View:new()
-    new_emptyview.is_empty = true 
+    new_emptyview.is_empty = true
     return new_emptyview
 end
 
@@ -99,7 +99,7 @@ end
 
 
 local type_map = { up="vsplit", down="vsplit", left="hsplit", right="hsplit" }
-
+-- locked can be: "X" or "Y" or ("B" or true) - X = horizontal lock, Y = vertical lock, B = horiz and vert locked
 function Node:split(dir, view, locked)
   assert(self.type == "leaf", "Tried to split non-leaf node")
   local node_type = assert(type_map[dir], "Invalid direction")
@@ -109,9 +109,9 @@ function Node:split(dir, view, locked)
   self:consume(Node:new(node_type))
   self.a = child
   self.b = Node:new()
-  if view then 
+  if view then
     view._is_locked = locked -- dodgy "prelock lock!"
-    self.b:add_view(view) 
+    self.b:add_view(view)
   end
   if locked then
     self.b.locked = locked
@@ -152,7 +152,7 @@ function Node:close_active_view(root)
   self.active_view.view:try_close(do_close)
 end
 
-
+-- TODO: This should support partial locked views
 function Node:add_view(view)
   assert(self.type == "leaf", "Tried to add view to non-leaf node")
   assert(not self.locked, "Tried to add view to locked node")
@@ -274,6 +274,8 @@ function Node:get_locked_size()
     if self.type == "leaf" then
         if self.locked then
         local size = self.active_view.view.size
+        if(self.locked == "X") then size.y = nil end
+        if(self.locked == "Y") then size.x = nil end
         return size.x, size.y
         end
     else
@@ -397,7 +399,7 @@ function Node:draw()
     core.pop_clip_rect()
   else
     local x, y, w, h = self:get_divider_rect()
-    local color = style.divider 
+    local color = style.divider
     if(self.is_hovered) then color = style.divider_hover end
     renderer.draw_rect(x, y, w, h, color )
     self:propagate("draw")

@@ -62,7 +62,7 @@ end
 
 command.add("core.docview", {
   ["markers:toggle-marker"] = function()
-    local doc = core.active_view.view.doc
+    local doc = core.active_view.doc
     local line = doc:get_selection()
     local markers = cache[doc]
 
@@ -74,7 +74,7 @@ command.add("core.docview", {
   end,
 
   ["markers:go-to-next-marker"] = function()
-    local doc = core.active_view.view.doc
+    local doc = core.active_view.doc
     local line = doc:get_selection()
     local markers = cache[doc]
 
