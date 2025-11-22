@@ -25,6 +25,36 @@ Color Themes: https://github.com/rxi/lite-colors
  (Note Dim has its own VSCode color theme that you can use in Lite or Lite XL).
 <img src="media/2025-11-06_01-05.png">
 
+[ 22-11-2025 Updates ]:
+
+So many updates. Lots of messy things updated, ready for multi-proc and other features:
+- OO removal is mostly done. The code will move to a more array based object management.
+- Workspaces initial proto working. Can switch between spaces. Need to add in json atm. Adding widhets for ui. THe reload/switching is working well. 
+- Many many many little bug fixes and improvements (esp with OO changes). Expect to see more bugs. Will start adding some tests ones all the objects are "arrayified". Should be fairly simple to do. 
+- Panels and Sidebar is now a separate system. It is easy to add a new sidebar. These exist in the sidebar panels object. See sidebar examples (mainly treeview) for reference.
+
+TODO:
+- Finish plugins manager.
+- Add search in files tool (will be like VSCode)
+- Make some sample multi-proc tests.
+
+## Multi-proc details
+
+The views will be designed to run a separate process and the view is rendered to a renderTexture.
+The output is passed to the main editor for display (clipped and layered by the editor). The aim will be to have this work for text and graphical output. 
+
+Standalone runners can actually work without the editor - A game or app devleoper can literally make their app/game as a runner, test in editor, then detach and build as a standalone app. This capability is mostly already available in Thunc (my private engine) but I will be making a cut-down version for Dim. 
+
+## Workspaces
+
+Dim workspace:
+<img src="media/2025-11-22_22-17.png">
+
+Thunc workspace:
+<img src="media/2025-11-22_22-16.png">
+
+Just press the blue workspace button at the top to switch.
+
 [ 12-11-2025 Updates ]:
 
 Mostly working on workspaces, sidebar and focus implementation:
