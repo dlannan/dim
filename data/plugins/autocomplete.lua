@@ -134,6 +134,7 @@ local function get_active_view()
   if core.active_view.is_docview then
     return core.active_view
   end
+  return nil
 end
 
 
@@ -170,6 +171,7 @@ local function draw_suggestions_box(av)
   -- draw background rect
   local rx, ry, rw, rh = get_suggestions_rect(av)
   renderer.draw_rect(rx, ry, rw, rh, style.background3)
+  if(rh == 0) then return end 
 
   -- draw text
   local font = av:get_font()

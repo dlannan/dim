@@ -10,6 +10,7 @@ local utils   = require("lua.utils")
 local DocView = {
   drawers           = {},
   on_mouse_wheels   = {},
+  is_docview        = true,
 }
 
 

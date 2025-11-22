@@ -40,10 +40,10 @@ TODO:
 
 ## Multi-proc details
 
-The views will be designed to run a separate process and the view is rendered to a renderTexture.
+The views will be designed to run in a separate process and the view is rendered to a renderTexture.
 The output is passed to the main editor for display (clipped and layered by the editor). The aim will be to have this work for text and graphical output. 
 
-Standalone runners can actually work without the editor - A game or app devleoper can literally make their app/game as a runner, test in editor, then detach and build as a standalone app. This capability is mostly already available in Thunc (my private engine) but I will be making a cut-down version for Dim. 
+Standalone runners can actually work without the editor - A game or app devleoper can make their app/game as a runner, test in editor, then detach and build as a standalone app. This capability is mostly already available in Thunc (my private engine) but I will be making a cut-down version for Dim. 
 
 ## Workspaces
 
