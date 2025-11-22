@@ -29,7 +29,7 @@ Color Themes: https://github.com/rxi/lite-colors
 
 So many updates. Lots of messy things updated, ready for multi-proc and other features:
 - OO removal is mostly done. The code will move to a more array based object management.
-- Workspaces initial proto working. Can switch between spaces. Need to add in json atm. Adding widhets for ui. THe reload/switching is working well. 
+- Workspaces initial proto working. Can switch between spaces. Need to add in json atm. Adding widgets for ui. The reload/switching is working well. 
 - Many many many little bug fixes and improvements (esp with OO changes). Expect to see more bugs. Will start adding some tests ones all the objects are "arrayified". Should be fairly simple to do. 
 - Panels and Sidebar is now a separate system. It is easy to add a new sidebar. These exist in the sidebar panels object. See sidebar examples (mainly treeview) for reference.
 
