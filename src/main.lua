@@ -28,7 +28,7 @@ local seq       = require("lua.engine.sequencer")
 
 -- --------------------------------------------------------------------------------------
 
-ARGS = arg
+ARGS            = arg
 
 VERSION         = "1.11"
 PLATFORM        = ffi.os

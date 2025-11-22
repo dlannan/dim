@@ -264,7 +264,11 @@ command.add(nil, {
       TreeViewData.height = TreeViewData.view.visible and TreeViewData.last_height or 0
       TreeViewData.init_size = true
     end,
+    ["treeview:set-header"] = function()
+      TreeViewData.view:set_header()
+    end,  
 })
+
 
 keymap.add { ["ctrl+shift+1"] = "treeview:toggle" }
 

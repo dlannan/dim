@@ -96,19 +96,7 @@ function core.init()
 
   Doc = require "core.doc"
 
-  local project_dir = EXEDIR
-  local files = {}
-  for i = 2, #ARGS do
-    local info = system.get_file_info(ARGS[i]) or {}
-    if info.type == "file" then
-      table.insert(files, system.absolute_path(ARGS[i]))
-    elseif info.type == "dir" then
-      project_dir = ARGS[i]
-    end
-  end
-
-  system.chdir(project_dir)
-
+  core.restarting = nil
   core.frame_start = 0
   core.clip_rect_stack = {{ 0,0,0,0 }}
   core.log_items = {}
@@ -137,10 +125,6 @@ function core.init()
   local got_project_error = not core.load_project_module()
   local got_sidebar_error = not core.load_panels()
 
-  for _, filename in ipairs(files) do
-    core.root_view:open_doc(core.open_doc(filename))
-  end
-
   if got_plugin_error or got_user_error or got_project_error or got_sidebar_error then
     command.perform("core:open-log")
   end
@@ -167,6 +151,32 @@ function core.temp_filename(ext)
       .. string.format("%06x", temp_file_counter) .. (ext or "")
 end
 
+-- This is like a quit without the exit. We also cleanup views and call init again!
+function core.restart()
+  local dirty_count = 0
+  local dirty_name
+  for _, doc in ipairs(core.docs) do
+    if doc:is_dirty() then
+      dirty_count = dirty_count + 1
+      dirty_name = doc:get_name()
+    end
+  end
+  if dirty_count > 0 then
+    local text
+    if dirty_count == 1 then
+      text = string.format("\"%s\" has unsaved changes. Quit anyway?", dirty_name)
+    else
+      text = string.format("%d docs have unsaved changes. Quit anyway?", dirty_count)
+    end
+    local confirm = system.show_confirm_dialog("Unsaved Changes", text)
+    if not confirm then return end
+  end
+
+  for k,v in ipairs(core.postrun_funcs) do if(v) then v() end end
+  delete_temp_files()
+
+  core.init()
+end
 
 function core.quit(force)
   if force then
@@ -414,6 +424,8 @@ function core.step()
   local mouse_moved = false
   local mouse = { x = 0, y = 0, dx = 0, dy = 0 }
 
+  if(core.restarting) then core.restart(); return false end 
+
   local copy_events = system.events_buffer()
   for k, ev in ipairs(copy_events) do
     local ptype, a, b, c, d = ev.type, ev.a, ev.b, ev.c, ev.d
@@ -462,6 +474,7 @@ function core.step()
 end
 
 core.render = function()
+  if(core.restarting) then return end
   -- draw
   local width, height = renderer.get_size()
   renderer.begin_frame()

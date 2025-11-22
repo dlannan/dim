@@ -114,7 +114,7 @@ function SidebarView:each_item()
     local i = 1
     while i <= SidebarData.pcount do
       local item = SidebarData.panels[i]
-      if(item.icon) then
+      if(item and item.icon) then
         local cached = self:get_cached(item)
 
         coroutine.yield(cached, ox, y, w, h)

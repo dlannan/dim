@@ -38,8 +38,9 @@ local DocView = require "core.docview"
 -- New workspace structure:
 local WorkspaceData         = {
   current = 1,
-  spaces = {
-  }
+  new_current = 1,          -- Set this when changing workspaces (so current updates correctly)
+  spaces = {},              -- Each space is a set of focuments
+  project_paths = {},       -- Each space has a project path
 }
 
 local workspace_filename = ".dim_workspace.json"
@@ -172,33 +173,41 @@ local function save_workspace()
   local node_tbl = nil
   if(data_str) then 
     node_tbl = json.decode(data_str)
-    node_tbl.current = WorkspaceData.current 
-    node_tbl.spaces[node_tbl.current] = save_node(root) 
+    node_tbl.current = WorkspaceData.new_current 
+    node_tbl.new_current = node_tbl.current  -- so the property is kept at next load.
+    node_tbl.spaces[WorkspaceData.current] = save_node(root) 
+    node_tbl.project_paths[WorkspaceData.current] = config.project_path
 
   -- Not found, then make a new one!!
   else 
     node_tbl = {
         current = 1,
+        new_current = 1,
         spaces = {
             [1] = save_node(root)
-        }
+        },
+        project_paths = {
+            [1] = config.project_path
+        },
     }
   end
   local out_str = json.encode(node_tbl)
   utils.savedata(workspace_filename, out_str)
 end
 
-
 local function load_workspace()
     local data_str = utils.loaddata(workspace_filename)
     if data_str then
         local t = json.decode(data_str)
         WorkspaceData = t
+        config.project_path = t.project_paths[t.current]
         local root = get_unlocked_root(core.root_view.root_node)
         local active_view = load_node(root, t.spaces[t.current])
         if active_view then
             core.set_active_view(active_view)
         end
+
+        command.perform("treeview:set-header")
     end
 end
 
@@ -244,6 +253,16 @@ end
 
 function WorkspacesView:on_mouse_pressed(...)
   core.root_view:set_focus_view()
+
+  if(self.hovered_item) then 
+    if(self.hovered_item ~= WorkspaceData.current) then 
+      local wkspace = WorkspaceData.spaces[self.hovered_item]
+      if(wkspace) then 
+        WorkspaceData.new_current = self.hovered_item
+        core.restarting = true -- this only starts restart at begining of next update!
+      end
+    end
+  end
   self.view:on_mouse_pressed(...)
 end
 
@@ -265,6 +284,7 @@ function WorkspacesView:update()
 end
 
 function WorkspacesView:draw()
+  if(not self.visible) then return end
     self.view:draw_background(style.background)
     local bx, by, bw, bh = self.view:get_content_bounds()
     local ox, oy = self.view:get_content_offset()
