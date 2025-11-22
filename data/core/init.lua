@@ -126,6 +126,8 @@ function core.init()
   curr_node:split("down", core.command_view, true)
   curr_node.b:split("down", core.status_view, true)
   curr_node.a:split("left", core.sidebar_view, true)
+  -- TODO: wtf. this controls the sub panels width. Need to expose this and make adjustable to config.
+  curr_node.a.divider = 0.1
 
   core.add_thread(project_scan_thread)
   command.add_defaults()
@@ -450,7 +452,7 @@ function core.step()
   end
 
   -- update window title
-  local name = core.active_view:get_name()
+  local name = core.active_view.view:get_name()
   local title = (name ~= "---") and (name .. " - dim") or  "dim"
   if title ~= core.window_title then
     system.set_window_title(title)

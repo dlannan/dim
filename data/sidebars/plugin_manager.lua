@@ -7,17 +7,18 @@ local keymap = require "core.keymap"
 local View = require "core.view"
 local utils   = require("lua.utils")
 
-local PluginMgrView = {}
+local PluginMgrView = {
 
-PluginMgrView.id = 5
-PluginMgrView.name = "plugin-manager"
-PluginMgrView.icon = ""
-PluginMgrView.module = "plugin_manager"
-PluginMgrView.config = {}
-PluginMgrView.split_dir = "down"
-PluginMgrView.split_node = "Panels"
-PluginMgrView.locked = true
-PluginMgrView.command = nil
+    id = 5,
+    name = "plugin-manager",
+    icon = "",
+    module = "plugin_manager",
+    config = {},
+    split_dir = "down",
+    split_node = "Panels",
+    locked = "Y",
+    command = nil,
+}
 
 function PluginMgrView:new()
     local new_pluginmgrview = utils.deepcopy(PluginMgrView)

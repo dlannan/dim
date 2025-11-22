@@ -46,17 +46,18 @@ local SearchFilesData = {
     child           = nil,
 }
 
-local SearchFilesView = {}
+local SearchFilesView = {
 
-SearchFilesView.id = 4
-SearchFilesView.name = "search"
-SearchFilesView.icon = ""
-SearchFilesView.module = "search"
-SearchFilesView.config = {}
-SearchFilesView.split_dir = "down"
-SearchFilesView.split_node = "Panels"
-SearchFilesView.locked = true
-SearchFilesView.command = nil
+    id = 4,
+    name = "search",
+    icon = "",
+    module = "search",
+    config = {},
+    split_dir = "down",
+    split_node = "Panels",
+    locked = "Y",
+    command = nil,
+}
 
 -- Helper: create a new console doc
 function SearchFilesView:new()

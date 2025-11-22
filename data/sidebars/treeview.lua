@@ -32,7 +32,7 @@ local TreeView = {
   config = {},
   split_dir = "down",
   split_node = "Panels",
-  locked = true,
+  locked = "Y",
   command = nil,
 }
 

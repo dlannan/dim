@@ -57,6 +57,7 @@ function SidebarView:load_panel(ViewClass)
         command = ViewClass.command,
         view_class = ViewClass,
         locked = ViewClass.locked,
+        locked_divider = ViewClass.locked_divider or nil,
     }
     SidebarData.panels[mod.id] = mod 
     SidebarData.pcount = SidebarData.pcount + 1
@@ -72,6 +73,9 @@ function SidebarView:init_panels()
       end
       mod.view = mod.view_class:new(mod.config)
       mod.child = node:split(mod.split_dir, mod.view, mod.locked)
+      if(mod.locked_divider) then 
+        node.divider = mod.locked_divider 
+      end 
     end 
   end
 end

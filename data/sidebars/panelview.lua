@@ -7,24 +7,25 @@ local keymap = require "core.keymap"
 local View = require "core.view"
 local utils   = require("lua.utils")
 
-local PanelsView = {}
+local PanelsView = {
 
-PanelsView.width = 200
+  width = 200,
+  visible = true,
+  separator  = "      ",
+  separator2 = "   |   ",
+
+  id = 2,
+  name = "panels",
+  icon = nil,
+  module = "panels",
+  config = {},
+  split_dir = "down",
+  split_node = "Workspaces",
+  locked = "Y",
+  command = nil,
+}
+
 PanelsView.max_width = PanelsView.width
-PanelsView.visible = true
-PanelsView.separator  = "      "
-PanelsView.separator2 = "   |   "
-
-PanelsView.id = 2
-PanelsView.name = "panels"
-PanelsView.icon = nil
-PanelsView.module = "panels"
-PanelsView.config = {}
-PanelsView.split_dir = "down"
-PanelsView.split_node = "Workspaces"
-PanelsView.locked = true
-PanelsView.command = nil
-
 
 -- Taken from Rootview - used for EmptyView
 local function draw_text(x, y, color)

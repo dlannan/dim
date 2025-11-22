@@ -9,21 +9,23 @@ local View = require "core.view"
 local json  = require("lua.json")
 local utils = require("lua.utils")
 
-local WorkspacesView = {}
+local WorkspacesView = {
 
-WorkspacesView.id = 1
-WorkspacesView.name = "workspaces"
-WorkspacesView.icon = ""
-WorkspacesView.module = "workspaces"
-WorkspacesView.config = {}
-WorkspacesView.split_dir = "right"
-WorkspacesView.split_node = "Sidebar"
-WorkspacesView.locked = true
-WorkspacesView.command = nil
+  id = 1,
+  name = "workspaces",
+  icon = "",
+  module = "workspaces",
+  config = {},
+  split_dir = "right",
+  split_node = "Sidebar",
+  locked = "Y",
+  command = nil,
 
-WorkspacesView.max_width = 200
+  max_width = 200,
+  pad = 3,
+}
+
 WorkspacesView.width = WorkspacesView.max_width
-WorkspacesView.pad = 3
 
 local core = require "core"
 local DocView = require "core.docview"
@@ -213,6 +215,7 @@ function WorkspacesView:new(config)
   new_workspacesview.init_size    = true
   new_workspacesview.view.size.y  = style.font:get_height() + style.padding.y * 2
   new_workspacesview.view.size.x  = WorkspacesView.width
+
   return new_workspacesview
 end
 
@@ -257,7 +260,7 @@ function WorkspacesView:update()
   -- else 
   --   -- PanelsView.max_width = self.size.x -- Update for border movement
   -- end
-  if(self.view.size.x > 0) then WorkspacesView.width = self.view.size.x end
+  WorkspacesView.width = self.view.size.x or WorkspacesView.width
   self.view:update()
 end
 
