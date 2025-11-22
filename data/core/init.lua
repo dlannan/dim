@@ -260,7 +260,7 @@ function core.set_active_view(view, node)
     core.last_active_view = core.active_view
     core.active_view = view
   end
-  if view and view._is_locked ~= true then
+  if view and view._is_locked == nil then
     local node = node or core.root_view:get_view_node(view)
     if(node) then
       -- print("setting focus:", view, node, view._is_locked, node.type, view:get_name())
