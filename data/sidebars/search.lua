@@ -87,6 +87,7 @@ function SearchFilesView:get_cached(item)
 end
 
 function SearchFilesView:get_item_height()
+    if(self.visible == false) then return 0 end
     return style.font:get_height() + style.padding.y
 end
 

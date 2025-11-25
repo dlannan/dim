@@ -12,6 +12,8 @@ style.big_font = renderer.font.load(EXEDIR .. "/data/fonts/font.ttf", 34 * SCALE
 style.icon_font = renderer.font.load(EXEDIR .. "/data/fonts/icons.ttf", 14 * SCALE)
 style.code_font = renderer.font.load(EXEDIR .. "/data/fonts/monospace.ttf", 13.5 * SCALE)
 
+style.widget_font = style.font -- change this as needed (can do in user!)
+
 style.background = { common.color "#2e2e32" }
 style.background2 = { common.color "#252529" }
 style.background3 = { common.color "#252529" }
@@ -38,5 +40,10 @@ style.syntax["literal"] = { common.color "#FFA94D" }
 style.syntax["string"] = { common.color "#f7c95c" }
 style.syntax["operator"] = { common.color "#93DDFA" }
 style.syntax["function"] = { common.color "#93DDFA" }
+
+style.widget_background = style.background
+style.widget_background2 = style.background2
+style.widget_background3 = style.background3
+
 
 return style

@@ -270,6 +270,6 @@ command.add(nil, {
 })
 
 
-keymap.add { ["ctrl+shift+1"] = "treeview:toggle" }
+keymap.add { ["ctrl+shift+t"] = "treeview:toggle" }
 
 return TreeView

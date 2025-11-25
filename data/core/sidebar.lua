@@ -186,13 +186,6 @@ function SidebarView:draw()
   for item, x,y,w,h in self:each_item() do
     local color = style.dim
 
-    -- Handle state for the panels - only 1 active at a time (for now)
-    -- if(SidebarData.panel_select == item.id) then
-    --   item.view.visible = true
-    -- else
-    --   item.view.visible = false
-    -- end
-
     -- highlight active_view doc
     if item.id == SidebarData.panel_select then
       color = style.accent
@@ -207,6 +200,9 @@ function SidebarView:draw()
     -- highlight active_view doc
     if item.id == SidebarData.panel_select then
       renderer.draw_rect(x, y, 2, h, style.text)
+      item.view.visible = true
+    else
+      item.view.visible = false
     end
 
     if(item.icon) then

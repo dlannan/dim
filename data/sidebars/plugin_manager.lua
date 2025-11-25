@@ -33,9 +33,14 @@ function PluginMgrView:get_name()
     return "PluginMgr"
 end
 
+function PluginMgrView:get_item_height()
+    if(self.visible == false) then return 0 end
+    return style.font:get_height() + style.padding.y
+end
+
 function PluginMgrView:update()
     if(self.visible == false) then return end
-    self.size.y = style.font:get_height() + style.padding.y * 2
+    self.view.size.y = style.font:get_height() + style.padding.y * 2
     self.view:update()
 end
 

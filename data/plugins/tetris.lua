@@ -384,7 +384,6 @@ function TetrisView:drop(amount)
 end
 
 function TetrisView:on_mouse_pressed(...)
-    core.set_active_view(TetrisData.view)
 end
 
 function TetrisView:shift(delta)

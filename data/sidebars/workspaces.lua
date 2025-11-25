@@ -9,6 +9,8 @@ local View = require "core.view"
 local json  = require("lua.json")
 local utils = require("lua.utils")
 
+local winput  = require("core.widgets.input_text")
+
 local WorkspacesView = {
 
   id = 1,
@@ -224,6 +226,7 @@ function WorkspacesView:new(config)
   new_workspacesview.init_size    = true
   new_workspacesview.view.size.y  = style.font:get_height() + style.padding.y * 2
   new_workspacesview.view.size.x  = WorkspacesView.width
+  new_workspacesview.widget_input_text = winput:new(new_workspacesview.header)
 
   return new_workspacesview
 end
@@ -288,24 +291,28 @@ function WorkspacesView:update()
 end
 
 function WorkspacesView:draw()
-  if(not self.visible) then return end
-    self.view:draw_background(style.background)
-    local bx, by, bw, bh = self.view:get_content_bounds()
-    local ox, oy = self.view:get_content_offset()
-    local cw, ch = WorkspacesView.width/4, style.font:get_height()
-    local pd = WorkspacesView.pad
-    for i=0, 3 do 
+  self.view:draw_background(style.background)
+  local bx, by, bw, bh = self.view:get_content_bounds()
+  local ox, oy = self.view:get_content_offset()
+  local cw, ch = WorkspacesView.width/4, style.font:get_height()
+  local pd = WorkspacesView.pad
+  for i=0, 3 do 
 
-      local color = style.background3
-      if(i + 1 == self.hovered_item) then color = style.icon_hover end
+    local color = style.background3
+    if(i + 1 == self.hovered_item) then color = style.icon_hover end
 
-      local x, y = i * cw + ox, oy
-      if(i + 1 == WorkspaceData.current) then 
-        renderer.draw_rect(x + pd, y + pd, cw - pd *2, bh - pd *2, style.accent)
-      else
-        renderer.draw_rect(x + pd, y + pd, cw - pd *2, bh - pd *2, color)
-      end
+    local x, y = i * cw + ox, oy
+    if(i + 1 == WorkspaceData.current) then 
+      renderer.draw_rect(x + pd, y + pd, cw - pd *2, bh - pd *2, style.accent)
+    else
+      renderer.draw_rect(x + pd, y + pd, cw - pd *2, bh - pd *2, color)
     end
+  end
+  -- Workspaces boxes always drawn. Editing boxes only active when Workspaces selected.
+  if(not self.visible) then return end
+  ox, oy = self.view:get_content_offset()
+  self.widget_input_text:draw(ox, oy+pd + style.padding.y, self.view.size.x, style.text)
+
 end
 
 command.add(nil, {
