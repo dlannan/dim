@@ -13,25 +13,24 @@ local winput  = require("core.widgets.input_text")
 
 local WorkspacesView = {
 
-  id = 1,
-  name = "workspaces",
-  icon = "",
-  module = "workspaces",
-  config = {},
-  split_dir = "right",
-  split_node = "Sidebar",
-  locked = "Y",
-  command = nil,
+  id          = 1,
+  name        = "workspaces",
+  icon        = "",
+  module      = "workspaces",
+  config      = {},
+  split_dir   = "right",
+  split_node  = "Sidebar",
+  locked      = "Y",
+  command     = nil,
 
-  max_width = 200,
-  pad = 3,
+  max_width   = 200,
+  pad         = 3,
 }
 
 WorkspacesView.width = WorkspacesView.max_width
 
 local core = require "core"
 local DocView = require "core.docview"
-
 
 -- Unlike original workspace plugin, this holds multiple workspaces.
 -- Allows user to jump between them and store them.
@@ -42,7 +41,7 @@ local WorkspaceData         = {
   current = 1,
   new_current = 1,          -- Set this when changing workspaces (so current updates correctly)
   spaces = {},              -- Each space is a set of focuments
-  project_paths = {},       -- Each space has a project path
+  configs = {},       -- Each space has a project path
 }
 
 local workspace_filename = ".dim_workspace.json"
@@ -178,7 +177,7 @@ local function save_workspace()
     node_tbl.current = WorkspaceData.new_current 
     node_tbl.new_current = node_tbl.current  -- so the property is kept at next load.
     node_tbl.spaces[WorkspaceData.current] = save_node(root) 
-    node_tbl.project_paths[WorkspaceData.current] = config.project_path
+    node_tbl.configs[WorkspaceData.current].project_path = config.project_path
 
   -- Not found, then make a new one!!
   else 
@@ -188,8 +187,10 @@ local function save_workspace()
         spaces = {
             [1] = save_node(root)
         },
-        project_paths = {
-            [1] = config.project_path
+        configs = {
+            [1] = {
+              project_path = config.project_path
+            }
         },
     }
   end
@@ -202,7 +203,7 @@ local function load_workspace()
     if data_str then
         local t = json.decode(data_str)
         WorkspaceData = t
-        config.project_path = t.project_paths[t.current]
+        config.project_path = t.configs[t.current].project_path
         local root = get_unlocked_root(core.root_view.root_node)
         local active_view = load_node(root, t.spaces[t.current])
         if active_view then
@@ -220,11 +221,11 @@ function WorkspacesView:new(config)
   local new_workspacesview        = utils.deepcopy(WorkspacesView)
   new_workspacesview.view         = View:new()
   new_workspacesview.view.scrollable   = true
-  new_workspacesview.view.get_scrollable_size = function() return new_workspacesview:get_scrollable_size() end 
+  new_workspacesview.view.get_scrollable_size = function(self) return new_workspacesview:get_height() end 
   new_workspacesview.visible      = true
   new_workspacesview.header       = config and config.title or ""
   new_workspacesview.init_size    = true
-  new_workspacesview.view.size.y  = style.font:get_height() + style.padding.y * 2
+  new_workspacesview.view.size.y  = new_workspacesview:get_height()
   new_workspacesview.view.size.x  = WorkspacesView.width
   new_workspacesview.widget_input_text = winput:new(new_workspacesview.header)
 
@@ -239,9 +240,24 @@ function WorkspacesView:change_space(idx)
   end
 end
 
-function WorkspacesView:get_scrollable_size()
-    return style.font:get_height() + style.padding.y * 2
+function WorkspacesView:get_editheight()
+  local h = 0
+  for i,v in ipairs( WorkspaceData.configs ) do
+    h = h + self:get_lineheight() * 2
   end
+  return h
+end
+
+function WorkspacesView:get_height(noedit) 
+  local editsize = self:get_editheight()
+  if(noedit) then editsize = 0 end
+  return style.font:get_height() + style.padding.y * 2 + editsize
+end 
+
+function WorkspacesView:get_lineheight()
+  return style.font:get_height() + style.padding.y
+end 
+
 
 function WorkspacesView:get_name()
     return "Workspaces"
@@ -251,10 +267,10 @@ function WorkspacesView:on_mouse_moved(px, py, dx, dy)
   self.hovered_item = nil
   local bx, by, bw, bh = self.view:get_content_bounds()
   local ox, oy = self.view:get_content_offset()
-  local cw, ch = WorkspacesView.width/4, style.font:get_height()
+  local cw, ch = WorkspacesView.width/4, self:get_lineheight()
   for i=0, 3 do 
     local x, y = i * cw + ox, oy 
-    if px > x and py > y and px <= x + cw and py <= y + bh then
+    if px > x and py > y and px <= x + cw and py <= y + ch then
       self.hovered_item = i + 1
       break
     end
@@ -278,7 +294,12 @@ function WorkspacesView:on_mouse_released(...)
 end
 
 function WorkspacesView:update()
-  self.view.size.y = style.font:get_height() + style.padding.y * 2
+  if(self.visible == false) then 
+    self.view.size.y = self:get_height(true)
+    return 
+  end
+
+  self.view.size.y = self:get_height()
   -- if(self.init_size == true and self.size.x ~= WorkspacesView.width) then
   --   self:move_towards(self.size, "x", WorkspacesView.width, 0.5, function() 
   --     self.init_size = false 
@@ -286,6 +307,7 @@ function WorkspacesView:update()
   -- else 
   --   -- PanelsView.max_width = self.size.x -- Update for border movement
   -- end
+  self.widget_input_text.lines[1] = WorkspaceData.configs[WorkspaceData.current].project_path
   WorkspacesView.width = self.view.size.x or WorkspacesView.width
   self.view:update()
 end
@@ -294,8 +316,10 @@ function WorkspacesView:draw()
   self.view:draw_background(style.background)
   local bx, by, bw, bh = self.view:get_content_bounds()
   local ox, oy = self.view:get_content_offset()
-  local cw, ch = WorkspacesView.width/4, style.font:get_height()
+  local cw, ch = WorkspacesView.width/4, self:get_lineheight()
   local pd = WorkspacesView.pad
+  local color = style.text
+
   for i=0, 3 do 
 
     local color = style.background3
@@ -303,16 +327,24 @@ function WorkspacesView:draw()
 
     local x, y = i * cw + ox, oy
     if(i + 1 == WorkspaceData.current) then 
-      renderer.draw_rect(x + pd, y + pd, cw - pd *2, bh - pd *2, style.accent)
+      renderer.draw_rect(x + pd, y + pd, cw - pd *2, ch, style.accent)
     else
-      renderer.draw_rect(x + pd, y + pd, cw - pd *2, bh - pd *2, color)
+      renderer.draw_rect(x + pd, y + pd, cw - pd *2, ch, color)
     end
   end
   -- Workspaces boxes always drawn. Editing boxes only active when Workspaces selected.
-  if(not self.visible) then return end
-  ox, oy = self.view:get_content_offset()
-  self.widget_input_text:draw(ox, oy+pd + style.padding.y, self.view.size.x, style.text)
+  local ex, ey = ox, oy + self:get_lineheight()
+  local ew = self.view.size.x
 
+  for i,v in ipairs( WorkspaceData.configs ) do
+    renderer.draw_rect(ex, ey, ew, ch, style.background)
+    core.push_clip_rect(ex, ey, ew, ch * 2)
+    common.draw_text(style.font, color, "Path:", "left", ex, ey,  self.view.size.x, ch)
+    ey = ey + self.get_lineheight()    
+    self.widget_input_text:draw(ex, ey, self.view.size.x, style.text, v.project_path)
+    ey = ey + self.get_lineheight()
+    core.pop_clip_rect()
+  end
 end
 
 command.add(nil, {

@@ -66,6 +66,7 @@ function TreeView:new()
 end
 
 function TreeView:get_item_height()
+  if(self.visible == false) then return 0 end
   return style.font:get_height() + style.padding.y
 end
 
@@ -186,6 +187,11 @@ end
 
 function TreeView:update()
 
+  if(self.visible == false) then 
+    self.view.size.y = 0
+    return 
+  end 
+  
   -- local dest = self.visible and TreeViewData.target_width or 0
   -- -- We have to maintain width to the parent panel!
   -- if(self.init_size and self.size.x ~= dest) then

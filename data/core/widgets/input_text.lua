@@ -33,14 +33,15 @@ function WidgetInputText:on_text_input(text)
 end
 
 function WidgetInputText:update()
-
+    
 end 
 
-function WidgetInputText:draw(x, y, w, color)
+function WidgetInputText:draw(x, y, w, color, text)
+    self.lines[1] = text
     local h = self:get_height() + style.padding.y
     core.push_clip_rect(x, y, w, h)
     renderer.draw_rect(x, y, w, h, style.widget_background)
-    w = renderer.draw_text(self.font, self.lines[1], x + style.padding.x, y + style.padding.y, color)
+    w = renderer.draw_text(self.font, text, x + style.padding.x, y + style.padding.y, color)
     core.pop_clip_rect()
     return w
 end

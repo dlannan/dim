@@ -162,7 +162,10 @@ function SearchFilesView:on_mouse_pressed(button, x, y)
 end
 
 function SearchFilesView:update()
-    if(self.visible == false) then return end
+    if(self.visible == false) then 
+        self.view.size.y = 0
+        return 
+    end
     self.view.size.y = style.font:get_height() + style.padding.y * 2
     -- if(self.visible == true) then
     --     self.size.x = self.width

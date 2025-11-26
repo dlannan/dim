@@ -39,7 +39,10 @@ function PluginMgrView:get_item_height()
 end
 
 function PluginMgrView:update()
-    if(self.visible == false) then return end
+    if(self.visible == false) then 
+        self.view.size.y = 0
+        return 
+    end
     self.view.size.y = style.font:get_height() + style.padding.y * 2
     self.view:update()
 end
