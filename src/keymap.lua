@@ -145,6 +145,9 @@ end
 
 local function process_inputs(event)
 
+    nk.snk_handle_event(event)
+    if(system.nuklear_edit == true) then return end
+
     local eventtype = tonumber(event.type)
     local r = renderer.rect
     local system_push_event = system.push_event
@@ -291,8 +294,6 @@ local function process_inputs(event)
             a = mods, b = nil, c = nil, d = nil
         })    
     end
-
-    nk.snk_handle_event(event)
 end 
 
 return {

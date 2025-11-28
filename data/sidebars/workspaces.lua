@@ -1,15 +1,16 @@
-local core = require "core"
-local common = require "core.common"
+local core    = require "core"
+local common  = require "core.common"
 local command = require "core.command"
-local config = require "core.config"
-local keymap = require "core.keymap"
-local style = require "core.style"
-local View = require "core.view"
+local config  = require "core.config"
+local keymap  = require "core.keymap"
+local style   = require "core.style"
+local View    = require "core.view"
 
-local json  = require("lua.json")
-local utils = require("lua.utils")
+local json    = require("lua.json")
+local utils   = require("lua.utils")
 
-local winput  = require("core.widgets.input_text")
+local nk      = sg
+local wdgts   = require("src.nuklear.widgets")
 
 local WorkspacesView = {
 
@@ -227,7 +228,6 @@ function WorkspacesView:new(config)
   new_workspacesview.init_size    = true
   new_workspacesview.view.size.y  = new_workspacesview:get_height()
   new_workspacesview.view.size.x  = WorkspacesView.width
-  new_workspacesview.widget_input_text = winput:new(new_workspacesview.header)
 
   return new_workspacesview
 end
@@ -307,17 +307,16 @@ function WorkspacesView:update()
   -- else 
   --   -- PanelsView.max_width = self.size.x -- Update for border movement
   -- end
-  self.widget_input_text.lines[1] = WorkspaceData.configs[WorkspaceData.current].project_path
   WorkspacesView.width = self.view.size.x or WorkspacesView.width
   self.view:update()
 end
 
 function WorkspacesView:draw()
   self.view:draw_background(style.background)
+  local pd = WorkspacesView.pad
   local bx, by, bw, bh = self.view:get_content_bounds()
   local ox, oy = self.view:get_content_offset()
-  local cw, ch = WorkspacesView.width/4, self:get_lineheight()
-  local pd = WorkspacesView.pad
+  local cw, ch = WorkspacesView.width/4, self:get_lineheight() + pd
   local color = style.text
 
   for i=0, 3 do 
@@ -335,16 +334,29 @@ function WorkspacesView:draw()
   -- Workspaces boxes always drawn. Editing boxes only active when Workspaces selected.
   local ex, ey = ox, oy + self:get_lineheight()
   local ew = self.view.size.x
+  local eh = ch * 2 * #WorkspaceData.configs 
+
+  wdgts:begin( eh, #WorkspaceData.configs * 2 )
+  core.push_clip_rect(ex, ey, ew, eh)
 
   for i,v in ipairs( WorkspaceData.configs ) do
-    renderer.draw_rect(ex, ey, ew, ch, style.background)
-    core.push_clip_rect(ex, ey, ew, ch * 2)
-    common.draw_text(style.font, color, "Path:", "left", ex, ey,  self.view.size.x, ch)
+    wdgts:line(ex, ey, ew, ch)
+    wdgts:label( "Path:", nk.NK_TEXT_LEFT )
+    -- renderer.draw_rect(ex, ey, ew, ch, style.background)
+    -- common.draw_text(style.font, color, "Path:", "left", ex, ey,  self.view.size.x, ch)
     ey = ey + self.get_lineheight()    
-    self.widget_input_text:draw(ex, ey, self.view.size.x, style.text, v.project_path)
+    wdgts:line(ex, ey, ew, ch)
+    if(v.project_path_ffi == nil) then 
+      v.project_path_ffi = ffi.new("char[1024]")
+      ffi.fill(v.project_path_ffi, 0, 1024)
+      ffi.copy(v.project_path_ffi, ffi.string(v.project_path))
+    end
+    wdgts:text_input( v.project_path_ffi )
+    -- self.widget_input_text:draw(ex, ey, self.view.size.x, style.text, v.project_path)
     ey = ey + self.get_lineheight()
-    core.pop_clip_rect()
   end
+  core.pop_clip_rect()
+  wdgts:finish()
 end
 
 command.add(nil, {

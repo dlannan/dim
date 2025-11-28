@@ -16,18 +16,64 @@ local ffi = require("ffi")
 --  Widgets use c based objects to store the results for input and other states
 --    They are stored in lists here
 local widgets = {
-
+	ctx 	= renderer.ctx, 
+	id 		= 1, 		-- Auto increment as widgets are created
+	values 	= {}, 		-- ffi allocated values for widgets
+	lens 	= {}, 		-- Sepcifically for buffer lengths
 }
 
 -- -------------------------------------------------------------------------------------------
 
-local function widgets:label( name, align )
-	nk.nk_label(self.ctx, label, align)
+function widgets:begin( h, rows )
+	rows = rows or 0x7fffffff
+	nk.nk_layout_space_begin(self.ctx, nk.NK_STATIC, h, rows )
 end
 
 -- -------------------------------------------------------------------------------------------
 
-local function widgets:menu( name, items, w, h)
+function widgets:finish( )
+	nk.nk_layout_space_end(self.ctx)
+end
+
+-- -------------------------------------------------------------------------------------------
+
+function widgets:line( x, y, w, h )
+	nk.nk_layout_space_push(self.ctx, nk.nk_rect(x, y, w, h))
+end
+
+-- -------------------------------------------------------------------------------------------
+
+function widgets:label( label, align )
+	nk.nk_label(self.ctx, label, align)
+end
+
+-- -------------------------------------------------------------------------------------------
+-- Can be user provided ( this removed any nasty characters )
+local nk_plugin_filter = function(nk_text_edit, unicode)
+	if(unicode > 255) then return false end 
+	if(unicode <= 13) then return false end 
+	return true
+end
+
+-- -------------------------------------------------------------------------------------------
+
+function widgets:text_input( text_value, max_len )
+	local text_len = self.lens[text_value] or ffi.new("int[1]", #ffi.string(text_value))
+	max_len = max_len or 1024
+	local res = nk.nk_edit_string(self.ctx, nk.NK_EDIT_SIMPLE, text_value, text_len, max_len, nk.nk_filter_default)
+	if(bit.band(res, nk.NK_EDIT_ACTIVE) > 0 or bit.band(res, nk.NK_EDIT_ACTIVATED) > 0) then 
+		system.nuklear_edit = true
+	elseif(bit.band(res, nk.NK_EDIT_DEACTIVATED) > 0) then
+		system.nuklear_edit = nil
+	elseif(bit.band(res, nk.NK_EDIT_COMMITED) > 0) then 
+		system.nuklear_edit = nil
+	end
+	self.lens[text_value] = text_len
+end
+
+-- -------------------------------------------------------------------------------------------
+
+function widgets:menu( name, items, w, h)
 
 	nk.nk_layout_row_push(ctx, 45)
 	if (nk.nk_menu_begin_label(ctx, name, nk.NK_TEXT_LEFT, nk.nk_vec2(w, h))) then 
@@ -51,7 +97,7 @@ end
 
 -- -------------------------------------------------------------------------------------------
 
-local function widgets:progress( val, max_val )
+function widgets:progress( val, max_val )
 
 	nk.nk_progress(self.ctx, prog, 100, nk.NK_MODIFIABLE)
 
@@ -59,7 +105,7 @@ end
 
 -- -------------------------------------------------------------------------------------------
 
-local function widgets:slider( min_val, val, max_val, step, type )
+function widgets:slider( min_val, val, max_val, step, type )
 
 	local res = false
 	if(type == nil or type == "int") then 
@@ -73,14 +119,18 @@ end
 -- -------------------------------------------------------------------------------------------
 
 
-local function widgets:color_picker( color_val )
+function widgets:color_picker( color_val )
 	nk_color_pick(self.ctx, color_val, nk.NK_RGBA)
 end 
 
 -- -------------------------------------------------------------------------------------------
 
-local function widgets:slider( min_val, val, max_val, step, type )
+function widgets:slider( min_val, val, max_val, step, type )
 
 end
+
+-- -------------------------------------------------------------------------------------------
+
+return widgets 
 
 -- -------------------------------------------------------------------------------------------
