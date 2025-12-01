@@ -12,10 +12,70 @@ local shell32   = ffi.load("shell32")
 
 -- TODO: Need equivalents for OSX and Linux - probably should go in a systems utils.
 ffi.cdef[[
+    typedef char CHAR;
+    typedef uint8_t BYTE;
+    typedef uint32_t UINT;
+    typedef unsigned short WORD;
+    typedef unsigned long DWORD;
+    typedef void* HINSTANCE;
+    typedef void* LPARAM;
+    typedef const char* LPCSTR;
+    typedef char* LPSTR;
     typedef const void * HWND;
+    typedef void* LPVOID;
+    typedef int BOOL;
+
     typedef struct RECT {
         int x, y, w, h;
     } RECT;
+
+    typedef struct _ITEMIDLIST {
+        BYTE mkid[1];
+    } ITEMIDLIST, *LPITEMIDLIST;
+    
+    typedef int (__stdcall *BFFCALLBACK)(HWND, UINT, LPARAM, LPARAM);
+    
+    typedef struct {
+        HWND        hwndOwner;
+        LPCSTR      pidlRoot;
+        LPSTR       pszDisplayName;
+        LPCSTR      lpszTitle;
+        UINT        ulFlags;
+        BFFCALLBACK lpfn;
+        LPARAM      lParam;
+        int         iImage;
+    } BROWSEINFOA;   
+
+    typedef struct tagOPENFILENAMEA {
+    DWORD        lStructSize;
+    HWND         hwndOwner;
+    HINSTANCE    hInstance;
+    LPCSTR       lpstrFilter;
+    LPSTR        lpstrCustomFilter;
+    DWORD        nMaxCustFilter;
+    DWORD        nFilterIndex;
+    LPSTR        lpstrFile;
+    DWORD        nMaxFile;
+    LPSTR        lpstrFileTitle;
+    DWORD        nMaxFileTitle;
+    LPCSTR       lpstrInitialDir;
+    LPCSTR       lpstrTitle;
+    DWORD        Flags;
+    WORD         nFileOffset;
+    WORD         nFileExtension;
+    LPCSTR       lpstrDefExt;
+    LPARAM       lCustData;
+    void*        lpfnHook;
+    LPCSTR       lpTemplateName;
+    void*        pvReserved;
+    DWORD        dwReserved;
+    DWORD        FlagsEx;
+    } OPENFILENAMEA;
+
+    bool GetOpenFileNameA(OPENFILENAMEA *ofn);
+    
+    LPITEMIDLIST SHBrowseForFolderA(BROWSEINFOA *bi);
+    BOOL SHGetPathFromIDListA(LPITEMIDLIST pidl, LPSTR pszPath);
 
     void Sleep(uint32_t ms);
 
@@ -32,6 +92,8 @@ local SWP_NOSIZE        = 0x01
 local SW_SHOWMINIMIZED  = 0x02
 local SW_MAXIMIZE       = 0x03
 
+local comdlg32 = ffi.load("comdlg32")
+local shell32 = ffi.load("shell32")
 
 win.ShowWindow  = function(hwnd, cmd)
     if(cmd == 0) then
@@ -53,6 +115,57 @@ win.DetectDisplay = function()
     ffi.C.GetWindowRect(hDesktop, desktop)
     return desktop[0].w, desktop[0].h
 end 
+
+win.FileSelect  = function()
+    -- buffer for returned file path
+    local pathBuf = ffi.new("char[260]")  -- MAX_PATH
+
+    local ofn = ffi.new("OPENFILENAMEA")
+    ofn.lStructSize = ffi.sizeof(ofn)
+    ofn.hwndOwner = nil
+    ofn.lpstrFilter = "All Files\0*.*\0\0"   -- Double null terminated
+    ofn.lpstrFile = pathBuf
+    ofn.nMaxFile = 260
+    ofn.Flags = 0x00080000 + 0x00001000      -- OFN_EXPLORER + OFN_FILEMUSTEXIST
+
+    local result = comdlg32.GetOpenFileNameA(ofn)
+
+    if result then
+        print("Selected file:", ffi.string(pathBuf))
+        return ffi.string(pathBuf)
+    else
+        print("No file selected (or dialog canceled).")
+        return nil
+    end
+end
+
+win.FolderSelect  = function()
+
+    local pathBuf = ffi.new("char[260]")  -- MAX_PATH
+    local displayBuf = ffi.new("char[260]")
+    
+    local bi = ffi.new("BROWSEINFOA")
+    bi.hwndOwner = nil
+    bi.pidlRoot = nil                     -- start at Desktop
+    bi.pszDisplayName = displayBuf
+    bi.lpszTitle = "Select a folder:"
+    bi.ulFlags = 0x0001                   -- BIF_RETURNONLYFSDIRS
+    
+    local pidl = shell32.SHBrowseForFolderA(bi)
+    
+    if pidl ~= nil then
+        if shell32.SHGetPathFromIDListA(pidl, pathBuf) ~= 0 then
+            print("Selected folder:", ffi.string(pathBuf))
+            return ffi.string(pathBuf)
+        else
+            print("Folder picked, but path could not be retrieved.")
+            return nil
+        end
+    else
+        print("User canceled.")
+        return nil
+    end
+end    
 
 end
 

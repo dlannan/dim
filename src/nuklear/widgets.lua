@@ -9,6 +9,8 @@ local slib      = require("sokol_libs") -- Warn - always after gfx!!
 local hmm       = require("hmm")
 local hutils    = require("hmm_utils")
 
+local style   	= require "core.style"
+
 local ffi = require("ffi")
 
 -- nuklear based widgets
@@ -17,10 +19,17 @@ local ffi = require("ffi")
 --    They are stored in lists here
 local widgets = {
 	ctx 	= renderer.ctx, 
+	canvas 	= renderer.canvas,
 	id 		= 1, 		-- Auto increment as widgets are created
 	values 	= {}, 		-- ffi allocated values for widgets
 	lens 	= {}, 		-- Sepcifically for buffer lengths
 }
+
+-- -------------------------------------------------------------------------------------------
+
+function widgets:set_font( font )
+	nk.nk_style_set_font(self.ctx, font.font.handle)
+end
 
 -- -------------------------------------------------------------------------------------------
 
@@ -43,8 +52,27 @@ end
 
 -- -------------------------------------------------------------------------------------------
 
-function widgets:label( label, align )
+function widgets:row( h, cols )
+	nk.nk_layout_row_dynamic(self.ctx, h, cols)
+end
+
+-- -------------------------------------------------------------------------------------------
+
+function widgets:label( label, align)
 	nk.nk_label(self.ctx, label, align)
+end
+
+-- -------------------------------------------------------------------------------------------
+
+function widgets:button_fa( icon_utf8 )
+	local rounding = self.ctx.style.button.rounding
+	self.ctx.style.button.rounding = 0
+	nk.nk_style_push_font(self.ctx, style.fa_font_small.font.handle )
+	local res = nil
+	if(nk.nk_button_label(self.ctx, icon_utf8 )) then res = true end
+	nk.nk_style_pop_font(self.ctx)
+	self.ctx.style.button.rounding = rounding
+	return res
 end
 
 -- -------------------------------------------------------------------------------------------

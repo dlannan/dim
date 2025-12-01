@@ -6,6 +6,8 @@ local sapp        = require("sokol_app")
 local stb         = require("stb")
 local nk          = sg
 
+local platform    = require("src.platform")
+
 local ffi         = require("ffi")
 
 local tinsert     = table.insert
@@ -153,6 +155,22 @@ end
 system.get_file_info      = function(path) 
 	return dirtools.get_fileinfo(path)
     -- return { modified=0, size=0, type="file" } 
+end
+
+-- --------------------------------------------------------------------------------------
+-- Opens native file selection dialog
+system.file_select      = function(start_path)
+
+    local filename = win.FileSelect()
+    return filename
+end
+
+-- --------------------------------------------------------------------------------------
+-- Opens native file selection dialog
+system.folder_select      = function(start_path)
+
+    local foldername = win.FolderSelect()
+    return foldername
 end
 
 -- --------------------------------------------------------------------------------------

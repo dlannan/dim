@@ -24,7 +24,8 @@ local SidebarData = {
 }
 
 -- Add font awesome to style so other plugins can use it if needed
-style.fa_font   = renderer.font.load(EXEDIR .. "/data/fonts/fontawesome-webfont.ttf", ICON_SIZE)
+style.fa_font       = renderer.font.load(EXEDIR .. "/data/fonts/fontawesome-webfont.ttf", ICON_SIZE)
+style.fa_font_small = renderer.font.load(EXEDIR .. "/data/fonts/fontawesome-webfont.ttf", ICON_SIZE * 0.65)
 
 local SidebarView = {}
 

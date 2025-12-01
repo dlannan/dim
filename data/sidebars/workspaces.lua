@@ -313,6 +313,7 @@ end
 
 function WorkspacesView:draw()
   self.view:draw_background(style.background)
+  
   local pd = WorkspacesView.pad
   local bx, by, bw, bh = self.view:get_content_bounds()
   local ox, oy = self.view:get_content_offset()
@@ -335,28 +336,39 @@ function WorkspacesView:draw()
   local ex, ey = ox, oy + self:get_lineheight()
   local ew = self.view.size.x
   local eh = ch * 2 * #WorkspaceData.configs 
+  local icw = ch
 
-  wdgts:begin( eh, #WorkspaceData.configs * 2 )
   core.push_clip_rect(ex, ey, ew, eh)
 
+  wdgts:set_font(style.font) 
+  wdgts:begin( eh, #WorkspaceData.configs * 3 )
+
   for i,v in ipairs( WorkspaceData.configs ) do
+
     wdgts:line(ex, ey, ew, ch)
+    -- wdgts:row( ch, 1 )
+    renderer.draw_rect(ex, ey, ew, ch, style.background)
     wdgts:label( "Path:", nk.NK_TEXT_LEFT )
     -- renderer.draw_rect(ex, ey, ew, ch, style.background)
     -- common.draw_text(style.font, color, "Path:", "left", ex, ey,  self.view.size.x, ch)
     ey = ey + self.get_lineheight()    
-    wdgts:line(ex, ey, ew, ch)
-    if(v.project_path_ffi == nil) then 
-      v.project_path_ffi = ffi.new("char[1024]")
-      ffi.fill(v.project_path_ffi, 0, 1024)
-      ffi.copy(v.project_path_ffi, ffi.string(v.project_path))
+    -- wdgts:line(ex, ey, ew, ch)
+    -- wdgts:row( 0, 2 )
+
+    wdgts:line(ex, ey, ew - icw, ch)
+    renderer.draw_rect(ex, ey + pd, ew - icw, ch, style.background2)
+    wdgts:label( ffi.string(v.project_path), nk.NK_TEXT_LEFT, {0xff, 0, 0} )
+    wdgts:line(ex + ew - icw, ey, icw, ch)
+    if wdgts:button_fa( "" ) == true then 
+      local foldername = system.folder_select()
+      local info = system.get_file_info(foldername)
+      if(info.type == "dir") then v.project_path =  foldername end
     end
-    wdgts:text_input( v.project_path_ffi )
     -- self.widget_input_text:draw(ex, ey, self.view.size.x, style.text, v.project_path)
     ey = ey + self.get_lineheight()
   end
-  core.pop_clip_rect()
   wdgts:finish()
+  core.pop_clip_rect()
 end
 
 command.add(nil, {
