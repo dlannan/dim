@@ -126,7 +126,7 @@ win.FileSelect  = function()
     ofn.lpstrFilter = "All Files\0*.*\0\0"   -- Double null terminated
     ofn.lpstrFile = pathBuf
     ofn.nMaxFile = 260
-    ofn.Flags = 0x00080000 + 0x00001000      -- OFN_EXPLORER + OFN_FILEMUSTEXIST
+    ofn.Flags = 0x00080000 + 0x00001000     -- OFN_EXPLORER + OFN_FILEMUSTEXIST
 
     local result = comdlg32.GetOpenFileNameA(ofn)
 
@@ -149,7 +149,7 @@ win.FolderSelect  = function()
     bi.pidlRoot = nil                     -- start at Desktop
     bi.pszDisplayName = displayBuf
     bi.lpszTitle = "Select a folder:"
-    bi.ulFlags = 0x0001                   -- BIF_RETURNONLYFSDIRS
+    bi.ulFlags = 0x0001 + 0x00000040 + 0x00000100
     
     local pidl = shell32.SHBrowseForFolderA(bi)
     

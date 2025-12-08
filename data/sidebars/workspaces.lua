@@ -255,7 +255,7 @@ function WorkspacesView:get_height(noedit)
 end 
 
 function WorkspacesView:get_lineheight()
-  return style.font:get_height() + style.padding.y
+  return style.font:get_height() + style.padding.y * 2
 end 
 
 
@@ -317,14 +317,12 @@ function WorkspacesView:draw()
   local pd = WorkspacesView.pad
   local bx, by, bw, bh = self.view:get_content_bounds()
   local ox, oy = self.view:get_content_offset()
-  local cw, ch = WorkspacesView.width/4, self:get_lineheight() + pd
+  local cw, ch = WorkspacesView.width/4, self:get_lineheight()
   local color = style.text
 
   for i=0, 3 do 
-
     local color = style.background3
     if(i + 1 == self.hovered_item) then color = style.icon_hover end
-
     local x, y = i * cw + ox, oy
     if(i + 1 == WorkspaceData.current) then 
       renderer.draw_rect(x + pd, y + pd, cw - pd *2, ch, style.accent)
@@ -332,37 +330,41 @@ function WorkspacesView:draw()
       renderer.draw_rect(x + pd, y + pd, cw - pd *2, ch, color)
     end
   end
+
   -- Workspaces boxes always drawn. Editing boxes only active when Workspaces selected.
   local ex, ey = ox, oy + self:get_lineheight()
   local ew = self.view.size.x
-  local eh = ch * 2 * #WorkspaceData.configs 
+  local eh = ch * 4 * #WorkspaceData.configs
   local icw = ch
 
-  core.push_clip_rect(ex, ey, ew, eh)
+  core.push_clip_rect(ex, ey, ew, eh + 2 * pd)
 
   wdgts:set_font(style.font) 
-  wdgts:begin( eh, #WorkspaceData.configs * 3 )
+  wdgts:begin( eh, #WorkspaceData.configs * 4 )
 
   for i,v in ipairs( WorkspaceData.configs ) do
 
-    wdgts:line(ex, ey, ew, ch)
-    -- wdgts:row( ch, 1 )
+    wdgts:line(ex, ey-pd, ew, ch)
     renderer.draw_rect(ex, ey, ew, ch, style.background)
-    wdgts:label( "Path:", nk.NK_TEXT_LEFT )
-    -- renderer.draw_rect(ex, ey, ew, ch, style.background)
-    -- common.draw_text(style.font, color, "Path:", "left", ex, ey,  self.view.size.x, ch)
-    ey = ey + self.get_lineheight()    
-    -- wdgts:line(ex, ey, ew, ch)
-    -- wdgts:row( 0, 2 )
+    wdgts:label( string.format("Workspace_%d", i), nk.NK_TEXT_LEFT )
+    ey = ey + self.get_lineheight()
 
-    wdgts:line(ex, ey, ew - icw, ch)
-    renderer.draw_rect(ex, ey + pd, ew - icw, ch, style.background2)
+    wdgts:line(ex, ey-pd, ew, ch)
+    renderer.draw_rect(ex, ey, ew, ch, style.background2)
+    wdgts:label( "Path:", nk.NK_TEXT_LEFT )
+    ey = ey + self.get_lineheight()
+
+    wdgts:line(ex, ey-pd, ew - icw, ch)
+    renderer.draw_rect(ex, ey, ew - icw, ch, style.background2)
     wdgts:label( ffi.string(v.project_path), nk.NK_TEXT_LEFT, {0xff, 0, 0} )
-    wdgts:line(ex + ew - icw, ey, icw, ch)
+
+    wdgts:line(ex + ew - icw, ey-pd, icw, ch)
     if wdgts:button_fa( "" ) == true then 
       local foldername = system.folder_select()
-      local info = system.get_file_info(foldername)
-      if(info.type == "dir") then v.project_path =  foldername end
+      if foldername then 
+        local info = system.get_file_info(foldername)
+        if(info.type == "dir") then v.project_path =  foldername end
+      end
     end
     -- self.widget_input_text:draw(ex, ey, self.view.size.x, style.text, v.project_path)
     ey = ey + self.get_lineheight()

@@ -169,8 +169,7 @@ end
 -- Opens native file selection dialog
 system.folder_select      = function(start_path)
 
-    local foldername = win.FolderSelect()
-    return foldername
+    return win.FolderSelect()
 end
 
 -- --------------------------------------------------------------------------------------

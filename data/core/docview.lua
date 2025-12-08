@@ -225,7 +225,7 @@ end
 
 function DocView:on_mouse_pressed(button, x, y, clicks)
   local caught = self.view:on_mouse_pressed(button, x, y, clicks)
-  if caught then
+  if caught == true then
     return
   end
   if keymap.modkeys["shift"] then
@@ -292,7 +292,7 @@ function DocView:update()
   end
 
   -- update blink timer
-  if self == core.active_view and not self.mouse_selecting then
+  if self == core.focus_view and not self.mouse_selecting then
     local n = blink_period / 2
     local prev = self.blink_timer
     self.blink_timer = (self.blink_timer + 1 / config.fps) % blink_period
@@ -338,7 +338,7 @@ function DocView:draw_line_body(idx, x, y)
 
   -- draw line highlight if caret is on this line
   if config.highlight_current_line and not self.doc:has_selection()
-  and line == idx and (core.active_view == self or core.active_view == self.parent) then
+  and line == idx and (core.focus_view == self or core.focus_view == self.parent) then
     self:draw_line_highlight(x + self.view.scroll.x, y)
   end
 
@@ -346,7 +346,7 @@ function DocView:draw_line_body(idx, x, y)
   self:draw_line_text(idx, x, y)
 
   -- draw caret if it overlaps this line
-  if line == idx and (core.active_view == self or core.active_view == self.parent)
+  if line == idx and (core.focus_view == self or core.focus_view == self.parent)
     and self.blink_timer < blink_period / 2
     and system.window_has_focus() then
     local lh = self:get_line_height()
@@ -369,7 +369,6 @@ end
 
 
 function DocView:draw()
-
   for k,drawer in ipairs(DocView.drawers) do 
     local res = drawer(self)
     if(res) then return end 

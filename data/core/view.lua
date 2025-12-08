@@ -75,6 +75,7 @@ function View:on_mouse_pressed(button, x, y, clicks)
     self.dragging_scrollbar = true
     return true
   end
+  return false
 end
 
 
