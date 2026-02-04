@@ -243,7 +243,7 @@ end
 function WorkspacesView:get_editheight()
   local h = 0
   for i,v in ipairs( WorkspaceData.configs ) do
-    h = h + self:get_lineheight() * 2
+    h = h + self:get_lineheight() * 3
   end
   return h
 end
@@ -346,17 +346,17 @@ function WorkspacesView:draw()
 
     wdgts:line(ex, ey-pd, ew, ch)
     renderer.draw_rect(ex, ey, ew, ch, style.background)
-    wdgts:label( string.format("Workspace_%d", i), nk.NK_TEXT_LEFT )
+    wdgts:label( string.format(" Workspace_%d", i), nk.NK_TEXT_LEFT )
     ey = ey + self.get_lineheight()
 
     wdgts:line(ex, ey-pd, ew, ch)
     renderer.draw_rect(ex, ey, ew, ch, style.background2)
-    wdgts:label( "Path:", nk.NK_TEXT_LEFT )
+    wdgts:label( " Path:", nk.NK_TEXT_LEFT )
     ey = ey + self.get_lineheight()
 
     wdgts:line(ex, ey-pd, ew - icw, ch)
-    renderer.draw_rect(ex, ey, ew - icw, ch, style.background2)
-    wdgts:label( ffi.string(v.project_path), nk.NK_TEXT_LEFT, {0xff, 0, 0} )
+    renderer.draw_rect(ex, ey, ew - icw, ch, style.background3)
+    wdgts:label( " "..ffi.string(v.project_path), nk.NK_TEXT_LEFT, {0xff, 0, 0} )
 
     wdgts:line(ex + ew - icw, ey-pd, icw, ch)
     if wdgts:button_fa( "" ) == true then 

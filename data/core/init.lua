@@ -61,13 +61,13 @@ local function project_scan_thread()
       table.insert(t, f)
     end
 
-    return t
+    return t, dirs
   end
 
   while true do
     -- get project files and replace previous table if the new table is
     -- different
-    local t = get_files(config.project_path or ".")
+    local t, dirs = get_files(config.project_path or ".")    
     if diff_files(core.project_files, t) then
       core.project_files = t
       core.redraw = true

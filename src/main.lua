@@ -227,8 +227,6 @@ end
 warmupState.Begin   = function(self)
 
     SCALE = sapp.sapp_dpi_scale()
-
-    imageutils.make_defaults()
     binmgr.init()
 
     local hwnd = sapp.sapp_win32_get_hwnd()

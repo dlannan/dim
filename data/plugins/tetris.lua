@@ -424,7 +424,7 @@ keymap.add( {
     ["tab"] = "tetris:hold",
     ["escape"] = "tetris:quit",
     ["ctrl+e"] = { "tetris:quit", "tetris:start" },
-    ["p"] = "tetris:toggle-pause"
+    -- ["p"] = "tetris:toggle-pause"
 })
 
 return TetrisView

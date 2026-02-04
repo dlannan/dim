@@ -288,7 +288,6 @@ local function process_inputs(event)
 
         mods = LITE_KEYMODS[key]
         if(mods == nil) then mods = char end
-
         system_push_event({
             type = LITE_EVENT[eventtype],
             a = mods, b = nil, c = nil, d = nil
