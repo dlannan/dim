@@ -38,7 +38,7 @@ function gltfloader:processmaterials( model, gochildname, thisnode )
 	local thismesh = thisnode.mesh
 	local prims = thismesh.primitives	
 
-	if(prims == nil) then print("No Primitives?"); return end 
+	if(prims == nil) then pprint("No Primitives?"); return end 
 
 	-- Iterate primitives in this mesh
 	for k,prim in pairs(prims) do
@@ -165,7 +165,7 @@ function gltfloader:processdata( model, gochildname, thisnode, parent )
 	local thismesh = thisnode.mesh
 	local prims = thismesh.primitives	
 
-	if(prims == nil) then print("No Primitives?"); return end 
+	if(prims == nil) then pprint("No Primitives?"); return end 
 
 	local buffer_data = nil
 	
@@ -192,9 +192,9 @@ function gltfloader:processdata( model, gochildname, thisnode, parent )
 				ffi.copy(indices, index_buffer_data, acc_idx.count * 4)
 				-- geomextension.setdataintstotable( 0, , index_buffer_data, indices)
 				itype = sg.SG_INDEXTYPE_UINT32
-				print("[Warning] 32 bit index buffer")
+				pprint("[Warning] 32 bit index buffer")
 			elseif(ctype == cgltf.cgltf_component_type_r_32f) then 
-				print("TODO: Support float buffers")
+				pprint("TODO: Support float buffers")
 			elseif(ctype == cgltf.cgltf_component_type_r_16u or ctype == cgltf.cgltf_component_type_r_16) then 
 				indices = ffi.new("uint16_t[?]", acc_idx.count)
 				ffi.copy(indices, index_buffer_data, acc_idx.count * 2)
@@ -208,12 +208,12 @@ function gltfloader:processdata( model, gochildname, thisnode, parent )
 				end
 				itype = sg.SG_INDEXTYPE_UINT16
 				-- geomextension.setdatabytestotable( 0, acc_idx.count, index_buffer_data, indices)
-				print("[Warning] 8 bit index buffer")
+				pprint("[Warning] 8 bit index buffer")
 			else 
-				print("[Error] Unhandled componentType: "..ctype)
+				pprint("[Error] Unhandled componentType: "..ctype)
 			end
 		else 
-			print("[Error] No indices.")
+			pprint("[Error] No indices.")
 			-- No indices generate a tristrip from position count
 			local posidx = prim.attributes["POSITION"]
 			-- Leave indices nil. The pipeline builder will use triangles by default
@@ -309,13 +309,13 @@ function gltfloader:processdata( model, gochildname, thisnode, parent )
 			prim.mesh_buffers = geom:makeMesh( primmesh, primdata )
 			if(prim.mesh_buffers) then 
 
-				prim.geom = geom:makeGeom(primmesh, prim, prim.mesh_buffers)
+				prim.geom = geom:makeGeom(primmesh, prim, prim.mesh_buffers, model.bin_target)
 				tinsert(model.all_geom, prim.geom)
 				-- print("Added mesh buffer", prim.primmesh)
 			end
 		else 
 			-- Should habndle vert buffers naively
-			print("Non index buffers?", prim.primmesh)
+			pprint("Non index buffers?", prim.primmesh)
 		end
 
 		prim.aabb = aabb
@@ -343,7 +343,7 @@ function gltfloader:makeNodeMeshes( model, parent, node )
 		
 	local gochild = gameobject.create( nil, gomeshname )
 	if(gochild == nil) then 
-		print("[Error] Factory could not create mesh.")
+		pprint("[Error] Factory could not create mesh.")
 		return 
 	end 
 
@@ -407,7 +407,7 @@ function gltf_parse_buffers(model)
 	local options = ffi.new("cgltf_options[1]", {})
 	local result = cgltf.cgltf_load_buffers( options, model.data[0], model.filename)
 	if(result ~= cgltf.cgltf_result_success) then 
-		print("[Error] gltf_parse_buffers: cannot load buffers")
+		pprint("[Error] gltf_parse_buffers: cannot load buffers")
 		return nil
 	end
 
@@ -466,7 +466,11 @@ function gltf_parse_images(model)
 		local addr = get_addr(model.data[0].images, i, "cgltf_image")
 		image_map[addr] = #model.images + 1
 		local image = nil
-		local imagename = ffi.string(img.name)
+		local imagename = string.format("image_%04d", #model.images + 1) 
+		if(img.name ~= nil) then 
+			imagename = ffi.string( img.name )
+		end
+
 		if(img.uri ~= nil) then 
 			local filepath = model.basepath..ffi.string(img.uri)
 			image = imageutils.loadimage(imagename, filepath, i )
@@ -598,7 +602,9 @@ local function gltf_parse_nodes(model, node)
 
 	if (node.mesh ~= nil) then 
 		local newnode = {}
-		newnode.name = ffi.string(node.name or "")
+		local nodename = "node"
+		if(node.name ~= nil) then nodename = node.name end
+		newnode.name = ffi.string(nodename)
 		newnode.mesh = model.meshes_map[get_addr(node.mesh)]
 		newnode.transform = build_transform_for_gltf_node(node)
 		tinsert(model.scene.nodes, newnode)
@@ -635,7 +641,7 @@ end
 -- --------------------------------------------------------------------------------------------------------
 -- This is a special version of load that allows the loading of a single mesh into a gameobject manager
 
-function gltfloader:load_gltf( assetfilename, asset, disableaabb )
+function gltfloader:load_gltf( assetfilename, asset, disableaabb, bin_target )
 
 	-- Check for gltf - only support this at the moment. 
 	local valid = string.match(assetfilename, ".+%."..asset.format)
@@ -654,9 +660,10 @@ function gltfloader:load_gltf( assetfilename, asset, disableaabb )
 		ffi.gc(data, function(d)
 			if d[0] ~= nil then cgltf.cgltf_free(d[0]); d[0] = nil end
 		end)
-		print("[Info] gltf loaded: ", assetfilename)
+		pprint("[Info] gltf loaded: ", assetfilename)
 	else 
-		print("[Error] Unable to load gltf: ", assetfilename)
+		pprint("[Error] Unable to load gltf: ", assetfilename)
+		return nil
 	end
 
 	local model = {
@@ -672,6 +679,7 @@ function gltfloader:load_gltf( assetfilename, asset, disableaabb )
 			primitives = 0,
 		},
 		counted = {},
+		bin_target = bin_target,
 	}
 
 	gltf_parse_buffers(model)
@@ -749,7 +757,7 @@ function gltfloader:load_gltf( assetfilename, asset, disableaabb )
 	-- end
 
 	if(model.aabb == nil) then 
-		print("[Error] Model has no aabb: "..assetfilename)
+		pprint("[Error] Model has no aabb: "..assetfilename)
 	end
 
 	-- model.states_tbl = states

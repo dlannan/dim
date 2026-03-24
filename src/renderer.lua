@@ -34,6 +34,7 @@ renderer = {
     ctx             = nil,
     all_fonts       = {},
     cursor          = { name = "arrow", rect = { position = {x=0,y=0}, size ={x=1,y=1} } },
+    dt              = 1.0 / 60.0,
 }
 
 renderer.font = {
@@ -234,7 +235,7 @@ renderer.font.load = function(path, size)
         return self.tab_width 
     end
     new_font.get_width = function(self, text) 
-        if(text==nil) then print(debug.traceback()) end
+        if(text==nil) then pprint(debug.traceback()) end
         local text = checkstring(text)
         return self.font.handle.width(self.font.handle.userdata, self.font.handle.height, text, #text)
     end
@@ -298,6 +299,16 @@ end
 
 -- --------------------------------------------------------------------------------------
 
+renderer.enable_cursor   = function(enable)
+    if(enable == true) then 
+        nk.nk_style_show_cursor(renderer.ctx)
+    else 
+        nk.nk_style_hide_cursor(renderer.ctx)
+    end
+end
+
+-- --------------------------------------------------------------------------------------
+
 renderer.draw_cursor   = function()
     local icolor = nk.nk_rgba(0xff, 0xff, 0xff, 0xff)
     local r = nk.nk_rect(renderer.ctx.input.mouse.pos.x, renderer.ctx.input.mouse.pos.y, 12, 19)
@@ -337,8 +348,8 @@ end
   
 -- --------------------------------------------------------------------------------------
 
-renderer.load_model      = function(filename) 
-    return threed_renderer.load_model(filename) 
+renderer.load_model      = function(filename, params) 
+    return threed_renderer.load_model(filename, params) 
     -- return rencache.rencache_draw_text(font, text, x, y, color)
 end
 
@@ -347,6 +358,13 @@ end
 renderer.draw_model      = function(model, x, y, w, h) 
 
     return threed_renderer.draw_model(model, x, y, w, h)
+end 
+
+-- --------------------------------------------------------------------------------------
+
+renderer.hide_model      = function(model) 
+
+    return threed_renderer.hide_model(model)
 end 
 
 -- --------------------------------------------------------------------------------------

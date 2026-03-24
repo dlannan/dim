@@ -80,7 +80,7 @@ command.add(nil, {
   end,
 
   ["core:open-log"] = function()
-    local node = core.root_view:get_active_node()
+    local node = core.root_view:get_active_node_default()
     node:add_view(LogView:new())
   end,
 

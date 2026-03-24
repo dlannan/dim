@@ -9,6 +9,7 @@ local utils   = require("lua.utils")
 
 local DocView = {
   drawers           = {},
+  updates           = {},
   on_mouse_wheels   = {},
   is_docview        = true,
 }
@@ -153,16 +154,15 @@ end
 
 function DocView:get_x_offset_col(line, x)
   local text = self.doc.lines[line]
-
   local xoffset, last_i, i = 0, 1, 1
-  for _, char in common.utf8_chars(text) do
+  for i, c, b in common.utf8_chars(text) do
+    local char = c < 256 and string.char(c) or " "
     local w = self:get_font():get_width(char)
     if xoffset >= x then
-      return (xoffset - x > w / 2) and last_i or i
+      return (xoffset - x > w/2 ) and last_i or i
     end
     xoffset = xoffset + w
     last_i = i
-    i = i + #char
   end
 
   return #text
@@ -301,6 +301,10 @@ function DocView:update()
     end
   end
 
+  for k, updater in ipairs(DocView.updates) do 
+    local res = updater(self)
+    if(res) then return end 
+  end 
   self.view:update()
 end
 

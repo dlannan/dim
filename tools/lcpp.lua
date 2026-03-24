@@ -314,17 +314,17 @@ end
 
 -- a lightweight and flexible tokenizer
 local function _tokenizer(str, setup)
-		local defsetup = {
-			-- EXAMPLE patterns have to be pretended with "^" for the tokenizer
-			["identifier"] = '^[_%a][_%w]*',
-			["number"] = '^[%+%-]?%d+[%.]?%d*[UL]*',
-			["ignore"] = '^%s+', 
-			["string"] = true,
-			["keywords"] = { 
-				-- ["NAME"] = '^pattern',
-				-- ...
-			},
-		}
+	local defsetup = {
+		-- EXAMPLE patterns have to be pretended with "^" for the tokenizer
+		["identifier"] = '^[_%a][_%w]*',
+		["number"] = '^[%+%-]?%d+[%.]?%d*[UL]*',
+		["ignore"] = '^%s+', 
+		["string"] = true,
+		["keywords"] = { 
+			-- ["NAME"] = '^pattern',
+			-- ...
+		},
+	}
 	if not setup then
 		setup = defsetup
 	end

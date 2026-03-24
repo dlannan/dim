@@ -31,14 +31,14 @@ end
 local function loadimage(goname, imagefilepath, tid )
 
 	if(imagefilepath == nil) then 
-		print("[Image Load Error] imagefilepath is nil.") 
+		pprint("[Image Load Error] imagefilepath is nil.") 
 		return nil
 	end
 
 	imagefilepath = utils.cleanstring( imagefilepath )
 	local img, info, data = renderer.load_image(imagefilepath, true)	
 	if(info == nil) then 
-		print("[Image Load Error] Cannot load image: "..imagefilepath) 
+		pprint("[Image Load Error] Cannot load image: "..imagefilepath) 
 		return nil
 	end 
 
@@ -58,13 +58,13 @@ end
 local function loadimagebuffer(goname, buf, bufsize, tid )
 
 	if(buf == nil) then 
-		print("[Image Load Error] imagebuffer is nil.") 
+		pprint("[Image Load Error] imagebuffer is nil.") 
 		return nil
 	end
 
 	local img, info, data = renderer.load_image_buffer(goname, buf, bufsize, true)	
 	if(info == nil) then 
-		print("[Image Load Error] Cannot load image buffer: "..goname) 
+		pprint("[Image Load Error] Cannot load image buffer: "..goname) 
 		return nil
 	end 
 

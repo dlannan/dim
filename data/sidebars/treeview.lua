@@ -26,17 +26,29 @@ local function get_depth(filename)
 end
 
 local TreeView = {
-  id = 3,
-  name = "treeview",
-  icon = "",
-  module = "treeview",
-  config = {},
-  split_dir = "down",
+  id        = 3,
+  name      = "treeview",
+  icon      = "",
+  module    = "treeview",
+  config    = {},
+  split_dir = "up",
   split_node = "Panels",
-  locked = "Y",
-  command = nil,
+  locked      = { x=true },
+  resizable   = true,
+  nofocus     = true,
+  command   = nil,
+  max_lines = 30,
 }
 
+-- calc the vertical area by looking at there the status bar begins and our view starts
+local function calc_vertical(view)
+  local status_panel = core.root_view:get_named_node("StatusView")
+  return status_panel.active_view.view.position.y - view.position.y
+end
+
+local function calc_alllines(view)
+    return view:get_item_height() * (view.item_count + 1) + style.padding.y * 2
+end  
 
 function TreeView:set_header()
   local projectstr = system.absolute_path(config.project_path)
@@ -49,8 +61,10 @@ end
 function TreeView:new()
   local new_treeview  = utils.deepcopy(TreeView)
   new_treeview.view         = View:new()
+  new_treeview.view.get_scrollable_size = function() 
+    return math.max(calc_vertical(new_treeview.view), calc_alllines(new_treeview))
+  end
   new_treeview.view.scrollable = true
-  new_treeview.view.get_scrollable_size = function() return new_treeview:get_scrollable_size() end
   new_treeview.visible      = true
   new_treeview.init_size    = true
   new_treeview.cache        = {}
@@ -58,7 +72,7 @@ function TreeView:new()
 
   new_treeview.item_count   = 0
   -- new_treeview.view.size.x = 200
-  -- new_treeview.view.size.y = 1000
+  -- new_treeview.view.size.y = 700
 
   TreeViewData.view         = new_treeview
   self:set_header()
@@ -70,8 +84,12 @@ function TreeView:get_item_height()
   return style.font:get_height() + style.padding.y
 end
 
+function TreeView:get_max_height() 
+  return math.min(calc_vertical(self.view), calc_alllines(self))
+end
+
 function TreeView:get_scrollable_size()
-  return self:get_item_height() * (self.item_count + 1) + style.padding.y * 2
+  return math.max(calc_vertical(self.view), calc_alllines(self))
 end
 
 -- Taken from Rootview - used for EmptyView
@@ -187,19 +205,21 @@ end
 
 function TreeView:update()
 
-  if(self.visible == false) then 
-    self.view.size.y = 0
-    return 
-  end 
+  self.view.size.y = self:get_max_height()
+  -- if(self.visible == false) then 
+  --   self.view.size.y = 0
+  --   return 
+  -- else 
+  --   self.view.size.y = self:get_item_height() * self.max_lines -- self:get_scrollable_size()
+  -- end 
   
   -- local dest = self.visible and TreeViewData.target_width or 0
-  -- -- We have to maintain width to the parent panel!
+  -- We have to maintain width to the parent panel!
   -- if(self.init_size and self.size.x ~= dest) then
   --   self:move_towards(self.size, "x", dest, 0.5, function() self.init_size = false end)
   -- else
 
   -- end
-
   -- if(self.size.y > 0) then TreeViewData.last_height = self.size.y end
 
   -- if(self.init_size == true and self.size.x < self.target_width) then

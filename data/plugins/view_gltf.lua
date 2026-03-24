@@ -1,21 +1,26 @@
-local core = require "core"
-local style = require "core.style"
-local common = require "core.common"
-local Doc = require "core.doc"
-local DocView = require "core.docview"
-local View = require "core.view"
-local utils   = require("lua.utils")
+local core          = require "core"
+local style         = require "core.style"
+local common        = require "core.common"
+local Doc           = require "core.doc"
+local DocView       = require "core.docview"
+local View          = require "core.view"
+local utils         = require("lua.utils")
 
-local syntax = require "core.syntax"
+local syntax        = require "core.syntax"
 
-local tinsert     = table.insert
+local tinsert       = table.insert
 
-local images = {
+local nk            = sg
+local cammgr        = require("lua.engine.camera_manager")
+local bins 	        = require("lua.geometry.bins")
+
+local threed_models = {
   files = { "%.glb$", "%.gltf$" },
+  count = 0,
 }
 
-local function find(string, field)
-  for i, v in ipairs(images.files) do
+local function find(string)
+  for i, v in ipairs(threed_models.files) do
     if common.match_pattern(string, v or {}) then
       return i
     end
@@ -23,7 +28,7 @@ local function find(string, field)
   return nil
 end
 
-local function draw_states(model, pos, size)
+local function draw_stats(model, pos, size)
   if(model.data == nil or model.data.mesh == nil) then return end
   local color = style.background2
   renderer.draw_rect(pos.x, pos.y, 180, 100, color)
@@ -40,10 +45,26 @@ end
 
 -- Override the Doc loader - if its a png.. then load it, and make a png Image Viewer for it.
 local function GLTF_load(self, filename)
-  if ( find(filename, "files") ) then
+  if ( find(filename) ) then
     core.try(function()
-      self.model = renderer.load_model(filename)
+      threed_models.count = threed_models.count + 1
+      local bin_target = bins.BTYPE_OPAQUE + threed_models.count
+
+      local params = {
+        bin_target = bin_target,
+        on_load = function(model)
+          local cam_name = "gltf_cam_"..model.name
+          -- Should have some sort of default configh ere
+          local newcam = cammgr.add(cam_name, 60.0, 1, 0.01, 1000.0) 
+          local clear_color = { 0.118, 0.118, 0.118, 0.0 }
+          bins.add_offscreen(newcam, clear_color, bin_target, true)
+          model.camera = cam_name
+          model.bin_target = bin_target
+        end
+      }
+      self.model = renderer.load_model(filename, params)
     end)
+    
     if(self.model) then
       self.model.scale = 1.0
       self.filename = filename
@@ -56,18 +77,70 @@ end
 tinsert(Doc.loaders, GLTF_load)
 
 
+local function GLTF_on_mouse_moved(self, x, y, dx, dy)
+  self.hovered = true
+end
+
+local function GLTF_on_hide(doc)
+  if(doc.model) then
+    local model = doc.model
+    if(doc.drawn == true) then 
+      renderer.hide_model(model) 
+      doc.drawn = false 
+    end
+  end
+end
+
 local function GLTF_draw(self)
-  if(self.doc.model) then
-    self.view:draw_background(style.background)
+
+  -- print("drawing....", debug.traceback())
+  -- if(self.doc.model) then  pprint( self.doc.model ) end
+  if(self.doc.model and self.doc.model.loaded == true) then
+
+    if(self.view and self.mouse_mapped == nil) then 
+      self.view.on_mouse_moved = GLTF_on_mouse_moved
+      self.mouse_mapped = true
+    end
+  
+    self.view:draw_background(style.threed_background)
     -- Work out aspect for image so it is always centered and correct aspect view
     local model = self.doc.model
     local doc_size = self.view.size
     local doc_pos = self.view.position
+    self.doc.on_hide = GLTF_on_hide
+
+    if(self.view.hovered) then 
+      system.set_cursor("arrow", { 
+          position = { x = doc_pos.x, y = doc_pos.y }, 
+          size = { x = 1.0, y = 1.0 }
+      })
+      renderer.set_cursor()
+      self.view.hovered = nil
+    end
+
+    -- local hovered = false
+    -- if(self:scrollbar_overlaps_point(x, y))
+
+    -- local old_cursor = renderer.cursor
+    -- system.set_cursor("arrow", { 
+    --   position = { x = doc_pos.x, y = doc_pos.y }, 
+    --   size = { x = 1.0, y = 1.0 }
+    -- })
+    -- renderer.set_cursor()
 
     core.try(function()
       renderer.draw_model(model, doc_pos.x, doc_pos.y, doc_size.x, doc_size.y)
-      draw_states(model, doc_pos, doc_size)
+      -- local info = sg.sg_image_info(renderer.color_img)
+      local camera = cammgr.get(model.data.camera)
+      if(camera and camera.color_image) then
+        renderer.draw_image( camera.color_image, doc_pos.x, doc_pos.y, doc_size.x, doc_size.y)
+      end
+      draw_stats(model, doc_pos, doc_size)
+      self.doc.drawn = true
     end)
+
+    -- system.set_cursor( old_cursor.name, old_cursor.rect )
+    -- renderer.set_cursor()
     return true
   end
   return nil

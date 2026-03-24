@@ -1,6 +1,7 @@
 local sg        = _G.sg or require("ffi.sokol.sokol_gfx")
 
 local hmm_utils = {}
+local sfmt      = string.format
 
 hmm_utils.dump_mat4 = function( m )
 
@@ -30,8 +31,9 @@ hmm_utils.show_stats = function()
     local stats = sg.sg_query_frame_stats()
     local redtext = "\27[31m"
     local whitetext = "\27[37m"
-    if(stats.frame_index > 1) then io.write("\27[8A") end
-    io.write(redtext.."frame_index: "..stats.frame_index.."\n")
+    if(stats.frame_index > 1) then io.write("\27[9A") end
+    io.write(redtext.."frame_index: "..stats.frame_index.."\t\tframe_ctr: "..renderer.frame_ctr.."\n")
+    io.write(redtext.."fps: "..sfmt("%0.06g",renderer.dt).."\t\tupdate_dt: "..sfmt("%0.06g", renderer.update_dt).."\n")
     io.write(whitetext.."num_passes: "..stats.num_passes.."\n")
     io.write("num_apply_pipeline: "..stats.num_apply_pipeline.."\n")
     io.write("num_apply_bindings: "..stats.num_apply_bindings.."\n")

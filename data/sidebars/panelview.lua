@@ -9,20 +9,22 @@ local utils   = require("lua.utils")
 
 local PanelsView = {
 
-  width = 200,
-  visible = true,
-  separator  = "      ",
-  separator2 = "   |   ",
+  width       = 280,
+  visible     = true,
+  separator   = "      ",
+  separator2  = "   |   ",
 
-  id = 2,
-  name = "panels",
-  icon = nil,
-  module = "panels",
-  config = {},
-  split_dir = "down",
-  split_node = "Workspaces",
-  locked = "Y",
-  command = nil,
+  id          = 2,
+  name        = "panels",
+  icon        = nil,
+  module      = "panels",
+  config      = {},
+  split_dir   = "down",
+  split_node  = "Workspaces",
+  locked      = {},
+  nofocus     = true,
+  resizable   = true,
+  command     = nil,
 }
 
 PanelsView.max_width = PanelsView.width
@@ -31,9 +33,9 @@ PanelsView.max_width = PanelsView.width
 function PanelsView:new()
   local new_panelsview = utils.deepcopy(PanelsView)
   new_panelsview.view = View:new()
-  new_panelsview.view.scrollable = true
-  new_panelsview.visible = true
-  new_panelsview.init_size = true
+  new_panelsview.view.scrollable  = true
+  new_panelsview.visible          = true
+  new_panelsview.init_size        = true
 
   return new_panelsview
 end
@@ -47,7 +49,7 @@ function PanelsView:get_name()
 end
 
 function PanelsView:on_mouse_pressed(...)
-  core.root_view:set_focus_view()
+  -- core.root_view:set_focus_view()
   self.view:on_mouse_pressed(...)
 end
 

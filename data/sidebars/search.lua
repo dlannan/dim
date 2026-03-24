@@ -18,7 +18,7 @@ local search_case_sensitive
 
 if(ffi.os == "Windows") then
 
-    search_case_sensitive = [[findstr /S /R "%s" %s]]
+    search_case_sensitive   = [[findstr /S /R "%s" %s]]
     search_case_insensitive = [[findstr /I /S /R "%s" %s]]
 else
 
@@ -48,15 +48,17 @@ local SearchFilesData = {
 
 local SearchFilesView = {
 
-    id = 4,
-    name = "search",
-    icon = "",
-    module = "search",
-    config = {},
-    split_dir = "down",
-    split_node = "Panels",
-    locked = "Y",
-    command = nil,
+    id          = 4,
+    name        = "search",
+    icon        = "",
+    module      = "search",
+    config      = {},
+    split_dir   = "down",
+    split_node  = "Panels",
+    locked      = { x = true, y = false},
+    resizable   = true,  
+    nofocus     = true,
+    command     = nil,
 }
 
 -- Helper: create a new console doc
@@ -93,6 +95,10 @@ end
 
 function SearchFilesView:get_name()
     return "SearchFiles"
+end
+
+function SearchFilesView:show_panel(visible)
+    self.visible = visible
 end
 
 function SearchFilesView:check_cache()

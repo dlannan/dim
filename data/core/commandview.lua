@@ -129,7 +129,7 @@ end
 
 
 function CommandView:exit(submitted, inexplicit)
-  if core.active_view == self then
+  if core.last_active_view and core.active_view == self then
     core.set_active_view(core.last_active_view)
   end
   local cancel = self.state.cancel

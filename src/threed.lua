@@ -11,28 +11,18 @@ local ffi           = require("ffi")
 local utils         = require("lua.utils")
 local dirtools      = require("tools.vfs.dirtools")
 
-local geom          = require("lua.gltfloader.geometry-utils")
+local geomutils     = require("lua.gltfloader.geometry-utils")
 local gltfloader    = require("lua.gltfloader.gltfloader")
+
+local cameramgr     = require("lua.engine.camera_manager")
 
 local tinsert       = table.insert
 local tremove       = table.remove
 
 -- --------------------------------------------------------------------------------------
-
-ffi.cdef[[
-/* application state */
-typedef struct internal_state {
-    float rx, ry;
-    sg_pipeline pip;
-    sg_bindings* bind;
-    float alpha_cutoff;
-    int   alpha_mode;
-} internal_state;
-]]
-
+-- TODO: Make better handler for this.
 local MAX_STATES            = 1024
-local state_array_index     = 0
-local state_array   = ffi.new("internal_state[?]", MAX_STATES)
+local CAM_DISTANCE          = 6.0 
 
 -- --------------------------------------------------------------------------------------
 
@@ -44,6 +34,8 @@ threed_renderer     = {
     --  These indicate whether a model is loaded, if it has an id and if it 
     --  has had its data initialised
     model_files         = {},
+
+    default_cam         = cameramgr.add("default", 60.0, 1, 0.01, CAM_DISTANCE * 2),
 } 
 
 -- --------------------------------------------------------------------------------------
@@ -138,7 +130,7 @@ end
 
 -- --------------------------------------------------------------------------------------
 
-local function load_gltf(filename)
+local function load_gltf(filename, params)
 
     local dir, fname, extension = dirtools.fileparts(filename)
     local asset = {
@@ -155,7 +147,8 @@ local function load_gltf(filename)
 	-- print(asset.format)
 
 	local assetfilename = filename
-	local gltf_data = gltfloader:load_gltf( assetfilename, asset, nil )
+	local gltf_data = gltfloader:load_gltf( assetfilename, asset, nil, params.bin_target )
+    if(gltf_data == nil) then return nil end
 
     local ent = { 
 		name = asset.name,
@@ -169,13 +162,14 @@ local function load_gltf(filename)
 		filename = assetfilename,
 		format = asset.format,
 	} 
+
+    if(params and params.on_load) then params.on_load(ent) end
     return ent
 end    
 
 -- --------------------------------------------------------------------------------------
-local CAM_DISTANCE  = 6.0 
 
-local function render_model( t, model_rect )
+local function render_model( dt, model_rect )
 
     local aabb = model_rect.model.data.mesh.aabb
     local maxx = aabb.max.x - aabb.min.x
@@ -191,48 +185,49 @@ local function render_model( t, model_rect )
     -- Dont render if there is no width or height?
     if(w <= 0 or h <= 0) then return end 
 
-    local proj      = hmm.HMM_Perspective(60.0, w/h, 0.01, CAM_DISTANCE * 2 * model_rect.model.scale)
-    local view      = hmm.HMM_LookAt(hmm.HMM_Vec3(0.0, offset.y + 1.5, CAM_DISTANCE), hmm.HMM_Vec3(0.0, offset.y, 0.0), hmm.HMM_Vec3(0.0, 1.0, 0.0))
-    local view_proj = hmm.HMM_MultiplyMat4(proj, view)
+    cameramgr.set_nearfar( model_rect.cam, 0.01, CAM_DISTANCE * 2 * model_rect.model.scale )
+    cameramgr.set_aspect( model_rect.cam, w/h )
+    cameramgr.lookat( model_rect.cam, hmm.HMM_Vec3(0.0, (offset.y + 1.5), -CAM_DISTANCE), hmm.HMM_Vec3(0.0, offset.y, 0.0), hmm.HMM_Vec3(0.0, -1.0, 0.0))
+    local view_proj = cameramgr.get_view_proj(model_rect.cam)
 
     local model_all_geom = model_rect.model.data.mesh.all_geom
+    model_rect.model.data.mesh.camera = model_rect.cam
+
+    cameramgr.update_viewport( model_rect.cam, hmm.HMM_Vec4(0, 0, 1024, 1024))
+    cameramgr.update_scissor( model_rect.cam, hmm.HMM_Vec4(0, 0, 1024, 1024))
+    local thiscam = cameramgr.get_id( model_rect.cam )
 
     for i, geom_id in ipairs(model_all_geom) do 
 
-        local geom      = geom.all_objs[geom_id]
-        local pip       = geom.pip
-        local bind      = geom.bind
-
+        local geom      = geomutils.all_objs[geom_id]
         geom.rx        = 0.0
-        geom.ry        = geom.ry + 3.0 * t
+        geom.ry        = geom.ry + dt * 3.0
+        -- geom.fs_params[0].alpha_cutoff = 0.9
+        -- geom.fs_params[0].alpha_mode = 2
+        geom.dstate[0].state = 0x01
 
-        local base_tform = geom.transform
-        local rxm       = hmm.HMM_Rotate(geom.rx, hmm.HMM_Vec3(1.0, 0.0, 0.0))
-        local rym       = hmm.HMM_Rotate(geom.ry, hmm.HMM_Vec3(0.0, 1.0, 0.0))
-        local rotator   = hmm.HMM_MultiplyMat4(rxm, rym)
+        local pos = hmm.HMM_Vec3(0, 0, 0)
+        local angles = hmm.HMM_Vec3(geom.rx, geom.ry, 0.0)
+        local model = geomutils.model_matrix( geom.transform, pos, angles, sc)
+        geom.vs_params[0].mvp    = hmm.HMM_MultiplyMat4(view_proj, model)
+    end
+end
 
-        local scaler    = hmm.HMM_Scale(hmm.HMM_Vec3(sc, sc, sc))
-        local model     = hmm.HMM_MultiplyMat4(scaler, base_tform)
-        model           = hmm.HMM_MultiplyMat4(rotator, model)
-        local mvp       = hmm.HMM_MultiplyMat4(view_proj, model)
-
-        sg.sg_apply_pipeline(pip)
-        sg.sg_apply_bindings(bind)
-
-        geom.vs_params[0].mvp    = mvp
-        sg.sg_apply_uniforms(sg.SG_SHADERSTAGE_VS,  geom.vs_sg_range)
-        sg.sg_apply_uniforms(sg.SG_SHADERSTAGE_FS,  geom.fs_sg_range)
-
-        sg.sg_apply_viewport(model_rect.x, model_rect.y, model_rect.w, model_rect.h, true)
-        sg.sg_apply_scissor_rect(model_rect.x, model_rect.y, model_rect.w, model_rect.h, true)
-    
-        sg.sg_draw(0, geom.count, 1)
+-- --------------------------------------------------------------------------------------
+-- Hides all the vertex buffers associated with this model
+threed_renderer.hide_model = function(model)
+    if (model.loaded == true) then 
+        local model_all_geom = model.data.mesh.all_geom
+        for i, geom_id in ipairs(model_all_geom) do 
+            local geom      = geomutils.all_objs[geom_id]
+            geom.dstate[0].state = 0x0
+        end
     end
 end
 
 -- --------------------------------------------------------------------------------------
 -- This doesnt directly load a model in case it happens during an incorrent phase of rendering
-threed_renderer.load_model = function(filename)
+threed_renderer.load_model = function(filename, params)
 
     -- Check first if it hasnt been loaded already! 
     local is_loaded = threed_renderer.model_load_queue[filename]
@@ -240,7 +235,7 @@ threed_renderer.load_model = function(filename)
         return is_loaded
     end
 
-    local new_model = { loaded = nil, filename = filename }
+    local new_model = { loaded = nil, filename = filename, params = params }
     threed_renderer.model_load_queue[filename] = new_model
     return new_model
 end
@@ -251,7 +246,7 @@ end
 threed_renderer.draw_model = function(model, x, y, w, h)
 
     if (model.loaded == true) then 
-        tinsert(threed_renderer.render_queue, { model=model, x=x, y=y, w=w, h=h })
+        tinsert(threed_renderer.render_queue, { cam=model.data.camera, model=model, x=x, y=y, w=w, h=h })
     end
 end
 
@@ -260,12 +255,19 @@ end
 -- Rects should _not_ be here if they are hidden (ie in a hidden tab)
 threed_renderer.load_models = function()
 
+    if(utils.tcount(threed_renderer.model_load_queue) == 0) then return end
+
     -- print("queued models", count)
     for k,model_load in pairs(threed_renderer.model_load_queue) do
         if(model_load.loaded == nil) then
-            model_load.data = load_gltf(model_load.filename)
-            -- model_load.data = threed_renderer.make_cube()
-            model_load.loaded = true
+            model_load.data = load_gltf(model_load.filename, model_load.params)
+            if(model_load.data) then 
+                -- model_load.data = threed_renderer.make_cube()
+                model_load.loaded = true
+            else 
+                -- Remove model that cant be loaded.
+                threed_renderer.model_load_queue[k] = nil 
+            end
         end
     end
 end
@@ -273,13 +275,13 @@ end
 -- --------------------------------------------------------------------------------------
 -- Iterate the queued rects and render models into them
 -- Rects should _not_ be here if they are hidden (ie in a hidden tab)
-threed_renderer.render_rects = function( t )
+threed_renderer.render_rects = function( dt )
 
     local count = #threed_renderer.render_queue 
     -- print("queued models", count)
     for i=1, count do
         local model_rect = threed_renderer.render_queue[i]
-        render_model(t, model_rect)
+        render_model(dt, model_rect)
     end
 end
 

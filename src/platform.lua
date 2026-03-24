@@ -131,10 +131,10 @@ win.FileSelect  = function()
     local result = comdlg32.GetOpenFileNameA(ofn)
 
     if result then
-        print("Selected file:", ffi.string(pathBuf))
+        pprint("Selected file:", ffi.string(pathBuf))
         return ffi.string(pathBuf)
     else
-        print("No file selected (or dialog canceled).")
+        pprint("No file selected (or dialog canceled).")
         return nil
     end
 end
@@ -155,14 +155,14 @@ win.FolderSelect  = function()
     
     if pidl ~= nil then
         if shell32.SHGetPathFromIDListA(pidl, pathBuf) ~= 0 then
-            print("Selected folder:", ffi.string(pathBuf))
+            pprint("Selected folder:", ffi.string(pathBuf))
             return ffi.string(pathBuf)
         else
-            print("Folder picked, but path could not be retrieved.")
+            pprint("Folder picked, but path could not be retrieved.")
             return nil
         end
     else
-        print("User canceled.")
+        pprint("User canceled.")
         return nil
     end
 end    
@@ -288,12 +288,12 @@ win.ShowWindow  = function(hwnd, state)
 
         -- Call the maximizeWindow function
         maximizeWindow(window_id)
-        print("Window maximized successfully!")
+        pprint("Window maximized successfully!")
 
     else
-        print("Failed to fetch active window.")
+        pprint("Failed to fetch active window.")
     end
-    print("Window resized successfully.")
+    pprint("Window resized successfully.")
 end
 
 win.DetectDisplay = function()

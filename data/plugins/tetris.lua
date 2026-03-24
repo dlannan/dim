@@ -410,7 +410,7 @@ command.add(nil, {
   ["tetris:start"] = function()
     TetrisData.view = TetrisView:new(config.tetris)
     local node = core.root_view:get_active_node()
-    TetrisData.view.node = node:split("right", TetrisData.view, "Y")
+    TetrisData.view.node = node:split("right", TetrisData.view, { x = true, y = false})
     core.set_active_view(TetrisData.view)
   end,
 })

@@ -12,7 +12,6 @@ config.autocomplete_max_suggestions = 6
 local autocomplete = {}
 autocomplete.map = {}
 
-
 local mt = { __tostring = function(t) return t.text end }
 
 function autocomplete.add(t)

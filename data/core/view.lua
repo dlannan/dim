@@ -92,6 +92,8 @@ function View:on_mouse_moved(x, y, dx, dy)
   self.hovered_scrollbar = self:scrollbar_overlaps_point(x, y)
 end
 
+function View:on_mouse_left()
+end
 
 function View:on_text_input(text)
   -- no-op

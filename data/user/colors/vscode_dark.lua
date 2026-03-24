@@ -3,6 +3,7 @@ local common = require "core.common"
 
 style.code_font = renderer.font.load(EXEDIR .. "/data/fonts/CascadiaMonoNF-Regular.ttf", 15 * SCALE)
 
+
 -- VSCode Dark+ palette
 style.background   = { common.color "#1E1E1E" }  -- editor background
 style.background2  = { common.color "#252526" }  -- secondary background
@@ -31,12 +32,12 @@ style.syntax["normal"]   = { common.color "#D4D4D4" }
 style.syntax["symbol"]   = { common.color "#D4D4D4" }
 style.syntax["comment"]  = { common.color "#6A9955" }
 style.syntax["keyword"]  = { common.color "#569CD6" }
-style.syntax["keyword2"] = { common.color "#C586C0" } -- secondary keyword (e.g. class, type)
+style.syntax["keyword2"] = { common.color "#b670cb" } -- secondary keyword (e.g. class, type)
 style.syntax["number"]   = { common.color "#B5CEA8" }
 style.syntax["literal"]  = { common.color "#569CD6" }
 style.syntax["string"]   = { common.color "#CE9178" }
 style.syntax["operator"] = { common.color "#D4D4D4" }
-style.syntax["function"] = { common.color "#DCDCAA" }
+style.syntax["function"] = { common.color "#dcdcaa" }
 style.syntax["type"]     = { common.color "#4EC9B0" }
 style.syntax["whitespace"] = { common.color "#404040" }
 
@@ -44,11 +45,14 @@ style.syntax["variable.parent"]   = { common.color "#9CDCFE" } -- light blue
 style.syntax["variable.property"] = { common.color "#4EC9B0" } -- green
 style.syntax["variable"]          = { common.color "#9CDCFE" } -- fallback
 
-style.syntax["bracket"]       = { common.color "#DBD710" } -- VS Code yellow
+style.syntax["bracket"]       = { common.color "#f1d70a" } -- VS Code yellow
 style.syntax["return"]        = { common.color "#C586C0" }
 style.syntax["require"]       = { common.color "#C586C0" }
 style.syntax["function_word"] = { common.color "#C586C0" }
 style.syntax["method"]        = { common.color "#4EC9B0" }
-style.syntax["self"]          = { common.color "#007ACC" }
+style.syntax["self"]          = { common.color "#569CD6" }
+
+style.drag_overlay            = { common.color "#FFFFFF" }
+style.drag_overlay_tab        = { common.color "#E95420" }
 
 return style

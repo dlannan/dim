@@ -8,15 +8,13 @@ end
 
 
 function common.utf8_chars(text)
-  local i = 1
+  local i = 0
   local _, buf, len = utf8.tobuf(text)
   return function()
-    if i <= #text then
       local c, b
-      local start = i
       i, c, b = utf8.next(buf, len, i)
-      return i, string.sub(text, start, i)
-    end
+      if not i then return nil end
+      return i, c, b
   end
 end 
 
@@ -140,7 +138,7 @@ function common.bench(name, fn, ...)
   local t = system.get_time() - start
   local ms = t * 1000
   local per = (t / (1 / 60)) * 100
-  print(string.format("*** %-16s : %8.3fms %6.2f%%", name, ms, per))
+  pprint(string.format("*** %-16s : %8.3fms %6.2f%%", name, ms, per))
   return res
 end
 

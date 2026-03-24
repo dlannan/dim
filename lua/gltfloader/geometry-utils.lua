@@ -18,6 +18,7 @@ local hmm           = require("hmm")
 local hutils        = require("hmm_utils")
 
 local bins 			= require("lua.geometry.bins")
+local cammgr    	= require("lua.engine.camera_manager")
 
 ------------------------------------------------------------------------------------------------------------
 
@@ -51,11 +52,11 @@ end
 
 ------------------------------------------------------------------------------------------------------------
 -- Bin related code
-function geom:makeGeom(name, prim, mesh)
+function geom:makeGeom(name, prim, mesh, bin_target)
 
 	-- TODO: Needs to come from gltf refs
 	local material    = meshes.material(name, "lua/engine/shaders/base_texture.glsl", {})
-	local prim_mat    = prim.material
+	local prim_mat    = prim.material or  { base_color = { 1, 1, 1, 1 } }
 
 	local newgeom = {}
 	newgeom.id 			= #geom.all_objs + 1
@@ -91,18 +92,12 @@ function geom:makeGeom(name, prim, mesh)
 	newgeom.count      = prim.index_count 
 	newgeom.instances  = 1
 
-	newgeom.bintype    = bins.BTYPE_OPAQUE
-
+	newgeom.bintype    = bin_target or bins.BTYPE_OPAQUE
+	-- Use the dstate to directly effect the runtime object 
+	newgeom.bindid, newgeom.dstate = bins.bin_add_geom(newgeom)
+	
 	tinsert(geom.all_objs, newgeom)
 
-	newgeom.binid = bins.bin_add(newgeom)
-	newgeom.pass = {
-		action      =  sg.SG_LOADACTION_CLEAR,
-		clear       = { 0.25, 0.5, 0.75, 1.0 },
-		swapchain   = slib.sglue_swapchain(),
-	}
-	
-	bins.pass_add(newgeom.pass, newgeom.binid, true)
 	return newgeom.id
 end
 
@@ -119,7 +114,7 @@ function geom:makeMesh( goname, primdata )
 	local aabb 		= primdata.aabb
 
 	if(verts == nil) then
-		print("[Error geom:makeMesh] No valid vertices?")
+		pprint("[Error geom:makeMesh] No valid vertices?")
 		return nil
 	end 
 	if(type(goname) == "cdata") then goname = ffi.string(goname) end
@@ -503,4 +498,29 @@ end
 -- ------------------------------------------------------------------------------------------------------------
 -- 
 
+-- --------------------------------------------------------------------------------------
+
+geom.model_matrix = function( tform, position, angles, scale )
+    scale = scale or 1.0
+    position = position or hmm.HMM_Vec3(0,0,0)
+    local rotation = hmm.HMM_Quaternion(0,0,0,1.0)
+    if(angles) then  
+        local rxm       = hmm.HMM_QuaternionFromAxisAngle(hmm.HMM_Vec3(1.0, 0.0, 0.0), math.rad(angles.x))
+        local rym       = hmm.HMM_QuaternionFromAxisAngle(hmm.HMM_Vec3(0.0, 1.0, 0.0), math.rad(angles.y))
+        local rzm       = hmm.HMM_QuaternionFromAxisAngle(hmm.HMM_Vec3(0.0, 0.0, 1.0), math.rad(angles.z))
+        rotation        = hmm.HMM_MultiplyQuaternion(hmm.HMM_MultiplyQuaternion(rxm, rym), rzm)
+    end 
+
+    local scaler      = hmm.HMM_Scale(hmm.HMM_Vec3(scale, scale, scale))
+    local trans     = hmm.HMM_Translate( position )
+    local model     = hmm.HMM_MultiplyMat4( scaler, tform )
+    model           = hmm.HMM_MultiplyMat4(hmm.HMM_QuaternionToMat4( rotation ), model)
+    model           = hmm.HMM_MultiplyMat4(trans, model)
+    return model
+end 
+
+-- --------------------------------------------------------------------------------------
+
 return geom
+
+-- --------------------------------------------------------------------------------------

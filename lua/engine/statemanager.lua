@@ -200,7 +200,7 @@ function StateManager:AddSibling(name, ownerstate)
     if( self.states[ownerstate] and self.states[name]) then 
         tinsert(self.states[ownerstate].siblings, name )
     else 
-        print("[Error] Cannot add sibling: "..name.."  to "..ownerstate)
+        pprint("[Error] Cannot add sibling: "..name.."  to "..ownerstate)
     end
 end
 
@@ -210,10 +210,10 @@ end
 
 function StateManager:ChangeState(name)
 
-    print("Changing State to... "..name)
+    pprint("Changing State to... "..name)
     local state = self.states[name]
     if state == nil then 
-        print("Error: Invalid State Name: "..name)
+        pprint("Error: Invalid State Name: "..name)
         return 
     end
 
@@ -263,10 +263,10 @@ end
 
 function StateManager:Transition(name)
 
-    print("Transitioning State to... "..name)
+    pprint("Transitioning State to... "..name)
     local state = self.states[name]
     if state == nil then 
-        print("Error: Invalid State Name: "..name)
+        pprint("Error: Invalid State Name: "..name)
         return 
     end
 
@@ -303,10 +303,10 @@ end
 
 function StateManager:JumpToState(name)
 
-    print("Jumping State to... "..name)
+    pprint("Jumping State to... "..name)
     local state = self.states[name]
     if state == nil then 
-        print("Error: Invalid State Name: "..name)
+        pprint("Error: Invalid State Name: "..name)
         return 
     end
 
@@ -365,7 +365,7 @@ function StateManager:ExitState()
         end        
         self.states[self.current]:Finish()
         self.states[self.current].init = false
-        print("Exiting state..."..self.current)
+        pprint("Exiting state..."..self.current)
         return
     end
 
@@ -387,7 +387,7 @@ function StateManager:ExitState()
         self.states[self.current]:Finish()
         self.states[self.current].init = false
 
-        print("Exiting state..."..self.current)
+        pprint("Exiting state..."..self.current)
         local name = self.stack[self.jumped]
         state = self.states[name]
 

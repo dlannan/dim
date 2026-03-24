@@ -227,7 +227,7 @@ mesh.material  = function(name, shaderfile, params)
         all_meshes.materials[shaderfile] = material
         return material
     else 
-        print("[Error mesh.material] Could not create material: "..tostring(name))
+        pprint("[Error mesh.material] Could not create material: "..tostring(name))
         return nil 
     end
 end
@@ -240,7 +240,7 @@ mesh.make_mesh = function(name, buffers)
 
     local buffercount = utils.tcount(buffers)
     if(buffercount == 0) then 
-        print("[Error mesh.make_mesh] No buffers to process!")
+        pprint("[Error mesh.make_mesh] No buffers to process!")
         return nil 
     end
     mesh.layout.buffers = ffi.new("sg_vertex_buffer_layout_state[8]")
@@ -303,17 +303,25 @@ mesh.model     = function(name, prim, mesh, material)
         if(mesh.depth.write_enabled) then pipe_desc[0].depth.write_enabled = mesh.depth.write_enabled end
         if(mesh.depth.compare) then pipe_desc[0].depth.compare = mesh.depth.compare end
     end
-    if(prim.material.alpha_mode == cgltf.cgltf_alpha_mode_blend) then 
-        pipe_desc[0].colors[0].blend.enabled = true
-        pipe_desc[0].colors[0].blend.src_factor_rgb = sg.SG_BLENDFACTOR_SRC_ALPHA
-        pipe_desc[0].colors[0].blend.dst_factor_rgb = sg.SG_BLENDFACTOR_ONE_MINUS_SRC_ALPHA
-        pipe_desc[0].colors[0].blend.src_factor_alpha = sg.SG_BLENDFACTOR_ONE
-        pipe_desc[0].colors[0].blend.dst_factor_alpha = sg.SG_BLENDFACTOR_ONE_MINUS_SRC_ALPHA
-    elseif(prim.material.alpha_mode == cgltf.cgltf_alpha_mode_mask) then 
+    local prim_alpha_mode = cgltf.cgltf_alpha_mode_opaque
+    local prim_alpha_cutoff = 0.0
+    if(prim.material) then 
+        if(prim.material.alpha_mode == cgltf.cgltf_alpha_mode_blend) then 
+            pipe_desc[0].colors[0].blend.enabled = true
+            pipe_desc[0].colors[0].blend.src_factor_rgb = sg.SG_BLENDFACTOR_SRC_ALPHA
+            pipe_desc[0].colors[0].blend.dst_factor_rgb = sg.SG_BLENDFACTOR_ONE_MINUS_SRC_ALPHA
+            pipe_desc[0].colors[0].blend.src_factor_alpha = sg.SG_BLENDFACTOR_ONE
+            pipe_desc[0].colors[0].blend.dst_factor_alpha = sg.SG_BLENDFACTOR_ONE_MINUS_SRC_ALPHA
+        elseif(prim.material.alpha_mode == cgltf.cgltf_alpha_mode_mask) then 
 
+        end
+        prim_alpha_mode = prim.material.alpha_mode
+        prim_alpha_cutoff = prim.material.alpha_cutoff
     end
 
     pipe_desc[0].label                  = name.."-pipeline"
+    -- pipe_desc[0].sample_count           = 1
+    -- pipe_desc[0].depth.pixel_format     = sg.SG_PIXELFORMAT_DEPTH
 
     local pipeline = sg.sg_make_pipeline(pipe_desc)
     
@@ -339,7 +347,7 @@ mesh.model     = function(name, prim, mesh, material)
     return {
         pip     = pipeline,
         bind    = binding,
-        alpha   = { mode = prim.material.alpha_mode, cutoff = prim.material.alpha_cutoff }
+        alpha   = { mode = prim_alpha_mode, cutoff = prim_alpha_cutoff }
     }
 end 
 

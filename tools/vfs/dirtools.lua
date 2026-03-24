@@ -49,6 +49,70 @@ if(ffi.os ~= "Windows") then sep = "/" end
 dirtools.sep = sep
 dirtools.sep2 = sep..sep
 
+if(ffi.os == "Windows") then 
+
+    local res = ffi.load("msvcrt.dll")
+    ffi.cdef[[
+        uint32_t GetFullPathNameA(
+            const char *lpFileName, 
+            uint32_t nBufferLength, 
+            char *lpBuffer, 
+            char **lpFilePart
+        );
+
+        typedef uint64_t __time64_t;
+        
+        typedef unsigned int    _dev_t;
+        typedef unsigned short  _ino_t;
+        typedef unsigned short  _mode_t;
+        
+        struct __stat64
+        {
+            _dev_t         st_dev;
+            _ino_t         st_ino;
+            _mode_t        st_mode;
+            short          st_nlink;
+            short          st_uid;
+            short          st_gid;
+            _dev_t         st_rdev;
+            uint64_t       st_size;
+            __time64_t     st_atime;
+            __time64_t     st_mtime;
+            __time64_t     st_ctime;
+        };
+        
+        int _stat64(const char *path, struct __stat64 *buf);
+    ]]
+else 
+    ffi.cdef[[     
+    
+        typedef uint64_t __time64_t;
+    
+        typedef uint64_t  _dev_t;
+        typedef uint64_t  _ino_t;
+        typedef unsigned int   _mode_t;
+    
+        struct __stat {
+            _dev_t         st_dev;
+            _ino_t         st_ino;
+            uint64_t       st_nlink;
+            _mode_t        st_mode;
+            unsigned int   st_uid;
+            unsigned int   st_gid;
+            int __pad0;
+            _dev_t         st_rdev;
+            int64_t        st_size;
+            __time64_t     st_atime;
+            __time64_t     st_mtime;
+            __time64_t     st_ctime;
+            char           pad[62];
+        };
+        
+        int stat(const char *path, struct __stat *buf);
+    ]]
+end        
+        
+
 ---------------------------------------------------------------------------------------
 -- Why didnt I have this before.. uggh
 local function run_popen( cmd, callback, readstr )
@@ -59,7 +123,7 @@ local function run_popen( cmd, callback, readstr )
         fh:close() 
         return res
     else
-        print("[Error] dirtools.run_popen "..tostring(cmd)) 
+        pprint("[Error] dirtools.run_popen "..tostring(cmd)) 
     end
     return nil
 end
@@ -90,11 +154,11 @@ end
 ---------------------------------------------------------------------------------------
 
 local function log_info( str )
-    print(string.format("[Info] %s", str))
+    pprint(string.format("[Info] %s", str))
 end
 
 local function log_error( str )
-    print(string.format("[Error] %s", str))
+    pprint(string.format("[Error] %s", str))
 end
 
 ---------------------------------------------------------------------------------------
@@ -284,16 +348,6 @@ end
 dirtools.get_absolute_path = function( relative_path )
 
     if(ffi.os == "Windows") then 
-
-        ffi.cdef[[
-            uint32_t GetFullPathNameA(
-                const char *lpFileName, 
-                uint32_t nBufferLength, 
-                char *lpBuffer, 
-                char **lpFilePart
-            );
-        ]]
-
         -- Convert the string to a wide-character (UTF-16) string for Windows API compatibility
         local path = ffi.new("char[?]", #relative_path + 1)
         ffi.fill(path, 0, #relative_path + 1)
@@ -567,60 +621,6 @@ end
 ---------------------------------------------------------------------------------------
 -- Windows is posix compliant but there are some subtle difference of course.
     
-if(ffi.os == "Windows") then 
-ffi.cdef[[
-typedef uint64_t __time64_t;
-
-typedef unsigned int    _dev_t;
-typedef unsigned short  _ino_t;
-typedef unsigned short  _mode_t;
-
-struct __stat64
-{
-    _dev_t         st_dev;
-    _ino_t         st_ino;
-    _mode_t        st_mode;
-    short          st_nlink;
-    short          st_uid;
-    short          st_gid;
-    _dev_t         st_rdev;
-    uint64_t       st_size;
-    __time64_t     st_atime;
-    __time64_t     st_mtime;
-    __time64_t     st_ctime;
-};
-
-int _stat64(const char *path, struct __stat64 *buf);
-]]
-else 
-ffi.cdef[[     
-
-    typedef uint64_t __time64_t;
-
-    typedef uint64_t  _dev_t;
-    typedef uint64_t  _ino_t;
-    typedef unsigned int   _mode_t;
-
-    struct __stat {
-        _dev_t         st_dev;
-        _ino_t         st_ino;
-        uint64_t       st_nlink;
-        _mode_t        st_mode;
-        unsigned int   st_uid;
-        unsigned int   st_gid;
-        int __pad0;
-        _dev_t         st_rdev;
-        int64_t        st_size;
-        __time64_t     st_atime;
-        __time64_t     st_mtime;
-        __time64_t     st_ctime;
-        char           pad[62];
-    };
-    
-int stat(const char *path, struct __stat *buf);
-]]
-end        
-    
 dirtools.get_fileinfo = function(path)
     if string.len(path) == 0 then return nil end
 
@@ -632,13 +632,13 @@ dirtools.get_fileinfo = function(path)
     if ffi.os == "Windows" then
         buf = ffi.new("struct __stat64[1]")
         if ffi.C._stat64(path, buf) ~= 0 then
-            print("[Error] dirtools.get_fileinfo | File not found or inaccessible: ", path)
+            pprint("[Error] dirtools.get_fileinfo | File not found or inaccessible: ", path)
             return nil
         end
     else
         buf = ffi.new("struct __stat[1]")
         if ffi.C.stat(path, buf) ~= 0 then
-            print("[Error] dirtools.get_fileinfo | File not found or inaccessible: ", path)
+            pprint("[Error] dirtools.get_fileinfo | File not found or inaccessible: ", path)
             return nil
         end
     end

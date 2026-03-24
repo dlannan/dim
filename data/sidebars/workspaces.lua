@@ -5,12 +5,13 @@ local config  = require "core.config"
 local keymap  = require "core.keymap"
 local style   = require "core.style"
 local View    = require "core.view"
+local DocView = require "core.docview"
 
 local json    = require("lua.json")
 local utils   = require("lua.utils")
 
 local nk      = sg
-local wdgts   = require("src.nuklear.widgets")
+local wdgts   = require("nuklear.widgets")
 
 local WorkspacesView = {
 
@@ -21,17 +22,15 @@ local WorkspacesView = {
   config      = {},
   split_dir   = "right",
   split_node  = "Sidebar",
-  locked      = "Y",
+  locked      = { y = true },
+  resizable   = true,
+  nofocus     = true,
   command     = nil,
-
-  max_width   = 200,
+  max_width   = 280,
   pad         = 3,
 }
 
 WorkspacesView.width = WorkspacesView.max_width
-
-local core = require "core"
-local DocView = require "core.docview"
 
 -- Unlike original workspace plugin, this holds multiple workspaces.
 -- Allows user to jump between them and store them.
@@ -45,7 +44,7 @@ local WorkspaceData         = {
   configs = {},       -- Each space has a project path
 }
 
-local workspace_filename = ".dim_workspace.json"
+local workspace_filename = ".dim_cfg.json"
 
 
 local function serialize(val)
@@ -63,7 +62,7 @@ end
 
 
 local function has_no_locked_children(node)
-  if node.locked then return false end
+  if node.locked or node.nofocus then return false end
   if node.type == "leaf" then return true end
   return has_no_locked_children(node.a) and has_no_locked_children(node.b)
 end
@@ -71,7 +70,7 @@ end
 
 local function get_unlocked_root(node)
   if node.type == "leaf" then
-    return not node.locked and node
+    return not node.locked and not node.nofocus and node
   end
   if has_no_locked_children(node) then
     return node
@@ -102,7 +101,6 @@ local function save_view(view)
     end
   end
 end
-
 
 local function load_view(t)
   if t.type == "doc" then
@@ -143,7 +141,6 @@ local function save_node(node)
   end
   return res
 end
-
 
 local function load_node(node, t)
   if t == nil then return nil end
@@ -216,7 +213,7 @@ local function load_workspace()
 end
 
 core.add_prerun( function() core.try(load_workspace) end )
-core.add_postrun( function() print("Saving....");save_workspace() end)
+core.add_postrun( function() pprint("Saving....");save_workspace() end)
 
 function WorkspacesView:new(config)
   local new_workspacesview        = utils.deepcopy(WorkspacesView)
@@ -225,6 +222,7 @@ function WorkspacesView:new(config)
   new_workspacesview.view.get_scrollable_size = function(self) return new_workspacesview:get_height() end 
   new_workspacesview.visible      = true
   new_workspacesview.header       = config and config.title or ""
+  new_workspacesview.editable     = false
   new_workspacesview.init_size    = true
   new_workspacesview.view.size.y  = new_workspacesview:get_height()
   new_workspacesview.view.size.x  = WorkspacesView.width
@@ -240,27 +238,26 @@ function WorkspacesView:change_space(idx)
   end
 end
 
-function WorkspacesView:get_editheight()
-  local h = 0
-  for i,v in ipairs( WorkspaceData.configs ) do
-    h = h + self:get_lineheight() * 3
-  end
-  return h
-end
-
-function WorkspacesView:get_height(noedit) 
-  local editsize = self:get_editheight()
-  if(noedit) then editsize = 0 end
-  return style.font:get_height() + style.padding.y * 2 + editsize
+function WorkspacesView:get_height() 
+  if(self.editable == false) then return self:get_lineheight() end
+  local count = utils.tcount(WorkspaceData.configs) * 3 + 1
+  return self:get_lineheight() * count
 end 
+
+function WorkspacesView:get_scrollable_size()
+  return self:get_height()
+end
 
 function WorkspacesView:get_lineheight()
   return style.font:get_height() + style.padding.y * 2
 end 
 
-
 function WorkspacesView:get_name()
     return "Workspaces"
+end
+
+function WorkspacesView:show_panel(visible)
+  self.editable = visible
 end
 
 function WorkspacesView:on_mouse_moved(px, py, dx, dy)
@@ -279,7 +276,7 @@ function WorkspacesView:on_mouse_moved(px, py, dx, dy)
 end
 
 function WorkspacesView:on_mouse_pressed(...)
-  core.root_view:set_focus_view()
+  -- core.root_view:set_focus_view()
 
   if(self.hovered_item) then 
     if(self.hovered_item ~= WorkspaceData.current) then 
@@ -294,11 +291,6 @@ function WorkspacesView:on_mouse_released(...)
 end
 
 function WorkspacesView:update()
-  if(self.visible == false) then 
-    self.view.size.y = self:get_height(true)
-    return 
-  end
-
   self.view.size.y = self:get_height()
   -- if(self.init_size == true and self.size.x ~= WorkspacesView.width) then
   --   self:move_towards(self.size, "x", WorkspacesView.width, 0.5, function() 
@@ -314,14 +306,25 @@ end
 function WorkspacesView:draw()
   self.view:draw_background(style.background)
   
-  local pd = WorkspacesView.pad
-  local bx, by, bw, bh = self.view:get_content_bounds()
-  local ox, oy = self.view:get_content_offset()
-  local cw, ch = WorkspacesView.width/4, self:get_lineheight()
-  local color = style.text
+  local ccount =  #WorkspaceData.configs
 
+  local pd      = WorkspacesView.pad
+  local bx, by, bw, bh = self.view:get_content_bounds()
+  local ox, oy  = self.view:get_content_offset()
+  local cw, ch  = WorkspacesView.width/4, self:get_lineheight()
+  local color   = style.text
+
+  -- Workspaces boxes always drawn. Editing boxes only active when Workspaces selected.
+  local ex, ey = ox, oy
+  local ew = self.view.size.x
+  local icw = ch
+  
+  wdgts:set_font(style.font) 
+  wdgts:begin( ch, 1000 )
+
+  wdgts:line(ex, ey-pd, ew, ch)
   for i=0, 3 do 
-    local color = style.background3
+    color   = style.background3
     if(i + 1 == self.hovered_item) then color = style.icon_hover end
     local x, y = i * cw + ox, oy
     if(i + 1 == WorkspaceData.current) then 
@@ -330,33 +333,24 @@ function WorkspacesView:draw()
       renderer.draw_rect(x + pd, y + pd, cw - pd *2, ch, color)
     end
   end
+  ey = ey + ch
 
-  -- Workspaces boxes always drawn. Editing boxes only active when Workspaces selected.
-  local ex, ey = ox, oy + self:get_lineheight()
-  local ew = self.view.size.x
-  local eh = ch * 4 * #WorkspaceData.configs
-  local icw = ch
-
-  core.push_clip_rect(ex, ey, ew, eh + 2 * pd)
-
-  wdgts:set_font(style.font) 
-  wdgts:begin( eh, #WorkspaceData.configs * 4 )
+  if(self.editable == false) then wdgts:finish(); return end
 
   for i,v in ipairs( WorkspaceData.configs ) do
 
     wdgts:line(ex, ey-pd, ew, ch)
     renderer.draw_rect(ex, ey, ew, ch, style.background)
     wdgts:label( string.format(" Workspace_%d", i), nk.NK_TEXT_LEFT )
-    ey = ey + self.get_lineheight()
-
+    ey = ey + ch
     wdgts:line(ex, ey-pd, ew, ch)
     renderer.draw_rect(ex, ey, ew, ch, style.background2)
     wdgts:label( " Path:", nk.NK_TEXT_LEFT )
-    ey = ey + self.get_lineheight()
+    ey = ey + ch
 
-    wdgts:line(ex, ey-pd, ew - icw, ch)
+    wdgts:line(ex, ey-pd, ew, ch)
     renderer.draw_rect(ex, ey, ew - icw, ch, style.background3)
-    wdgts:label( " "..ffi.string(v.project_path), nk.NK_TEXT_LEFT, {0xff, 0, 0} )
+    wdgts:label( string.format("  %s",ffi.string(v.project_path)), nk.NK_TEXT_LEFT )
 
     wdgts:line(ex + ew - icw, ey-pd, icw, ch)
     if wdgts:button_fa( "" ) == true then 
@@ -367,10 +361,9 @@ function WorkspacesView:draw()
       end
     end
     -- self.widget_input_text:draw(ex, ey, self.view.size.x, style.text, v.project_path)
-    ey = ey + self.get_lineheight()
+    -- ey = ey + ch
   end
   wdgts:finish()
-  core.pop_clip_rect()
 end
 
 command.add(nil, {

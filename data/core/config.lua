@@ -1,6 +1,10 @@
+-- Add the editor path so that the older defold code can work as is.
+package.path    = package.path..";./editor/?.lua"
+
 local config = {}
 
 config.project_scan_rate = 5
+config.message_pump_rate = 0.01
 config.fps = 60
 config.max_log_items = 80
 config.message_timeout = 3
@@ -16,5 +20,7 @@ config.line_height = 1.2
 config.indent_size = 2
 config.tab_type = "soft"
 config.line_limit = 80
+config.project_path = "."
+config.max_tabs = 10
 
 return config

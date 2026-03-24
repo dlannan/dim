@@ -145,7 +145,8 @@ end
 
 local function process_inputs(event)
 
-    nk.snk_handle_event(event)
+    local handled = nk.snk_handle_event(event)
+    -- if(handled == true) then return end 
     if(system.nuklear_edit == true) then return end
 
     local eventtype = tonumber(event.type)

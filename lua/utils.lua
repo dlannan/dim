@@ -64,7 +64,7 @@ local function getpngfile(filenamepath)
     -- Try to open first - return nil if unsuccessful
     local fh = io.open(filenamepath, 'rb')
     if (fh == nil) then
-        print("[Error] png file not found: " .. filenamepath)
+        pprint("[Error] png file not found: " .. filenamepath)
         return nil
     end
 	local header = fh:read(8 + 8 + 4 + 4 + 1 + 1 + 1 + 1 + 1)
@@ -72,7 +72,7 @@ local function getpngfile(filenamepath)
 	local pnginfo = processPngHeader(header)
 	if (pnginfo) then return pnginfo end
 
-    print("[Error] Png header unreadable: " .. filenamepath)
+    pprint("[Error] Png header unreadable: " .. filenamepath)
     return nil
 end
 
@@ -193,7 +193,7 @@ local function loaddata(filepath)
 		data = fh:read("*a")
 		fh:close()
 	else 
-		print("[Error] utils.loaddata: Unable to load - "..filepath)
+		pprint("[Error] utils.loaddata: Unable to load - "..filepath)
 	end
 	return data 
 end
@@ -207,7 +207,7 @@ local function savedata(filepath, content)
 		data = fh:write(content)
 		fh:close()
 	else 
-		print("[Error] utils.savedata: Unable to save - "..filepath)
+		pprint("[Error] utils.savedata: Unable to save - "..filepath)
 	end
 end
 

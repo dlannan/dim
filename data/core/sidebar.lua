@@ -59,26 +59,43 @@ function SidebarView:load_panel(ViewClass)
         view_class = ViewClass,
         locked = ViewClass.locked,
         locked_divider = ViewClass.locked_divider or nil,
+        resizable = ViewClass.resizable,
+        nofocus = ViewClass.nofocus, 
     }
     SidebarData.panels[mod.id] = mod 
     SidebarData.pcount = SidebarData.pcount + 1
+    return mod
   end
+end
+
+function SidebarView:init_mod(mod, extra_views)
+  local panel_dir = mod.split_dir or "down"
+  local node = core.root_view:get_active_node()
+  if(mod.split_node) then
+    node = core.root_view:get_named_node(mod.split_node)
+  end
+  if(mod.view_class) then mod.view = mod.view_class:new(mod.config) end
+  mod.child = node:split(panel_dir, mod.view, mod.locked, mod.resizable)
+  if(extra_views and #extra_views > 0) then 
+    for k, v in ipairs(extra_views) do 
+      mod.child:add_view(v)
+    end
+  end
+  if(mod.locked_divider) then 
+    node.divider = mod.locked_divider 
+  end 
 end
 
 function SidebarView:init_panels()
   for k, mod in ipairs(SidebarData.panels) do
-    if(mod.split_dir) then
-      local node = core.root_view:get_active_node()
-      if(mod.split_node) then
-        node = core.root_view:get_named_node(mod.split_node)
-      end
-      mod.view = mod.view_class:new(mod.config)
-      mod.child = node:split(mod.split_dir, mod.view, mod.locked)
-      if(mod.locked_divider) then 
-        node.divider = mod.locked_divider 
-      end 
-    end 
+    self:init_mod(mod)
   end
+  local panels = core.root_view:get_named_node("Panels")
+  -- pprint(panels:get_children_nodes())
+end
+
+function SidebarView:change_panel(id)
+  SidebarData.panel_select = id 
 end
 
 function SidebarView:get_cached(item)
@@ -115,7 +132,7 @@ function SidebarView:each_item()
     local i = 1
     while i <= SidebarData.pcount do
       local item = SidebarData.panels[i]
-      if(item and item.icon) then
+      if(item and item.icon and item.view) then
         local cached = self:get_cached(item)
 
         coroutine.yield(cached, ox, y, w, h)
@@ -138,7 +155,7 @@ end
 
 function SidebarView:on_mouse_released(button, x, y)
   if not self.hovered_item then
-    core.root_view:set_focus_view()
+    -- core.root_view:set_focus_view()
     -- elseif self.hovered_item == "dir" then
   --   self.hovered_item.expanded = not self.hovered_item.expanded
   else
@@ -151,11 +168,7 @@ function SidebarView:on_mouse_released(button, x, y)
         -- Iterate panels and set correct one open
         for k,v in ipairs(SidebarData.panels) do 
           if(v.view) then 
-            if(SidebarData.panel_select == v.id) then 
-              if(v.view.show_panel) then v.view:show_panel(true) end
-            else 
-              if(v.view.show_panel) then v.view:show_panel(false) end
-            end
+            if(v.view.show_panel) then v.view:show_panel(SidebarData.panel_select == v.id) end
           end
         end
       else 

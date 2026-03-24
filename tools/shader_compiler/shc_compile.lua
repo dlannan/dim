@@ -126,9 +126,9 @@ sh_compiler.process_shader = function( filename, shader_src, program_name )
     ffi_str = ffi_str..[[return ]]..program_name..[[shader]]
    
     if(sh_compiler.debug) then 
-        print(">>------- Shader: "..filename.." ---------")
-        print(ffi_str) 
-        print("<<------- End Shader ---------")
+        pprint(">>------- Shader: "..filename.." ---------")
+        pprint(ffi_str) 
+        pprint("<<------- End Shader ---------")
     end
     return load(ffi_str, nil, nil, tbl)()
 end
@@ -147,9 +147,9 @@ sh_compiler.compile = function( glslfile, program_name )
     if(runner) then 
         local results = runner:read("*a")
         runner:close()
-        print("[sh_compiler.lua] Shader: "..glslfile.." compiled correctly.")
+        pprint("[sh_compiler.lua] Shader: "..glslfile.." compiled correctly.")
     else 
-        print("Invalid command: "..command)
+        pprint("Invalid command: "..command)
         return nil
     end
 
@@ -162,7 +162,7 @@ sh_compiler.compile = function( glslfile, program_name )
         lua_shader = sh_compiler.process_shader(glslfile, shader_src, program_name)
         return lua_shader
     else
-        print("Cannot load tmpfile: "..sh_compiler.target_tmp)
+        pprint("Cannot load tmpfile: "..sh_compiler.target_tmp)
         return nil
     end
 end

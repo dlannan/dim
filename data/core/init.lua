@@ -1,10 +1,10 @@
 require "core.strict"
 
-local tinsert = table.insert
+local tinsert   = table.insert
 
-local common = require "core.common"
-local config = require "core.config"
-local style = require "core.style"
+local common    = require "core.common"
+local config    = require "core.config"
+local style     = require "core.style"
 local command
 local keymap
 local RootView
@@ -17,64 +17,20 @@ local core = {}
 core.prerun_funcs = {}
 core.postrun_funcs = {}
 
-local function project_scan_thread()
-  local function diff_files(a, b)
-    if #a ~= #b then return true end
-    for i, v in ipairs(a) do
-      if b[i].filename ~= v.filename
-      or b[i].modified ~= v.modified then
-        return true
-      end
-    end
-  end
+--------------------------------------------------------------------------------------------------
 
-  local function compare_file(a, b)
-    return a.filename < b.filename
-  end
-
-  local function get_files(path, t)
-    coroutine.yield()
-    t = t or {}
-    local size_limit = config.file_size_limit * 10e5
-    local all = system.list_dir(path) or {}
-    local dirs, files = {}, {}
-
-    for _, file in ipairs(all) do
-      if not common.match_pattern(file, config.ignore_files) then
-        local file = (path ~= "." and path .. PATHSEP or "") .. file
-        local info = system.get_file_info(file)
-        if info and info.size < size_limit then
-          info.filename = file
-          table.insert(info.type == "dir" and dirs or files, info)
-        end
-      end
-    end
-
-    table.sort(dirs, compare_file)
-    for _, f in ipairs(dirs) do
-      table.insert(t, f)
-      get_files(f.filename, t)
-    end
-
-    table.sort(files, compare_file)
-    for _, f in ipairs(files) do
-      table.insert(t, f)
-    end
-
-    return t, dirs
-  end
-
+function core.message_pump()
   while true do
-    -- get project files and replace previous table if the new table is
-    -- different
-    local t, dirs = get_files(config.project_path or ".")    
-    if diff_files(core.project_files, t) then
-      core.project_files = t
-      core.redraw = true
+    -- Effectively stops messages being added while processing.
+    for i, msg in ipairs(core.messages) do
+      if(core.message_recievers[msg.dst]) then 
+        core.try( function()
+          core.message_recievers[msg.dst](msg)
+        end)
+      end
     end
-
-    -- wait for next scan
-    coroutine.yield(config.project_scan_rate)
+    core.messages = {}
+    coroutine.yield(config.message_pump_rate)
   end
 end
 
@@ -87,6 +43,7 @@ function core.add_postrun( pfunc )
 end
 
 function core.init()
+
   command = require "core.command"
   keymap = require "core.keymap"
   RootView = require "core.rootview"
@@ -96,28 +53,32 @@ function core.init()
 
   Doc = require "core.doc"
 
-  core.restarting = nil
-  core.frame_start = 0
+  core.restarting     = nil
+  core.frame_start    = 0
   core.clip_rect_stack = {{ 0,0,0,0 }}
-  core.log_items = {}
-  core.docs = {}
-  core.threads = setmetatable({}, { __mode = "k" })
-  core.project_files = {}
-  core.redraw = true
+  core.log_items      = {}
+  core.docs           = {}
+  core.threads        = setmetatable({}, { __mode = "k" })
+  core.project_files  = {}
+  core.messages       = {}
+  core.message_recievers = {}
+  core.redraw         = true
 
-  core.root_view = RootView:new()
-  core.command_view = CommandView:new()
-  core.status_view = StatusView:new()
-  core.sidebar_view = SidebarView:new()
+  core.root_view      = RootView:new()
+  core.command_view   = CommandView:new()
+  core.status_view    = StatusView:new()
+  core.sidebar_view   = SidebarView:new()
 
   local curr_node = core.root_view.root_node
-  curr_node:split("down", core.command_view, true)
-  curr_node.b:split("down", core.status_view, true)
-  curr_node.a:split("left", core.sidebar_view, true)
+  curr_node:split("down", core.command_view, {y = true})
+  curr_node.b:split("down", core.status_view, {y = true})
+  curr_node.a:split("left", core.sidebar_view, {x = true})
   -- TODO: wtf. this controls the sub panels width. Need to expose this and make adjustable to config.
   curr_node.a.divider = 0.1
 
-  core.add_thread(project_scan_thread)
+  -- core.add_thread(project_scan_thread)
+  core.message_thread = core.add_thread(core.message_pump)
+  pprint("MESSAGE PUMP: ", core.message_thread)
   command.add_defaults()
 
   local got_plugin_error = not core.load_plugins()
@@ -264,30 +225,44 @@ function core.reload_module(name)
 end
 
 
-function core.set_active_view(view, node)
+function core.set_active_view(view)
   assert(view, "Tried to set active view to nil")
-  if view ~= core.active_view then
+  -- Reset the IME even if the focus didn't change
+  -- ime.stop()
+  if(view.nofocus == true) then return end
+  if(core.active_view and core.active_view.doc and core.active_view.doc.on_hide) then 
+    core.active_view.doc:on_hide() 
+  end
+
+  if view ~= core.active_view and view.locked == nil then
+    -- system.text_input(core.window, view:supports_text_input())
+    if core.active_view and core.active_view.force_focus then
+      core.active_view = view
+      return
+    end
+    -- core.active_view = nil
+    if view.doc and view.doc.abs_filename then
+      core.set_visited(view.view.doc.abs_filename)
+    end
     core.last_active_view = core.active_view
     core.active_view = view
   end
-  if view and view._is_locked == nil then
-    local node = node or core.root_view:get_view_node(view)
-    if(node) then
-      -- print("setting focus:", view, node, view._is_locked, node.type, view:get_name())
-      if node.type == "leaf" then
-        core.focus_view = view
-      end
-    end
-  end
 end
 
+function core.request_cursor(value)
+  core.cursor_change_req = value
+end
 
 function core.add_thread(f, weak_ref)
   local key = weak_ref or #core.threads + 1
   local fn = function() return core.try(f) end
   core.threads[key] = { cr = coroutine.create(fn), wake = 0 }
+  return core.threads[key].cr
 end
 
+function core.get_clip_rect()
+  return core.clip_rect_stack[#core.clip_rect_stack]
+end
 
 function core.push_clip_rect(x, y, w, h)
   local x2, y2, w2, h2 = table.unpack(core.clip_rect_stack[#core.clip_rect_stack])
@@ -335,13 +310,11 @@ function core.get_views_referencing_doc(doc)
   return res
 end
 
-
 local function log(icon, icon_color, fmt, ...)
   local text = string.format(fmt, ...)
   if icon then
     core.status_view:show_message(icon, icon_color, text)
   end
-  print(text)
   local info = debug.getinfo(2, "Sl")
   local at = string.format("%s:%d", info.short_src, info.currentline)
   local item = { text = text, time = os.time(), at = at }
@@ -451,6 +424,7 @@ function core.step()
   -- update
   core.root_view.view.size.x, core.root_view.view.size.y = width, height
   core.root_view:update()
+  -- if(#core.drawers > 0) then core.redraw = true end
   if not core.redraw then return false end
   core.redraw = false
 
@@ -486,8 +460,10 @@ end
 
 
 local run_threads = coroutine.wrap(function()
+  local max_time  = 1 / config.fps
+  local frame_pad = max_time / 2 -- How much before end of frame we need to stop
+  
   while true do
-    local max_time = 1 / config.fps - 0.004
     local ran_any_threads = false
 
     for k, thread in pairs(core.threads) do
@@ -507,7 +483,7 @@ local run_threads = coroutine.wrap(function()
       end
 
       -- stop running threads if we're about to hit the end of frame
-      if system.get_time() - core.frame_start > max_time then
+      if system.get_time() - core.frame_start - frame_pad> max_time then
         coroutine.yield()
       end
     end
@@ -516,7 +492,57 @@ local run_threads = coroutine.wrap(function()
   end
 end)
 
+function core.delay( tm, f )
+  core.add_thread( function() 
+    while(true) do 
+      if(system.get_time() > tm) then break end
+      coroutine.yield()
+    end  
+    return f()
+  end)
+end
 
+function core.loop( tm, f )
+  local tmr = system.get_time()
+  local diff = mat.max(0.001, tm-tmr)
+  local cycles = 0
+  core.add_thread( function() 
+    local run = nil
+    while(run == nil) do 
+      if( tmr > tm) then 
+        run = f(tmr, cycles) 
+        tm = tmr + diff - (tmr - tm)
+      end      
+      tmr = system.get_time()
+      coroutine.yield()
+      cycles = cycles + 1
+    end  
+  end)
+end
+
+function core.send_message( msg, delay )
+  if(msg and msg.src and msg.dst) then 
+    core.delay( delay or 0.0, function() 
+      tinsert(core.messages, msg)
+    end)
+  end
+end
+
+function core.recv_message( name, recv_func )
+  if(name and recv_func and type(recv_func) == "function") then 
+    core.message_recievers[name] = recv_func 
+  else 
+    pprint("[Error] Invalid name or function: ", name, recv_func)
+  end
+end
+
+function core.recv_remove( name )
+  if(name and core.message_recievers[name]) then 
+    core.message_recievers[name] = nil 
+  end 
+end
+
+local sixtyhz = 0.5 / config.fps - 0.001
 function core.run()
   -- while true do
     core.frame_start = system.get_time()
@@ -527,7 +553,7 @@ function core.run()
     --   system.wait_event(0.25)
     -- end
     local elapsed = system.get_time() - core.frame_start
-    system.sleep(math.max(0, 1 / config.fps - elapsed))
+    system.sleep(math.max(0.001, sixtyhz - elapsed))
     system.events_clear()
     return did_redraw
   -- end

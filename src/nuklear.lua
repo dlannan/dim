@@ -90,7 +90,7 @@ nuklear_renderer.load_image = function(filename, no_ui)
     local data = stb.stbi_load(filename, x, y, n, 4)
     if (data == nil) then error("[STB]: failed to load image: "..filename); return nil end
     -- print("Original channels in file:", n[0])
-    print("Image Loaded: "..filename.."      Width: "..x[0].."  Height: "..y[0].."  Channels: "..n[0])
+    pprint("Image Loaded: "..filename.."      Width: "..x[0].."  Height: "..y[0].."  Channels: "..n[0])
 
     -- Auto free when data handles are released
     ffi.gc(data, stb.stbi_image_free)
@@ -129,7 +129,7 @@ nuklear_renderer.load_image_buffer = function( name, buf, bufsize, no_ui )
     local n = ffi.new("int[1]", {4})
     local data = stb.stbi_load_from_memory(buf, bufsize, x, y, n, 4)
     if (data == nil) then 
-        print("[STB]: failed to load image: ", name)
+        pprint("[STB]: failed to load image: ", name)
         return nil, nil 
     end
     -- print("Original channels in file:", n[0])

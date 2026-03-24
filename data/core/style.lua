@@ -29,6 +29,9 @@ style.line_highlight = { common.color "#343438" }
 style.scrollbar = { common.color "#414146" }
 style.scrollbar2 = { common.color "#4b4b52" }
 
+style.drag_overlay = { common.color "#252529" }
+style.drag_overlay_tab = { common.color "#E95420" }
+
 style.syntax = {}
 style.syntax["normal"] = { common.color "#e1e1e6" }
 style.syntax["symbol"] = { common.color "#e1e1e6" }
@@ -45,5 +48,5 @@ style.widget_background = style.background
 style.widget_background2 = style.background2
 style.widget_background3 = style.background3
 
-
+style.threed_background =  { common.color "#252529" }
 return style

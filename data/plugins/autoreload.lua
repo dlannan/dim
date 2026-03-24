@@ -10,7 +10,6 @@ local function update_time(doc)
   times[doc] = info.modified
 end
 
-
 local function reload_doc(doc)
   local fp = io.open(doc.filename, "r")
   local text = fp:read("*a")
@@ -25,7 +24,6 @@ local function reload_doc(doc)
   doc:clean()
   core.log_quiet("Auto-reloaded doc \"%s\"", doc.filename)
 end
-
 
 core.add_thread(function()
   while true do
@@ -42,7 +40,6 @@ core.add_thread(function()
     coroutine.yield(config.project_scan_rate)
   end
 end)
-
 
 -- patch `Doc.save|load` to store modified time
 local load = Doc.load

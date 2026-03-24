@@ -9,14 +9,17 @@ local utils   = require("lua.utils")
 
 local PluginMgrView = {
 
-    id = 5,
-    name = "plugin-manager",
-    icon = "",
-    module = "plugin_manager",
-    config = {},
-    split_dir = "down",
-    split_node = "Panels",
-    locked = "Y",
+    id          = 5,
+    name        = "plugin-manager",
+    icon        = "",
+    module      = "plugin_manager",
+    config      = {},
+    split_dir   = "down",
+    split_node  = "Panels",
+    locked      = { x = true, y = false},
+    resizable   = true,
+    nofocus     = true,
+  
     command = nil,
 }
 
@@ -31,6 +34,10 @@ end
 
 function PluginMgrView:get_name()
     return "PluginMgr"
+end
+
+function PluginMgrView:show_panel(visible)
+    self.visible = visible
 end
 
 function PluginMgrView:get_item_height()
