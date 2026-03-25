@@ -78,7 +78,6 @@ function core.init()
 
   -- core.add_thread(project_scan_thread)
   core.message_thread = core.add_thread(core.message_pump)
-  pprint("MESSAGE PUMP: ", core.message_thread)
   command.add_defaults()
 
   local got_plugin_error = not core.load_plugins()
