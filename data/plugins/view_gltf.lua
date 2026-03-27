@@ -91,6 +91,8 @@ local function GLTF_on_hide(doc)
   end
 end
 
+-- NOTE: These draw routines only fire on updates needed for the UI window. 
+--       THEY DO NOT UPDATE PER FRAME RENDER!! 
 local function GLTF_draw(self)
 
   -- print("drawing....", debug.traceback())
@@ -118,16 +120,6 @@ local function GLTF_draw(self)
       self.view.hovered = nil
     end
 
-    -- local hovered = false
-    -- if(self:scrollbar_overlaps_point(x, y))
-
-    -- local old_cursor = renderer.cursor
-    -- system.set_cursor("arrow", { 
-    --   position = { x = doc_pos.x, y = doc_pos.y }, 
-    --   size = { x = 1.0, y = 1.0 }
-    -- })
-    -- renderer.set_cursor()
-
     core.try(function()
       renderer.draw_model(model, doc_pos.x, doc_pos.y, doc_size.x, doc_size.y)
       -- local info = sg.sg_image_info(renderer.color_img)
@@ -139,8 +131,6 @@ local function GLTF_draw(self)
       self.doc.drawn = true
     end)
 
-    -- system.set_cursor( old_cursor.name, old_cursor.rect )
-    -- renderer.set_cursor()
     return true
   end
   return nil

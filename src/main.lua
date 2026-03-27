@@ -34,6 +34,7 @@ local mainstates    = require("src.main_states")
 
 local uv            = require('luv')
 
+local mpv           = require('ffi.libmpv')
 
 -- package.path    = package.path..";.\\lua\\dynasm\\?.lua"
 -- package.path    = package.path..";.\\lua\\dynasm\\?.dasl"
@@ -66,6 +67,7 @@ winrect             = ffi.new("struct nk_rect[1]", {{0, 0, 1000, 600}})
 require("src.system")
 require("src.renderer")
 require("src.threed")
+require("src.video")
 
 require("src.platform")
 

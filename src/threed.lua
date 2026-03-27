@@ -16,6 +16,8 @@ local gltfloader    = require("lua.gltfloader.gltfloader")
 
 local cameramgr     = require("lua.engine.camera_manager")
 
+local mpv           = require('ffi.libmpv')
+
 local tinsert       = table.insert
 local tremove       = table.remove
 
@@ -34,6 +36,8 @@ threed_renderer     = {
     --  These indicate whether a model is loaded, if it has an id and if it 
     --  has had its data initialised
     model_files         = {},
+
+    videos              = {},
 
     default_cam         = cameramgr.add("default", 60.0, 1, 0.01, CAM_DISTANCE * 2),
 } 

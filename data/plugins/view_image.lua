@@ -15,9 +15,9 @@ local images = {
   file_types = { "png", "jpg", "jpeg", "tga", "gif" },
 }
 
-local function find(string, field)
+local function find(str, field)
   for i, v in ipairs(images.files) do
-    if common.match_pattern(string, v or {}) then
+    if common.match_pattern(str, v or {}) then
       return i
     end
   end

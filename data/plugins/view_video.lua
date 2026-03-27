@@ -8,29 +8,46 @@ local utils   = require("lua.utils")
 local syntax = require "core.syntax"
 local utils   = require("lua.utils")
 
+local uv        = require('luv')
+local mpv       = require('ffi.libmpv')
+
 local tinsert   = table.insert
 
 local videos = {
-  files = { "%.mp4$", "%.mkv$", "%.mov$" },
-  file_types = { "mp4", "mkv", "mov" },
+
+  files       = { "%.mp4$", "%.mkv$", "%.mov$" },
+  file_types  = { "mp4", "mkv", "mov" },
+
+  player      = {
+    path        = "./data/plugins/view_video/",
+    exec        = "mpv.exe",          -- Set your preferred video player tool
+    params      = "%s",       -- Params to run (will doc params as I go)
+    windowed    = false,          -- open in separate windon or embedded doc (defaults to embedded)
+  },
 }
 
-local function find(string, field)
+local function find(str, field)
   for i, v in ipairs(videos.files) do
-    if common.match_pattern(string, v or {}) then
+    if common.match_pattern(str, v or {}) then
       return i
     end
   end
   return nil
 end
 
--- Override the Doc loader - if its a png.. then load it, and make a png Video Viewer for it.
+
+
+-- Override the Doc loader - if its a mp4.. then load it, and make a Video Viewer for it.
 local videodoc_load = function(self, filename)
   local idx = find(filename, "files")
-  if ( idx ) then 
-    local video, video_info = renderer.load_video(filename)
+  if ( idx ) then
+    local video = video_renderer.load(filename)
     if(video) then 
-      self.video = { nk_video = video, info = video_info, zoom = 1.0, itype = videos.file_types[idx] }
+      self.video = { 
+        video = video, 
+        vtype = videos.file_types[idx], 
+        filename = filename
+      }
       self.filename = filename
       return true
     end
@@ -44,12 +61,12 @@ local function videodocview_draw(self)
   if(self.doc.video) then 
     self.view:draw_background(style.background)
     -- Work out aspect for video so it is always centered and correct aspect view
-    local img = self.doc.video
-    local video_aspect = img.info[0].width / img.info[0].height
+    local video = self.doc.video
+    local video_aspect = 1.0
     local doc_size = self.view.size
     local doc_pos = self.view.position
 
-    local doc_width,  doc_height = doc_size.x * img.zoom, doc_size.y * img.zoom
+    local doc_width,  doc_height = doc_size.x, doc_size.y
     local doc_aspect = doc_width / doc_height
     local scaled_width, scaled_height
 
@@ -80,7 +97,6 @@ local function videodocview_draw(self)
         y = (doc_height - scaled_height) / 2 + doc_pos.y
     end
 
-    renderer.draw_video(img.nk_video, x, y, scaled_width, scaled_height)
     return true 
   end
   return nil
