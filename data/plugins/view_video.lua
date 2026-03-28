@@ -35,8 +35,6 @@ local function find(str, field)
   return nil
 end
 
-
-
 -- Override the Doc loader - if its a mp4.. then load it, and make a Video Viewer for it.
 local videodoc_load = function(self, filename)
   local idx = find(filename, "files")
@@ -96,7 +94,7 @@ local function videodocview_draw(self)
     if scaled_height < doc_height then
         y = (doc_height - scaled_height) / 2 + doc_pos.y
     end
-
+    -- video_renderer.video_render_update(video.video)
     return true 
   end
   return nil

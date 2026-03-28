@@ -21,19 +21,23 @@ local tremove       = table.remove
 video_renderer      = {
     
     videos          = {},
-
-    on_mpv_events   = function(ctx)
-    end,
-
-    on_mpv_render_update = function(ctx)
-        local vctr = ffi.cast("int *", ctx)
-        vctr[0] = vctr[0] + 1
-    end,
+    load_queue      = {},
 }
 
 -- --------------------------------------------------------------------------------------
+-- Global handlers so mpv works properly
+
+on_mpv_events   = function(ctx)
+end
+
+on_mpv_render_update = function(ctx)
+    local vctr = ffi.cast("int *", ctx)
+    vctr[0] = vctr[0] + 1
+end
+
+-- --------------------------------------------------------------------------------------
 -- This loads video ready for playing, sets up window and doc, and holds in pause mode.
-video_renderer.load = function(filename)
+video_renderer.do_load = function(filename)
 
     local mpv_handle = mpv.mpv_create()
     if (mpv_handle == nil) then
@@ -74,7 +78,7 @@ video_renderer.load = function(filename)
     end
     local mpv_rd = mpv_rd_ptr[0]
   
-    -- mpv.mpv_set_wakeup_callback(mpv_handle, videos.on_mpv_events, nil)
+    mpv.mpv_set_wakeup_callback(mpv_handle, on_mpv_events, nil)
   
     pprint(mpv_rd_ptr[0], mpv_rd)
     -- // When there is a need to call mpv_render_context_update(), which can
@@ -82,7 +86,7 @@ video_renderer.load = function(filename)
     -- // (Separate from the normal event handling mechanism for the sake of
     -- //  users which run OpenGL on a different thread.)
     local vctr = ffi.new("int[1]", {0})
-    mpv.mpv_render_context_set_update_callback(mpv_rd, video_renderer.on_mpv_render_update, vctr)
+    mpv.mpv_render_context_set_update_callback(mpv_rd, on_mpv_render_update, vctr)
   
     -- local video_cmd = string.format("%s%s", videos.player.path, videos.player.exec)
     -- -- Add "--pause" to start paused! Maybe make option?
@@ -97,35 +101,43 @@ video_renderer.load = function(filename)
     -- // Play this file.
     local cmd = ffi.new("const char *[3]", {"loadfile", filename, nil})
     mpv.mpv_command_async(mpv_handle, 0, cmd)
-  
-    return { handle = mpv_handle, reader = mpv_rd_ptr, cmd = cmd, params = params, vctr = vctr }
-end
 
--- --------------------------------------------------------------------------------------
-
-local function video_render_update(video)
-    if(video.oldvctr ~= video.video.vctr[0]) then
-      local flags = mpv.mpv_render_context_update(video.video.reader[0])
-      if (bit.band(flags, mpv.MPV_RENDER_UPDATE_FRAME)) then
-          -- print("[Info] Video need redraw frame.")
-          video.render_frame = 1
-      end
-    end
-    pprint(video.video.vctr[0])
-    video.oldvctr = video.video.vctr[0]
-end
-  
--- --------------------------------------------------------------------------------------
-
-video_renderer.add_video = function (video)
+    local video = { handle = mpv_handle, reader = mpv_rd_ptr, cmd = cmd, params = params, vctr = vctr }
     tinsert(video_renderer.videos, video)
 end
 
 -- --------------------------------------------------------------------------------------
 
+video_renderer.load = function(filename)
+    tinsert(video_renderer.load_queue, filename)
+    return #video_renderer.load_queue
+end
+
+-- --------------------------------------------------------------------------------------
+
+video_renderer.video_render_update = function(video)
+    if(video.oldvctr ~= video.vctr[0]) then
+      local flags = mpv.mpv_render_context_update(video.reader[0])
+      if (bit.band(flags, mpv.MPV_RENDER_UPDATE_FRAME)) then
+          -- print("[Info] Video need redraw frame.")
+          video.render_frame = 1
+          mpv.mpv_render_context_render(video.reader[0], video.params);
+      end
+    end
+    video.oldvctr = video.vctr[0]
+end
+  
+-- --------------------------------------------------------------------------------------
+
 video_renderer.render_videos = function ()
+
+    for k,v in ipairs(video_renderer.load_queue) do 
+        video_renderer.do_load(v)
+    end
+    video_renderer.load_queue = {}
+
     for k,v in ipairs(video_renderer.videos) do 
-        if(v) then video_render_update(v) end 
+        if(v) then video_renderer.video_render_update(v) end 
     end
 end
 

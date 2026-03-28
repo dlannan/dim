@@ -349,8 +349,9 @@ runningState.Update     = function(self)
         end) )
     end
 
-    threed_renderer.render_rects(renderer.dt)
     video_renderer.render_videos(renderer.dt)
+
+    threed_renderer.render_rects(renderer.dt)
     bins.update(renderer.dt)
 end
 
