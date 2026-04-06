@@ -84,6 +84,7 @@ local function project_scan_thread()
             project_files_json = msgpack.pack(project_files)
             -- pprint(project_files_json)
             if(pipe_writer_fd) then 
+                pipe_writer_fd:write("MSGPACK_START")
                 pipe_writer_fd:write(project_files_json)
                 pipe_writer_fd:write("MSGPACK_END")
             end

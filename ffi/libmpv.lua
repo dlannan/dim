@@ -3,7 +3,7 @@ local ffi  = require( "ffi" )
 local libmpv_filename = "libmpv"
 local libs = {
    OSX     = { x64 = libmpv_filename.."_macos.so", arm64  = libmpv_filename.."_macos_arm64.so" },
-   Windows = { x64 = libmpv_filename.."-2.dll" },
+   Windows = { x64 = libmpv_filename..".dll" },
    Linux   = { x64 = "./bin/linux/lib"..libmpv_filename..".so", arm = "./bin/linux/lib"..libmpv_filename..".so" },
    BSD     = { x64 = libmpv_filename..".so" },
    POSIX   = { x64 = libmpv_filename..".so" },

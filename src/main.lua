@@ -67,7 +67,6 @@ winrect             = ffi.new("struct nk_rect[1]", {{0, 0, 1000, 600}})
 require("src.system")
 require("src.renderer")
 require("src.threed")
-require("src.video")
 
 require("src.platform")
 

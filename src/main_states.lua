@@ -26,6 +26,9 @@ local imageutils 	= require("lua.gltfloader.image-utils")
 
 local msgpack   = require "lua.msgpack"
 local uv        = require('luv')
+local services  = require("data.core.services.services")
+
+require("src.video")
 
 -- --------------------------------------------------------------------------------------
 -- lite core setup
@@ -48,6 +51,7 @@ local bg_services = {
     services    = {
         file_check    = nil,
         routing       = nil,
+        video         = nil, 
     },
 
     render      = {
@@ -70,72 +74,33 @@ end)
 
 --------------------------------------------------------------------------------------------------
 
-local function endsWith(str, suffix)
-    return str:sub(-#suffix) == suffix
-end
-  
---------------------------------------------------------------------------------------------------
-
 bg_services.run = function(core)
     uv.set_process_title("bg_services")
   
     bg_services.services.fds = assert(uv.pipe({nonblock=true}, {nonblock=true}))
     assert(uv.guess_handle(bg_services.services.fds.read) == "pipe")
     assert(uv.guess_handle(bg_services.services.fds.write) == "pipe")
-    bg_services.services.pipe_read = assert(uv.new_pipe())
-    bg_services.services.pipe_read:open(bg_services.services.fds.read)
-    bg_services.services.pipe_write = assert(uv.new_pipe())
-    bg_services.services.pipe_write:open(bg_services.services.fds.write)
-
+    print("Making service pipes...")
+    bg_services.services.file_check_read, bg_services.services.file_check_write = services.setup_pipes(bg_services.services.fds)
+    bg_services.services.video_stream_read, bg_services.services.video_stream_write = services.setup_pipes(bg_services.services.fds)
+    print("Making service workers...")
     -- Background Services
-    bg_services.services.file_check = uv.new_work(function(base_path, pipe_writer)
-        
-        package.path      = package.path..";"..base_path.."\\data\\?.lua"
-        SCALE = 1.0
+    bg_services.services.file_check = services.make_worker()
+    bg_services.services.video_stream = services.make_worker()
 
-        local dirtools      = require("tools.vfs.dirtools").init("dim")
-        local uv            = require('luv')
-        local pp            = require("lua.pretty-print")
+    print("Making service readers...")
+    services.make_reader_msgpack(bg_services.services.file_check_read, function(data)
+        pprint("Project files.. updating...")
+        core.project_files = data
+    end)
 
-        require("src.system")
-        require("src.platform")
-
-        local file_check  = require("core.services.file_check")
-        file_check.init(pipe_writer)
-        local idle = uv.new_idle()
-        idle:start(function()
-          file_check.run()
-        end)
-        uv.run("default")
-    end, function() uv.walk(uv.close); uv.run() end)
-
-    local reading = 0
-    local reading_done = false
-    local total = ""
-    bg_services.services.pipe_read:read_start(function(err, chunk)
-        assert(not err, err)
-        if chunk == nil then 
-            return
-        elseif endsWith(chunk, "MSGPACK_END") then
-            pprint("[Info] Project directory scan complete.")
-            chunk = string.sub(chunk, 1, -12)
-            reading_done = true
-        else 
-            reading = reading + 1
-        end
-        if(reading > 0) then 
-            total = total..chunk
-        end 
-        if(core and reading_done == true) then
-            core.project_files = msgpack.unpack(total)
-            total = ""
-            reading_done = false
-            reading = 0
-        end
+    services.make_reader_msgpack(bg_services.services.video_stream_read, function(data)
+        pprint("video frame:")
     end)
 
     local base_path = dirtools.get_app_path()
-    uv.queue_work(bg_services.services.file_check, base_path, bg_services.services.pipe_write)
+    uv.queue_work(bg_services.services.file_check, "core.services.file_check", base_path, bg_services.services.file_check_write)
+    uv.queue_work(bg_services.services.video_stream, "core.services.video_stream", base_path, bg_services.services.video_stream_write)
 end
 
 --------------------------------------------------------------------------------------------------
@@ -305,6 +270,8 @@ runningState.Begin   = function(self)
     -- bins.bin_set_func( bins.bintype.BTYPE_OPAQUE, function(w, h)
     --     nk.snk_render(w, h)
     -- end, 1)
+
+    video_renderer.init()
 end
 
 -- --------------------------------------------------------------------------------------
@@ -349,15 +316,14 @@ runningState.Update     = function(self)
         end) )
     end
 
-    video_renderer.render_videos(renderer.dt)
-
-    threed_renderer.render_rects(renderer.dt)
     bins.update(renderer.dt)
 end
 
 -- --------------------------------------------------------------------------------------
 
 runningState.Render     = function(self, w, h)
+
+    threed_renderer.render_rects(renderer.dt)
 
     -- // Render 3D view rects here - will get rects from the docviews.
     bins.render(w, h)

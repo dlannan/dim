@@ -201,6 +201,7 @@ function Node:remove_view(root, view)
 end
 
 function Node:close_view(root, view)
+  if(view.doc and view.doc.on_close) then view.doc:on_close() end
   local do_close = function()
     self:remove_view(root, view)
   end

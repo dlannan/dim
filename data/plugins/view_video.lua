@@ -8,6 +8,10 @@ local utils   = require("lua.utils")
 local syntax = require "core.syntax"
 local utils   = require("lua.utils")
 
+sg              = require("sokol_gfx")
+sg              = require("sokol_nuklear")
+local nk        = sg
+
 local uv        = require('luv')
 local mpv       = require('ffi.libmpv')
 
@@ -39,16 +43,17 @@ end
 local videodoc_load = function(self, filename)
   local idx = find(filename, "files")
   if ( idx ) then
-    local video = video_renderer.load(filename)
-    if(video) then 
-      self.video = { 
-        video = video, 
+    video_renderer.load(filename)
+    self.video = { 
         vtype = videos.file_types[idx], 
         filename = filename
-      }
-      self.filename = filename
-      return true
+    }
+    self.filename = filename   
+    -- Notify mpv the video is closing!
+    self.on_close = function(self) 
+        video_renderer.close_video(self.filename)
     end
+    return true
   end
   return nil
 end
@@ -56,17 +61,48 @@ end
 tinsert(Doc.loaders, videodoc_load)
 
 local function videodocview_draw(self)
+
   if(self.doc.video) then 
     self.view:draw_background(style.background)
-    -- Work out aspect for video so it is always centered and correct aspect view
-    local video = self.doc.video
-    local video_aspect = 1.0
-    local doc_size = self.view.size
-    local doc_pos = self.view.position
+
+    if(video_renderer.ready == false) then return end
+    -- Work out aspect for video so it is always centered andcorrect aspect view
+    local video = video_renderer.videos[self.doc.filename]
+    if(video == nil) then return end
+
+    local video_aspect      = 1.0
+    local doc_size          = self.view.size
+    local doc_pos           = self.view.position
 
     local doc_width,  doc_height = doc_size.x, doc_size.y
     local doc_aspect = doc_width / doc_height
     local scaled_width, scaled_height
+
+    if(video.pixels and video.nk_img == nil) then 
+    
+        local sg_img_desc = ffi.new("sg_image_desc[1]", {})
+
+        -- sg_img_desc[0].render_target = true
+        sg_img_desc[0].width        = 1024
+        sg_img_desc[0].height       = 1024
+        sg_img_desc[0].pixel_format = sg.SG_PIXELFORMAT_RGBA8
+        sg_img_desc[0].sample_count = 1
+        sg_img_desc[0].label        = "video-image"
+        sg_img_desc[0].usage        = sg.SG_USAGE_STREAM
+        
+        sg_img_desc[0].data.subimage[0][0].ptr = video.pixels
+        sg_img_desc[0].data.subimage[0][0].size = 1024 * 1024 * 4
+        video.sg_img_desc           = sg_img_desc
+
+        video.sg_img = sg.sg_make_image(video.sg_img_desc)
+        -- // create a sokol-nuklear image object which associates an sg_image with an sg_sampler
+        video.img_desc              = ffi.new("snk_image_desc_t[1]")
+        video.img_desc[0].image     = video.sg_img
+
+        video.snk_img               = nk.snk_make_image(video.img_desc)
+        local nk_hnd                = nk.snk_nkhandle(video.snk_img)
+        video.nk_img                = nk.nk_image_handle(nk_hnd)
+    end      
 
     -- If the video is wider than the document
     if video_aspect > doc_aspect then
@@ -80,11 +116,11 @@ local function videodocview_draw(self)
     end
 
     if scaled_width > doc_width then
-      scaled_width = doc_width
-      scaled_height = scaled_width / video_aspect
+        scaled_width = doc_width
+        scaled_height = scaled_width / video_aspect
     elseif scaled_height > doc_height then
-      scaled_height = doc_height
-      scaled_width = scaled_height * video_aspect
+        scaled_height = doc_height
+        scaled_width = scaled_height * video_aspect
     end
 
     local x, y = doc_pos.x, doc_pos.y
@@ -94,7 +130,13 @@ local function videodocview_draw(self)
     if scaled_height < doc_height then
         y = (doc_height - scaled_height) / 2 + doc_pos.y
     end
-    -- video_renderer.video_render_update(video.video)
+
+    if(video.nk_img and video.pixels) then
+        -- sg.sg_update_image(video.sg_img, video.sg_img_desc[0].data)
+        local nk_hnd = nk.snk_nkhandle(video.snk_img)
+        video.nk_img = nk.nk_image_handle(nk_hnd)
+        renderer.draw_image(video.nk_img, x, y, scaled_width, scaled_height)
+    end
     return true 
   end
   return nil
