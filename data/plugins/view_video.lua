@@ -12,7 +12,6 @@ sg              = require("sokol_gfx")
 sg              = require("sokol_nuklear")
 local nk        = sg
 
-local uv        = require('luv')
 local mpv       = require('ffi.libmpv')
 
 local tinsert   = table.insert
@@ -64,12 +63,7 @@ local function videodocview_draw(self)
 
   if(self.doc.video) then 
     self.view:draw_background(style.background)
-
-    if(video_renderer.ready == false) then return end
-    -- Work out aspect for video so it is always centered andcorrect aspect view
-    local video = video_renderer.videos[self.doc.filename]
-    if(video == nil) then return end
-
+    local video = self.doc.video
     local video_aspect      = 1.0
     local doc_size          = self.view.size
     local doc_pos           = self.view.position
@@ -78,8 +72,9 @@ local function videodocview_draw(self)
     local doc_aspect = doc_width / doc_height
     local scaled_width, scaled_height
 
-    if(video.pixels and video.nk_img == nil) then 
-    
+    video.frame = video_renderer.get_frame(self.doc.filename)
+    if(video.frame and video.nk_img == nil) then 
+
         local sg_img_desc = ffi.new("sg_image_desc[1]", {})
 
         -- sg_img_desc[0].render_target = true
@@ -90,6 +85,8 @@ local function videodocview_draw(self)
         sg_img_desc[0].label        = "video-image"
         sg_img_desc[0].usage        = sg.SG_USAGE_STREAM
         
+        video.pixels = ffi.new("unsigned int[?]", 1024 * 1024)
+
         sg_img_desc[0].data.subimage[0][0].ptr = video.pixels
         sg_img_desc[0].data.subimage[0][0].size = 1024 * 1024 * 4
         video.sg_img_desc           = sg_img_desc
@@ -102,6 +99,8 @@ local function videodocview_draw(self)
         video.snk_img               = nk.snk_make_image(video.img_desc)
         local nk_hnd                = nk.snk_nkhandle(video.snk_img)
         video.nk_img                = nk.nk_image_handle(nk_hnd)
+
+        video_renderer.set_frame_buffer(video.filename, video.pixels)
     end      
 
     -- If the video is wider than the document
@@ -131,10 +130,11 @@ local function videodocview_draw(self)
         y = (doc_height - scaled_height) / 2 + doc_pos.y
     end
 
-    if(video.nk_img and video.pixels) then
+    if(video.nk_img and video.frame and video.frame.frame_ready == true) then
+
         -- sg.sg_update_image(video.sg_img, video.sg_img_desc[0].data)
-        local nk_hnd = nk.snk_nkhandle(video.snk_img)
-        video.nk_img = nk.nk_image_handle(nk_hnd)
+        -- local nk_hnd = nk.snk_nkhandle(video.snk_img)
+        -- video.nk_img = nk.nk_image_handle(nk_hnd)
         renderer.draw_image(video.nk_img, x, y, scaled_width, scaled_height)
     end
     return true 

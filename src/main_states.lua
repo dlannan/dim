@@ -25,6 +25,8 @@ local seq       = require("lua.engine.sequencer")
 local imageutils 	= require("lua.gltfloader.image-utils")
 
 local msgpack   = require "lua.msgpack"
+local mputils   = require "lua.msgpack-utils"
+
 local uv        = require('luv')
 local services  = require("data.core.services.services")
 
@@ -73,34 +75,41 @@ uv.signal_start(signal, "sigint", function(signame)
 end)
 
 --------------------------------------------------------------------------------------------------
-
+-- 
 bg_services.run = function(core)
-    uv.set_process_title("bg_services")
   
-    bg_services.services.fds = assert(uv.pipe({nonblock=true}, {nonblock=true}))
-    assert(uv.guess_handle(bg_services.services.fds.read) == "pipe")
-    assert(uv.guess_handle(bg_services.services.fds.write) == "pipe")
-    print("Making service pipes...")
-    bg_services.services.file_check_read, bg_services.services.file_check_write = services.setup_pipes(bg_services.services.fds)
-    bg_services.services.video_stream_read, bg_services.services.video_stream_write = services.setup_pipes(bg_services.services.fds)
+    bg_services.services.filecheck = services.new_tcp_service()
+    bg_services.services.vidstream = services.new_tcp_service(true)
+    -- pprint(bg_services.services.filecheck)
+    -- pprint(bg_services.services.vidstream)
+    
+    local fc_output = bg_services.services.filecheck.tcps
+    local vs_output = bg_services.services.vidstream.tcps.out
+    local vs_input = bg_services.services.vidstream.tcps.inp
+    local vs_input_fds = bg_services.services.vidstream.fds.inp
+
+    -- Tell video renderer interface the pipe handles
+    video_renderer.input_writer_fd = vs_input.read
+    video_renderer.output_reader_fd = vs_output.write
+
     print("Making service workers...")
     -- Background Services
-    bg_services.services.file_check = services.make_worker()
-    bg_services.services.video_stream = services.make_worker()
+    bg_services.services.filecheck.wid = services.make_worker()
+    bg_services.services.vidstream.wid = services.make_worker()
 
     print("Making service readers...")
-    services.make_reader_msgpack(bg_services.services.file_check_read, function(data)
+    mputils.read_chunk(fc_output.read, function(data)
         pprint("Project files.. updating...")
         core.project_files = data
-    end)
+    end) 
 
-    services.make_reader_msgpack(bg_services.services.video_stream_read, function(data)
-        pprint("video frame:")
-    end)
+    -- mputils.read_chunk(vs_output.read, function(data)
+    --     pprint("video frame:")
+    -- end)
 
     local base_path = dirtools.get_app_path()
-    uv.queue_work(bg_services.services.file_check, "core.services.file_check", base_path, bg_services.services.file_check_write)
-    uv.queue_work(bg_services.services.video_stream, "core.services.video_stream", base_path, bg_services.services.video_stream_write)
+    bg_services.services.filecheck.wid:queue("core.services.file_check", base_path, nil, fc_output.write)
+    bg_services.services.vidstream.wid:queue("core.services.video_stream", base_path, vs_input_fds[2], vs_output.read)
 end
 
 --------------------------------------------------------------------------------------------------
@@ -323,6 +332,7 @@ end
 
 runningState.Render     = function(self, w, h)
 
+    video_renderer.poll()
     threed_renderer.render_rects(renderer.dt)
 
     -- // Render 3D view rects here - will get rects from the docviews.

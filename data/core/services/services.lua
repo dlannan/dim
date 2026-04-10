@@ -6,35 +6,34 @@
 --    a worker makes a new pipe to send to/from its worker to the main bgservices process
 --    the tools here are to help with pipe setup, and worker setup.
 
-local msgpack   = require "lua.msgpack"
 local uv        = require('luv')
 
 --------------------------------------------------------------------------------------------------
 
-local function endsWith(str, suffix)
-    return str:sub(-#suffix) == suffix
+local function setup_pipes( fds, pipes )
+    pipes.read = assert(uv.new_pipe())
+    pipes.read:open(fds.read)
+    pipes.write = assert(uv.new_pipe())
+    pipes.write:open(fds.write)
 end
 
 --------------------------------------------------------------------------------------------------
 
-local function startsWith(str, suffix)
-    return str:sub(1, #suffix) == suffix
-end
-
---------------------------------------------------------------------------------------------------
-
-local function setup_pipes( fds )
-    local pipe_read = assert(uv.new_pipe())
-    pipe_read:open(fds.read)
-    local pipe_write = assert(uv.new_pipe())
-    pipe_write:open(fds.write)
-    return pipe_read, pipe_write
+local function setup_tcps( fds, tcps, no_read )
+    tcps.read = assert(uv.new_tcp())
+    tcps.read:open(fds[1])
+    if(no_read == nil) then 
+        tcps.write = assert(uv.new_tcp())
+        tcps.write:open(fds[2])
+    end
 end
 
 --------------------------------------------------------------------------------------------------
 
 local function make_worker()
-    return uv.new_work(function(service_filename, base_path, pipe_writer)
+
+    local worker_id = uv.new_work(
+    function(service_filename, base_path, pipes_read, pipes_write)
         
         package.path      = package.path..";"..base_path.."\\data\\?.lua"
         SCALE = 1.0
@@ -42,65 +41,81 @@ local function make_worker()
         local dirtools      = require("tools.vfs.dirtools").init("dim")
         local uv            = require('luv')
         local pp            = require("lua.pretty-print")
+        local t             = uv.thread_self()
 
         require("src.system")
         require("src.platform")
 
-        local file_check  = require(service_filename)
-        file_check.init(pipe_writer)
+        local worker_service  = require(service_filename) 
+        worker_service.init(pipes_read, pipes_write)
         local idle = uv.new_idle()
         idle:start(function()
-          file_check.run()
+            worker_service.run()
         end)
         uv.run("default")
     end, function() 
         uv.walk(uv.close)
         uv.run() 
     end)
+    return worker_id
+end
+
+--------------------------------------------------------------------------------------------------
+-- pipes based service
+local function new_pipes_service( rw )
+
+    local pipes = nil 
+    local fds = nil
+    if(rw) then 
+        local fds_in = assert(uv.pipe({nonblock=true}, {nonblock=true}))
+        assert(uv.guess_handle(fds_in.read) == "pipe")
+        assert(uv.guess_handle(fds_in.write) == "pipe")
+        local fds_out = assert(uv.pipe({nonblock=true}, {nonblock=true}))
+        assert(uv.guess_handle(fds_out.read) == "pipe")
+        assert(uv.guess_handle(fds_out.write) == "pipe")
+        fds = { out = fds_out, inp = fds_in }
+        pipes = { out = {}, inp = {} }
+        setup_pipes(fds_out, pipes.out)
+        setup_pipes(fds_in, pipes.inp)
+    else 
+        fds = assert(uv.pipe({nonblock=true}, {nonblock=true}))
+        assert(uv.guess_handle(fds.read) == "pipe")
+        assert(uv.guess_handle(fds.write) == "pipe")
+        pipes = {}
+        setup_pipes(fds, pipes)
+    end
+    return { fds = fds, pipes = pipes }
+end
+
+--------------------------------------------------------------------------------------------------
+-- tcp based service
+local function new_tcp_service( rw )
+
+    local tcps = nil 
+    local fds = nil
+    if(rw) then 
+        local fds_in = assert(uv.socketpair("stream", nil, {nonblock=true}, {nonblock=true}))
+        local fds_out = assert(uv.socketpair("stream", nil, {nonblock=true}, {nonblock=true}))
+        fds = { out = fds_out, inp = fds_in }
+        tcps = { out = {}, inp = {} }
+        setup_tcps(fds_out, tcps.out)
+        setup_tcps(fds_in, tcps.inp, true)
+    else 
+        fds = assert(uv.socketpair("stream", nil, {nonblock=true}, {nonblock=true}))
+        tcps = {}
+        setup_tcps(fds, tcps)
+    end
+    return { fds = fds, tcps = tcps }
 end
 
 --------------------------------------------------------------------------------------------------
 
-local function make_reader_msgpack(reader, output_func)
-
-    local reading       = 0
-    local reading_done  = false
-    local total         = ""
-
-    reader:read_start(function(err, chunk)
-        assert(not err, err)
-        if chunk == nil then 
-            return
-        elseif startsWith(chunk, "MSGPACK_START") then
-            pprint("[Info] Project directory starting scan.")
-            chunk = string.sub(chunk, 14)
-            reading = 1
-        elseif endsWith(chunk, "MSGPACK_END") then
-            pprint("[Info] Project directory scan complete.")
-            chunk = string.sub(chunk, 1, -12)
-            reading_done = true
-        else 
-            reading = reading + 1
-        end
-        if(reading > 0) then 
-            total = total..chunk
-        end 
-        if(reading_done == true) then 
-            if(output_func) then output_func(msgpack.unpack(total)) end
-            reading_done = false
-            total = ""
-            reading = 0
-        end
-    end)
-end 
-
---------------------------------------------------------------------------------------------------
-
 return {
-    setup_pipes         = setup_pipes,
-    make_worker         = make_worker,
 
-    make_reader_msgpack = make_reader_msgpack,
+    new_pipes_service   = new_pipes_service,
+    new_tcp_service   = new_tcp_service,
+
+    make_worker         = make_worker,
 }
 
 

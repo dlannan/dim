@@ -78,7 +78,7 @@ end
 
 -- ---------------------------------------------------------------------------
 
-function tmerge(t1, t2)
+local function tmerge(t1, t2)
 	if(t1 == nil) then t1 = {} end 
 	if(t2 == nil) then return t1 end 
 	
@@ -139,7 +139,7 @@ end
 -- Deep Copy
 -- This is good for instantiating tables/objects without too much effort :)
 
-function deepcopy(t)
+local function deepcopy(t)
 	if type(t) ~= 'table' then return t end
 	local mt = getmetatable(t)
 	local res = {}
@@ -293,7 +293,7 @@ end
 
 -- ---------------------------------------------------------------------------
 
-function urldecode(s)
+local function urldecode(s)
 	s = s:gsub('+', ' ')
 		 :gsub('%%(%x%x)', function(h)
 							 return string.char(tonumber(h, 16))
@@ -301,7 +301,7 @@ function urldecode(s)
 	return s
 end
   
-function parseurl(s)
+local function parseurl(s)
 	if(s == nil) then return {} end
 	local ans = {}
 	for k,v in s:gmatch('([^&=?]-)=([^&=?]+)' ) do
@@ -323,7 +323,6 @@ end
 -- ---------------------------------------------------------------------------
 return {
 
-	getdirs 		= getdirs,
 	csplit			= csplit,
 	cleanstring		= cleanstring,
 
