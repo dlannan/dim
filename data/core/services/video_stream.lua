@@ -15,7 +15,7 @@ local config        = require "core.config"
 local utils         = require("lua.utils")
 local dirtools      = require("tools.vfs.dirtools")
 
-local mpv           = require('ffi.libmpv')
+-- local mpv           = require('ffi.libmpv')
 local msgpack       = require "lua.msgpack"
 local mputils       = require "lua.msgpack-utils"
 
@@ -34,7 +34,7 @@ local video_mgr      = {
 
     ctr             = 0,
     input_writer_fd = nil,
-    output_writer_fd = nil,
+    output_writer   = nil,
 
     cmd             = nil,
 }
@@ -44,7 +44,6 @@ local video_mgr      = {
 
 local function on_mpv_events(ctx)
 end
-
 
 -- --------------------------------------------------------------------------------------
 -- This loads video ready for playing, sets up window and doc, and holds in pause mode.
@@ -106,9 +105,9 @@ video_mgr.do_load = function(filename)
     -- This makes a uid that tells the handler what filename was being processed
     local ctx = ffi.new("int[1]", { 0 })
 
-    mpv.mpv_set_wakeup_callback(mpv_handle, function(ctx)
-        print("wakeup")
-    end, ctx)
+    -- mpv.mpv_set_wakeup_callback(mpv_handle, function(ctx)
+    --     print("wakeup")
+    -- end, ctx)
     
     -- pprint(filename, mpv_handle, mpv_rd, ctx[0])
 
@@ -127,11 +126,7 @@ video_mgr.do_load = function(filename)
     -- end)
     -- pprint("[Process] Video Player Spawned: ", handle, " PID: "..pid)
   
-    local load_param = ffi.new("char[8]")
-    ffi.copy( load_param, ffi.string("loadfile"), 8)
-    local filename_param = ffi.new("char[?]", #filename)
-    ffi.copy( filename_param, ffi.string(filename), #filename )
-    local cmd = ffi.new("const char *[3]", { load_param, filename_param, nil})
+    local cmd = ffi.new("const char *[3]", { "loadfile",  ffi.string(filename), nil})
     local video = { 
         handle        = mpv_handle, 
         mpv_rd        = mpv_rd, -- store this in case gc collects it!!
@@ -147,13 +142,14 @@ video_mgr.do_load = function(filename)
     video_mgr.videos[filename] = video
 
     mpv.mpv_render_context_set_update_callback(mpv_rd, function(ctx)
-        print("update")
+        -- print("update")
         local ready = ffi.cast("int *", ctx)
         ready[0]  = 1
     end, ctx)
 
     -- // Play this file.
-    mpv.mpv_command_async(mpv_handle, 0, cmd)
+    local err = mpv.mpv_command_async(mpv_handle, 0, cmd)
+    if(err < 0) then print("[libmpv] Error: ", ffi.string(mpv.mpv_error_string(err))) end
     -- mpv.mpv_command(mpv_handle, cmd)
 end
 
@@ -161,7 +157,7 @@ end
 
 video_mgr.load = function(filename)
     if(filename) then 
-        video_mgr.do_load(filename)
+        -- video_mgr.do_load(filename)
     end
 end 
 
@@ -171,11 +167,11 @@ video_mgr.video_render_update = function(video)
 
     local flags = mpv.mpv_render_context_update(video.reader[0])
     if (bit.band(flags, mpv.MPV_RENDER_UPDATE_FRAME) > 0) then
-        print(string.format("flags: 0x%02x   0x%02x", flags, mpv.MPV_RENDER_UPDATE_FRAME))
+        -- print(string.format("flags: 0x%02x   0x%02x", flags, mpv.MPV_RENDER_UPDATE_FRAME))
         -- print("[Info] Video need redraw frame.")
         local res = mpv.mpv_render_context_render(video.reader[0], video.render_params)
         if(res < 0) then 
-            pprint("[libmpv] Error: ", ffi.string(mpv.mpv_error_string(res)))
+            pprint("[libmpv] Error: ", res) -- , ffi.string(mpv.mpv_error_string(res)))
             video.closing = true -- close broken videos
         end
     end
@@ -185,6 +181,7 @@ end
 
 video_mgr.render_videos = function()
 
+    -- Remove closing videos first (so they arent processed)
     for k,v in pairs(video_mgr.videos) do 
         if(v) then 
             video_mgr.video_render_update(v) 
@@ -196,6 +193,7 @@ video_mgr.render_videos = function()
         end  
     end
 
+    -- Process incoming frames so they can be sent
     for k,v in pairs(video_mgr.videos) do 
         if(v) then 
             if(v.ctx[0] == 1) then
@@ -255,9 +253,9 @@ local function video_stream_thread()
         for k, frame in pairs(video_mgr.frames) do
             local video = video_mgr.videos[k]
             if video and video.next_frame == true and frame.data then 
-                -- print("sending frame: ", k)
-                if(video_mgr.output_writer_fd) then 
-                    mputils.write_chunk(video_mgr.output_writer_fd, { filename = frame.filename, data = frame.data })
+                print("sending frame: ", k)
+                if(video_mgr.output_writer) then 
+                    mputils.write_chunk(video_mgr.output_writer, { filename = frame.filename, data = frame.data })
                 end
                 video.next_frame = false
                 frame.data = nil
@@ -265,28 +263,29 @@ local function video_stream_thread()
         end
 
         -- wait roughly 60Hz
-        uv.sleep(16)
+        uv.sleep(0.010)
     end
 end
 
 --------------------------------------------------------------------------------------------------
     
-local function init(input_reader, output_writer)
-    video_mgr.output_writer_fd = output_writer
+local function init(input_reader_fd, output_writer)
+    video_mgr.output_writer = output_writer
     -- video_mgr.input_reader_fd = input_reader
     PATHSEP = package.config:sub(1, 1)
 
     pprint(output_writer, uv.tcp_getpeername(output_writer))
 
-    if(input_reader) then 
-        video_mgr.input_reader_fd = assert(uv.new_tcp())
-        video_mgr.input_reader_fd:open(input_reader) 
-        mputils.read_chunk(video_mgr.input_reader_fd, function(data)
-            pprint("Recived pipe input:", data)    
+    if(input_reader_fd) then 
+        video_mgr.input_reader = assert(uv.new_tcp())
+        video_mgr.input_reader:open(input_reader_fd) 
+
+        mputils.read_chunk(video_mgr.input_reader, function(data)
+            -- pprint("Recived pipe input:", data)    
             if(on_command) then on_command(data) end
         end)
     end    
-    pprint(video_mgr.input_reader_fd, uv.tcp_getpeername(video_mgr.input_reader_fd))
+    pprint(video_mgr.input_reader, uv.tcp_getpeername(video_mgr.input_reader))
     video_mgr.running = true
 end
 

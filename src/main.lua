@@ -34,8 +34,6 @@ local mainstates    = require("src.main_states")
 
 local uv            = require('luv')
 
-local mpv           = require('ffi.libmpv')
-
 -- package.path    = package.path..";.\\lua\\dynasm\\?.lua"
 -- package.path    = package.path..";.\\lua\\dynasm\\?.dasl"
 -- package.cpath   = package.cpath..";.\\lua\\dynasm\\bin\\mingw64\\?.dll"

@@ -1,11 +1,27 @@
 
 local msgpack           = require "lua.msgpack"
+local uv                = require("luv")
 
 local TAG_START         = "MSGPACK_START"
 local TAG_END           = "MSGPACK_END"
 
 local TAG_START_LEN     = #TAG_START + 1
 local TAG_END_LEN       = #TAG_END + 1
+
+--------------------------------------------------------------------------------------------------
+
+local function try_reader(fn, ...)
+    local err
+    local ok, res = xpcall(fn, function(msg)
+        local item = core.error("%s", msg)
+        item.info = debug.traceback(nil, 2):gsub("\t", "")
+        err = msg
+    end, ...)
+    if ok then
+        return true, res
+    end
+    return false, err
+end
 
 --------------------------------------------------------------------------------------------------
 
@@ -24,29 +40,44 @@ end
 local function read_chunk(reader, output_func)
 
     assert(reader, "msgpack reader should not be nil!!")
+
     local reading       = 0
-    local reading_done  = false
+    local reading_done  = nil
     local total         = ""
 
     reader:read_start(function(err, chunk)
         assert(not err, err)
         if chunk == nil then 
             return
-        elseif startsWith(chunk, TAG_START) then
+        end 
+        -- There may be multiple blocks to read within a single chunk!
+        if startsWith(chunk, TAG_START) then
             chunk = string.sub(chunk, TAG_START_LEN)
             reading = 1
-        elseif endsWith(chunk, TAG_END) then
+            for block in string.gmatch(chunk, string.format("%s(.-)%s", TAG_START, TAG_END)) do 
+                if(output_func) then 
+                    -- print(total)
+                    local data = msgpack.unpack(block)
+                    output_func(data) 
+                end    
+                chunk = ""
+            end
+        end
+        if endsWith(chunk, TAG_END) then
             chunk = string.sub(chunk, 1, -TAG_END_LEN)
             reading_done = true
-        else 
-            reading = reading + 1
-        end
+        end 
+        reading = reading + 1
         if(reading > 0) then 
             total = total..chunk
         end 
-        if(reading_done == true) then 
-            if(output_func) then output_func(msgpack.unpack(total)) end
-            reading_done = false
+        if(reading_done) then 
+            if(output_func) then 
+                -- print(total)
+                local data = msgpack.unpack(total)
+                output_func(data) 
+            end
+            reading_done = nil
             total = ""
             reading = 0
         end

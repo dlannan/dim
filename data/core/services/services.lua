@@ -19,13 +19,10 @@ end
 
 --------------------------------------------------------------------------------------------------
 
-local function setup_tcps( fds, tcps, no_read )
-    tcps.read = assert(uv.new_tcp())
-    tcps.read:open(fds[1])
-    if(no_read == nil) then 
-        tcps.write = assert(uv.new_tcp())
-        tcps.write:open(fds[2])
-    end
+local function add_tcp_stream( fd )
+    local tcp_stream = assert(uv.new_tcp())
+    tcp_stream:open(fd)
+    return tcp_stream
 end
 
 --------------------------------------------------------------------------------------------------
@@ -89,22 +86,14 @@ end
 
 --------------------------------------------------------------------------------------------------
 -- tcp based service
-local function new_tcp_service( rw )
+-- Fundamentally sockets are connected as sock1 -> sock2
+-- If you need sock2 -> sock1 then just write and read from the opposite sockets
+local function new_tcp_service( no_read, no_write )
 
-    local tcps = nil 
-    local fds = nil
-    if(rw) then 
-        local fds_in = assert(uv.socketpair("stream", nil, {nonblock=true}, {nonblock=true}))
-        local fds_out = assert(uv.socketpair("stream", nil, {nonblock=true}, {nonblock=true}))
-        fds = { out = fds_out, inp = fds_in }
-        tcps = { out = {}, inp = {} }
-        setup_tcps(fds_out, tcps.out)
-        setup_tcps(fds_in, tcps.inp, true)
-    else 
-        fds = assert(uv.socketpair("stream", nil, {nonblock=true}, {nonblock=true}))
-        tcps = {}
-        setup_tcps(fds, tcps)
-    end
+    local tcps = { sock1 = {}, sock2 = {} } 
+    local fds = assert(uv.socketpair("stream", nil, {nonblock=true}, {nonblock=true}))
+    if(no_read == nil) then tcps.sock1 = add_tcp_stream( fds[1] ) end
+    if(no_write == nil) then tcps.sock2 = add_tcp_stream( fds[2] ) end
     return { fds = fds, tcps = tcps }
 end
 
@@ -113,7 +102,9 @@ end
 return {
 
     new_pipes_service   = new_pipes_service,
-    new_tcp_service   = new_tcp_service,
+    new_tcp_service     = new_tcp_service,
+
+    add_tcp_stream      = add_tcp_stream,
 
     make_worker         = make_worker,
 }

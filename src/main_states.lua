@@ -47,8 +47,8 @@ local coreInitState  = smgr:NewState()
 local runningState   = smgr:NewState()
 
 --------------------------------------------------------------------------------------------------
-
-local bg_services = {
+-- Background processing (some may be threaded)
+local bgp = {
 
     services    = {
         file_check    = nil,
@@ -76,45 +76,48 @@ end)
 
 --------------------------------------------------------------------------------------------------
 -- 
-bg_services.run = function(core)
+bgp.run = function(core)
   
-    bg_services.services.filecheck = services.new_tcp_service()
-    bg_services.services.vidstream = services.new_tcp_service(true)
-    -- pprint(bg_services.services.filecheck)
-    -- pprint(bg_services.services.vidstream)
+    bgp.services.filecheck = services.new_tcp_service()
+    bgp.services.vidstream = { inp = services.new_tcp_service(nil, true), out = services.new_tcp_service() }
+    -- pprint(bgp.services.filecheck)
+    -- pprint(bgp.services.vidstream)
     
-    local fc_output = bg_services.services.filecheck.tcps
-    local vs_output = bg_services.services.vidstream.tcps.out
-    local vs_input = bg_services.services.vidstream.tcps.inp
-    local vs_input_fds = bg_services.services.vidstream.fds.inp
+    local fc_output = bgp.services.filecheck.tcps
+    local vs_output = bgp.services.vidstream.out.tcps
+    local vs_input = bgp.services.vidstream.inp.tcps
+    local vs_input_fds = bgp.services.vidstream.inp.fds
 
     -- Tell video renderer interface the pipe handles
-    video_renderer.input_writer_fd = vs_input.read
-    video_renderer.output_reader_fd = vs_output.write
+    pprint("VIDEO_RENDERER INIT>>>>>")
+    video_renderer.input_writer_fd = vs_input.sock1
+    video_renderer.output_reader_fd = vs_output.sock1
+    pprint(vs_input.sock1, vs_input.sock2)
+    pprint(vs_output.sock1, vs_output.sock2)
 
     print("Making service workers...")
     -- Background Services
-    bg_services.services.filecheck.wid = services.make_worker()
-    bg_services.services.vidstream.wid = services.make_worker()
+    bgp.services.filecheck.wid = services.make_worker()
+    bgp.services.vidstream.wid = services.make_worker()
 
     print("Making service readers...")
-    mputils.read_chunk(fc_output.read, function(data)
+    mputils.read_chunk(fc_output.sock1, function(data)
         pprint("Project files.. updating...")
         core.project_files = data
     end) 
 
-    -- mputils.read_chunk(vs_output.read, function(data)
+    -- mputils.read_chunk(vs_output.write, function(data)
     --     pprint("video frame:")
     -- end)
 
     local base_path = dirtools.get_app_path()
-    bg_services.services.filecheck.wid:queue("core.services.file_check", base_path, nil, fc_output.write)
-    bg_services.services.vidstream.wid:queue("core.services.video_stream", base_path, vs_input_fds[2], vs_output.read)
+    bgp.services.filecheck.wid:queue("core.services.file_check", base_path, nil, fc_output.sock2)
+    bgp.services.vidstream.wid:queue("core.services.video_stream", base_path, vs_input_fds[2], vs_output.sock2)
 end
 
 --------------------------------------------------------------------------------------------------
 
-bg_services.stop = function(core)
+bgp.stop = function(core)
     uv.stop()
 end
 
@@ -200,8 +203,8 @@ warmupState.Begin   = function(self)
 
     -- Should have some sort of default configh ere
     local newcam = cammgr.add("gui_camera", 60.0, 1, 0.01, 12.0) 
-    bg_services.render.gui_passid = bins.pass_add(main_pass, bins.BTYPE_GUI)  
-    cammgr.add_pass("gui_camera", bg_services.render.gui_passid)
+    bgp.render.gui_passid = bins.pass_add(main_pass, bins.BTYPE_GUI)  
+    cammgr.add_pass("gui_camera", bgp.render.gui_passid)
     bins.camera_add(newcam.id)
 
     -- Add a gui bin pass render
@@ -271,7 +274,7 @@ end
 
 runningState.Begin   = function(self)
 
-    bg_services.run(core)
+    bgp.run(core)
 
     core.recv_message( "PreRender" , runningState.PreRender)
     core.recv_message( "PostRender" , runningState.PostRender)
@@ -342,7 +345,7 @@ end
 -- --------------------------------------------------------------------------------------
 
 runningState.Finish     = function(self)
-    bg_services.stop()
+    bgp.stop()
     nk.snk_shutdown()
     sg.sg_shutdown()
     core.quit()

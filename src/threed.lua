@@ -16,8 +16,6 @@ local gltfloader    = require("lua.gltfloader.gltfloader")
 
 local cameramgr     = require("lua.engine.camera_manager")
 
-local mpv           = require('ffi.libmpv')
-
 local tinsert       = table.insert
 local tremove       = table.remove
 
