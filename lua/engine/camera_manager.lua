@@ -23,21 +23,24 @@ local camera_manager   = {
 
 -- --------------------------------------------------------------------------------------
 
+
+-- --------------------------------------------------------------------------------------
+
 local function make_cam(vfov, aspect, near, far)
 
     local cam = {
-        proj        = hmm.HMM_Perspective(vfov, aspect, near, far),
-        view        = hmm.HMM_Mat4d(1.0),
-        view_proj   = hmm.HMM_Mat4d(1.0),
-        mvp         = hmm.HMM_Mat4d(1.0),
+        proj        = hmm.HMM_Perspective_RH_NO(math.rad(vfov), aspect, near, far),
+        view        = hmm.HMM_M4D(1.0),
+        view_proj   = hmm.HMM_M4D(1.0),
+        mvp         = hmm.HMM_M4D(1.0),
 
-        position    = hmm.HMM_Vec3(0,0,0),
-        rotation    = hmm.HMM_Quaternion(0, 0, 0, 1),
-        velocity    = hmm.HMM_Vec3(0,0,0),
-        accel       = hmm.HMM_Vec3(0,0,0),
+        position    = hmm.HMM_V3(0,0,0),
+        rotation    = hmm.HMM_Q(0, 0, 0, 1),
+        velocity    = hmm.HMM_V3(0,0,0),
+        accel       = hmm.HMM_V3(0,0,0),
 
-        viewport    = hmm.HMM_Vec4(0, 0, sapp.sapp_width(), sapp.sapp_height()),    -- View space dimensions of the view
-        scissor     = hmm.HMM_Vec4(0, 0, sapp.sapp_width(), sapp.sapp_height()),    -- How to scissor/clip view
+        viewport    = hmm.HMM_V4(0, 0, sapp.sapp_width(), sapp.sapp_height()),    -- View space dimensions of the view
+        scissor     = hmm.HMM_V4(0, 0, sapp.sapp_width(), sapp.sapp_height()),    -- How to scissor/clip view
 
         aspect      = aspect,
         vfov        = vfov,
@@ -67,6 +70,13 @@ local function add( name, vfov, aspect, near, far )
     return newcam
 end
 
+
+-- --------------------------------------------------------------------------------------
+
+local function remove( name )
+    camera_manager.cameras[name] = nil
+end 
+
 -- --------------------------------------------------------------------------------------
 
 local function add_default(name)
@@ -90,8 +100,7 @@ end
 local function set_aspect(name , aspect) 
     local cam = camera_manager.cameras[name]
     if(cam and aspect ~= cam.aspect) then 
-        local proj        = hmm.HMM_Perspective(cam.vfov, aspect, cam.near, cam.far)
-        cam.proj = proj 
+        cam.proj = hmm.HMM_Perspective_RH_NO(math.rad(cam.vfov), aspect, cam.near, cam.far)
         cam.aspect = aspect 
     end
 end
@@ -103,7 +112,7 @@ local function set_nearfar(name , near, far)
     near = near or cam.near 
     far = far or cam.far 
     if(cam and (near ~= cam.near or far ~= far)) then 
-        local proj        = hmm.HMM_Perspective(cam.vfov, cam.aspect, near, far)
+        local proj        = hmm.HMM_Perspective_RH_NO(math.rad(cam.vfov), cam.aspect, near, far)
         cam.proj = proj 
         cam.near = near 
         cam.far  = far
@@ -158,7 +167,7 @@ local function get_view( name )
     if(cam) then 
         return cam.view 
     end
-    return hmm.HMM_Mat4d(1.0)
+    return hmm.HMM_M4D(1.0)
 end
 
 -- --------------------------------------------------------------------------------------
@@ -168,7 +177,7 @@ local function get_projection( name )
     if(cam) then 
         return cam.proj
     end
-    return hmm.HMM_Mat4d(1.0)
+    return hmm.HMM_M4D(1.0)
 end
 
 -- --------------------------------------------------------------------------------------
@@ -178,7 +187,7 @@ local function get_view_proj( name )
     if(cam) then 
         return cam.view_proj
     end
-    return hmm.HMM_Mat4d(1.0)
+    return hmm.HMM_M4D(1.0)
 end
 
 -- --------------------------------------------------------------------------------------
@@ -240,8 +249,8 @@ local function lookat( name, eye, target, up )
         cam.position    = eye 
         cam.target      = target 
         cam.up          = up 
-        cam.view        = hmm.HMM_LookAt(eye, target, up)
-        cam.view_proj   = hmm.HMM_MultiplyMat4(cam.proj, cam.view)
+        cam.view        = hmm.HMM_LookAt_RH(eye, target, up)
+        cam.view_proj   = hmm.HMM_MulM4(cam.proj, cam.view)
     end 
 end
 
@@ -250,8 +259,9 @@ end
 local function get_mvp(name, model_mat)
     local cam = camera_manager.cameras[name]
     if(cam) then         
-        cam.mvp     = hmm.HMM_MultiplyMat4(cam.view_proj, model_mat)
-        return cam.mvp 
+        cam.view    = hmm.HMM_LookAt_RH(cam.position, cam.target, cam.up)
+        cam.mvp     = hmm.HMM_MulM4(cam.view_proj, model_mat)
+        return cam.mvp
     end 
     return nil 
 end
@@ -288,6 +298,7 @@ return {
     add_default         = add_default,
     add_pass            = add_pass,
     add                 = add,
+    remove              = remove,
 
     is_active           = is_active,
 
@@ -312,6 +323,8 @@ return {
     apply               = apply,
     delete              = delete,
     lookat              = lookat,
+
+    cameras             = function() return camera_manager.cameras end,
 
     cameras_active      = camera_manager.cameras_active,
 }

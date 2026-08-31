@@ -73,8 +73,8 @@ end
 
 
 function DocView:try_close(do_close)
-  if self.doc:is_dirty()
-  and #core.get_views_referencing_doc(self.doc) == 1 then
+  if(self.doc.on_close) then self.doc:on_close(self.doc) end
+  if self.doc:is_dirty() and #core.get_views_referencing_doc(self.doc) == 1 then
     core.command_view:enter("Unsaved Changes; Confirm Close", function(_, item)
       if item.text:match("^[cC]") then
         do_close()

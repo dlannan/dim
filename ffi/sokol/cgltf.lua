@@ -1,7 +1,8 @@
 local ffi  = require( "ffi" )
 
-local cgltf_filename = _G.CGLTF_DLL or "cgltf_dll"
-local libs = ffi_cgltf or {
+local cgltf_filename = "cgltf_dll"
+
+local libs = {
    OSX     = { x64 = cgltf_filename.."_macos.so", arm64  = cgltf_filename.."_macos_arm64.so" },
    Windows = { x64 = cgltf_filename..".dll" },
    Linux   = { x64 = "./bin/linux/lib"..cgltf_filename..".so", arm = "./bin/linux/lib"..cgltf_filename..".so" },
@@ -10,7 +11,7 @@ local libs = ffi_cgltf or {
    Other   = { x64 = cgltf_filename..".so" },
 }
 
-local lib  = cgltf or libs[ ffi.os ][ ffi.arch ]
+local lib  = libs[ ffi.os ][ ffi.arch ]
 local cgltf   = ffi.load( lib )
 
 -- load lcpp (ffi.cdef wrapper turned on per default)

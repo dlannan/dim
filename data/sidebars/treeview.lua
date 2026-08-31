@@ -195,9 +195,10 @@ function TreeView:on_mouse_released(button, x, y)
   elseif self.hovered_item.type == "dir" then
     self.hovered_item.expanded = not self.hovered_item.expanded
   else
-    if button == "left" and core.root_view.dragged_released == nil then 
+    if button == "left" and core.root_view.dragged_divider == nil then 
       core.try(function()
-        core.root_view:open_doc(core.open_doc(self.hovered_item.filename))
+        local doc = core.open_doc(self.hovered_item.filename)
+        core.root_view:open_doc(doc)
       end)
     end
   end

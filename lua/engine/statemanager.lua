@@ -365,6 +365,7 @@ function StateManager:ExitState()
         end        
         self.states[self.current]:Finish()
         self.states[self.current].init = false
+        pprint("Exiting state..."..self.current)
         return
     end
 
@@ -386,6 +387,7 @@ function StateManager:ExitState()
         self.states[self.current]:Finish()
         self.states[self.current].init = false
 
+        pprint("Exiting state..."..self.current)
         local name = self.stack[self.jumped]
         state = self.states[name]
 

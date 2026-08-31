@@ -9,12 +9,9 @@ local hutils        = require("hmm_utils")
 local ffi           = require("ffi")
 
 local utils         = require("lua.utils")
-local dirtools      = require("tools.vfs.dirtools")
-
-local geomutils     = require("lua.gltfloader.geometry-utils")
-local gltfloader    = require("lua.gltfloader.gltfloader")
 
 local cameramgr     = require("lua.engine.camera_manager")
+local geomutils     = require("lua.loaders.geometry-utils")
 
 local tinsert       = table.insert
 local tremove       = table.remove
@@ -25,7 +22,7 @@ local MAX_STATES            = 1024
 local CAM_DISTANCE          = 6.0 
 
 -- --------------------------------------------------------------------------------------
-
+-- This is a global - prob not a great idea, but there should only ever be one per process!
 threed_renderer     = {
     render_queue        = {},
     model_load_queue    = {},
@@ -35,14 +32,12 @@ threed_renderer     = {
     --  has had its data initialised
     model_files         = {},
 
-    videos              = {},
-
     default_cam         = cameramgr.add("default", 60.0, 1, 0.01, CAM_DISTANCE * 2),
 } 
 
 -- --------------------------------------------------------------------------------------
 
-local shc       = require("tools.shader_compiler.shc_compile").init( "dim", false )
+local shc       = require("tools.shader_compiler.shc_compile").init( "worldbuilder", false )
 local shader    = nil
 
 -- --------------------------------------------------------------------------------------
@@ -129,46 +124,6 @@ threed_renderer.make_cube = function()
     return { state = state, binding = binding }
 end
 
-
--- --------------------------------------------------------------------------------------
-
-local function load_gltf(filename, params)
-
-    local dir, fname, extension = dirtools.fileparts(filename)
-    local asset = {
-        path = "",
-        folder = dir,
-        name = fname,
-        asset = fname,
-        format = extension
-    }
-
-	-- print(asset.path)
-	-- print(asset.asset)
-	-- print(asset.folder)
-	-- print(asset.format)
-
-	local assetfilename = filename
-	local gltf_data = gltfloader:load_gltf( assetfilename, asset, nil, params.bin_target )
-    if(gltf_data == nil) then return nil end
-
-    local ent = { 
-		name = asset.name,
-        id  = asset.go,
-        model = nil,
-        mesh = gltf_data,
-		pos = {0, 0, 0}, 
-		rot = { 0, 0, 0}, 
-		scale = {1, 1, 1},
-		etype = asset.folder,
-		filename = assetfilename,
-		format = asset.format,
-	} 
-
-    if(params and params.on_load) then params.on_load(ent) end
-    return ent
-end    
-
 -- --------------------------------------------------------------------------------------
 
 local function render_model( dt, model_rect )
@@ -180,7 +135,7 @@ local function render_model( dt, model_rect )
     local maxsize = math.sqrt( maxx * maxx + maxy * maxy + maxz * maxz)
     local sc = CAM_DISTANCE * 0.85 / maxsize * model_rect.model.scale
 
-    local offset = hmm.HMM_Vec3(aabb.min.x + maxx * 0.5, aabb.min.y + maxy * 0.5, aabb.min.z + maxz * 0.5)
+    local offset = hmm.HMM_V3(aabb.min.x + maxx * 0.5, aabb.min.y + maxy * 0.5, aabb.min.z + maxz * 0.5)
     offset.x, offset.y, offset.z = offset.x * sc, offset.y * sc, offset.x * sc
 
     local w, h      = model_rect.w, model_rect.h
@@ -189,14 +144,15 @@ local function render_model( dt, model_rect )
 
     cameramgr.set_nearfar( model_rect.cam, 0.01, CAM_DISTANCE * 2 * model_rect.model.scale )
     cameramgr.set_aspect( model_rect.cam, w/h )
-    cameramgr.lookat( model_rect.cam, hmm.HMM_Vec3(0.0, (offset.y + 1.5), -CAM_DISTANCE), hmm.HMM_Vec3(0.0, offset.y, 0.0), hmm.HMM_Vec3(0.0, -1.0, 0.0))
+    cameramgr.lookat( model_rect.cam, hmm.HMM_V3(0.0, (offset.y + 1.5), -CAM_DISTANCE), hmm.HMM_V3(0.0, offset.y, 0.0), hmm.HMM_V3(0.0, -1.0, 0.0))
     local view_proj = cameramgr.get_view_proj(model_rect.cam)
+    local view = cameramgr.get_view(model_rect.cam)
 
     local model_all_geom = model_rect.model.data.mesh.all_geom
     model_rect.model.data.mesh.camera = model_rect.cam
 
-    cameramgr.update_viewport( model_rect.cam, hmm.HMM_Vec4(0, 0, 1024, 1024))
-    cameramgr.update_scissor( model_rect.cam, hmm.HMM_Vec4(0, 0, 1024, 1024))
+    cameramgr.update_viewport( model_rect.cam, hmm.HMM_V4(0, 0, 1024, 1024))
+    cameramgr.update_scissor( model_rect.cam, hmm.HMM_V4(0, 0, 1024, 1024))
     local thiscam = cameramgr.get_id( model_rect.cam )
 
     for i, geom_id in ipairs(model_all_geom) do 
@@ -208,10 +164,10 @@ local function render_model( dt, model_rect )
         -- geom.fs_params[0].alpha_mode = 2
         geom.dstate[0].state = 0x01
 
-        local pos = hmm.HMM_Vec3(0, 0, 0)
-        local angles = hmm.HMM_Vec3(geom.rx, geom.ry, 0.0)
+        local pos = hmm.HMM_V3(0, 0, 0)
+        local angles = hmm.HMM_V3(geom.rx, geom.ry, 0.0)
         local model = geomutils.model_matrix( geom.transform, pos, angles, sc)
-        geom.vs_params[0].mvp    = hmm.HMM_MultiplyMat4(view_proj, model)
+        geom.vs_params[0].mvp    = hmm.HMM_MulM4(view_proj, model)
     end
 end
 
@@ -232,10 +188,10 @@ end
 threed_renderer.load_model = function(filename, params)
 
     -- Check first if it hasnt been loaded already! 
-    local is_loaded = threed_renderer.model_load_queue[filename]
-    if(is_loaded) then 
-        return is_loaded
-    end
+    -- local is_loaded = threed_renderer.model_load_queue[filename]
+    -- if(is_loaded) then 
+    --     return is_loaded
+    -- end
 
     local new_model = { loaded = nil, filename = filename, params = params }
     threed_renderer.model_load_queue[filename] = new_model
@@ -261,8 +217,8 @@ threed_renderer.load_models = function()
 
     -- print("queued models", count)
     for k,model_load in pairs(threed_renderer.model_load_queue) do
-        if(model_load.loaded == nil) then
-            model_load.data = load_gltf(model_load.filename, model_load.params)
+        if(model_load.loaded == nil and model_load.params.do_load) then
+            model_load.data = model_load.params.do_load( model_load )
             if(model_load.data) then 
                 -- model_load.data = threed_renderer.make_cube()
                 model_load.loaded = true

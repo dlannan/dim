@@ -93,8 +93,9 @@ local function tmerge(t1, t2)
 end
 
 -- ---------------------------------------------------------------------------
+-- tdump supports a callback where key,value or nil, entry are supplied to a callback
 local visited = {}
-local function tdump(o, level)
+local function tdump(o, level, cb)
 	local level = level or 1
 	if(level == 0) then visited = {} end
 	if type(o) == 'table' then
@@ -103,11 +104,13 @@ local function tdump(o, level)
 		  	if type(k) ~= 'number' then k = '"'..tostring(k)..'"' end
 			if(visited[v] == nil) then 
 				visited[v] = true
-		  		s = s .. string.rep("  ", level)..'['..k..'] = ' .. tdump(v, level+1)
+				if(cb) then cb( k, v ) end
+		  		s = s .. string.rep("  ", level)..'['..k..'] = ' .. tdump(v, level+1, cb)
 			end
 	   	end
 	   	return s .. string.rep("  ", level-1)..'}\n'
 	else
+		if(cb) then cb( nil, o ) end
 	   return tostring(o).."\n"
 	end
  end

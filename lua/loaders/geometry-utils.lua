@@ -38,24 +38,78 @@ local function makeMvp(rx, ry)
     local h         = sapp.sapp_heightf()
     local t         = (sapp.sapp_frame_duration() * 60.0)
 
-    local proj      = hmm.HMM_Perspective(60.0, w/h, 0.01, 10.0)
-    local view      = hmm.HMM_LookAt(hmm.HMM_Vec3(0.0, 1.5, 6.0), hmm.HMM_Vec3(0.0, 0.0, 0.0), hmm.HMM_Vec3(0.0, 1.0, 0.0))
-    local view_proj = hmm.HMM_MultiplyMat4(proj, view)
+    local proj      = hmm.HMM_Perspective_RH_NO(math.rad(60.0), w/h, 0.01, 10.0)
+    local view      = hmm.HMM_LookAt_RH(hmm.HMM_V3(0.0, 1.5, 6.0), hmm.HMM_V3(0.0, 0.0, 0.0), hmm.HMM_V3(0.0, 1.0, 0.0))
+    local view_proj = hmm.HMM_MulM4(proj, view)
 
-    local rxm       = hmm.HMM_Rotate(rx, hmm.HMM_Vec3(1.0, 0.0, 0.0))
-    local rym       = hmm.HMM_Rotate(ry, hmm.HMM_Vec3(0.0, 1.0, 0.0))
-    local model     = hmm.HMM_MultiplyMat4(rxm, rym)
+    local rxm       = hmm.HMM_Rotate_RH(rx, hmm.HMM_V3(1.0, 0.0, 0.0))
+    local rym       = hmm.HMM_Rotate_RH(ry, hmm.HMM_V3(0.0, 1.0, 0.0))
+    local model     = hmm.HMM_MulM4(rxm, rym)
 
-    local mvp       = hmm.HMM_MultiplyMat4(view_proj, model)
+    local mvp       = hmm.HMM_MulM4(view_proj, model)
     return mvp
 end
 
 ------------------------------------------------------------------------------------------------------------
 -- Bin related code
-function geom:makeGeom(name, prim, mesh, bin_target)
+function geom:makeGeom(name, prim, mesh, bin_target, materialdata)
+
+	local matdata     = materialdata or {
+		name = "default", 
+		filename = "lua/engine/shaders/base_texture_normals.glsl",
+		params = {},
+	}
+	
+	-- TODO: Needs to come from gltf refs
+	local material    = meshes.material(matdata.name, matdata.filename, matdata.params)
+	local prim_mat    = prim.material or { base_color = { 1, 1, 1, 1 } }
+
+	local newgeom = {}
+	newgeom.id 			= #geom.all_objs + 1
+	newgeom.model 		= meshes.model(name, prim, mesh, material)
+	newgeom.transform 	= prim.transform
+
+	newgeom.pip        = newgeom.model.pip 
+	newgeom.bind       = newgeom.model.bind
+	newgeom.rx = 0
+	newgeom.ry = 0
+
+	local bcolor = prim_mat.base_color or { 1, 1, 1, 1 }
+
+	newgeom.vs_params = ffi.new(matdata.name.."_vs_params_t[1]")
+	newgeom.vs_params[0].mvp = makeMvp(0.0, 0.0)
+	newgeom.vs_params[0].base_color_factor    = 	ffi.new("float [4]", {
+		bcolor[1], bcolor[2], bcolor[3], bcolor[4]
+	})
+
+	newgeom.fs_params = ffi.new(matdata.name.."_fs_params_t[1]")
+	newgeom.fs_params[0].alpha_cutoff   = newgeom.model.alpha.cutoff or 0.0
+	newgeom.fs_params[0].alpha_mode     = newgeom.model.alpha.mode or 0
+
+	newgeom.offset     = 0
+	newgeom.count      = prim.index_count 
+	newgeom.instances  = prim.instances or 1
+
+	newgeom.bintype    = bin_target or bins.BTYPE_OPAQUE
+	-- Use the dstate to directly effect the runtime object 
+	newgeom.bindid, newgeom.dstate = bins.bin_add_geom(newgeom)
+	
+	tinsert(geom.all_objs, newgeom)
+
+	return newgeom.id
+end
+
+------------------------------------------------------------------------------------------------------------
+-- Bin related code
+function geom:makeLines(name, prim, mesh, bin_target)
 
 	-- TODO: Needs to come from gltf refs
-	local material    = meshes.material(name, "lua/engine/shaders/base_texture.glsl", {})
+	local matdata     = {
+		name = "line", 
+		filename = "lua/engine/shaders/line_render.glsl",
+		params = {},
+	}
+	local material    = meshes.material(matdata.name, matdata.filename, matdata.params)
 	local prim_mat    = prim.material or  { base_color = { 1, 1, 1, 1 } }
 
 	local newgeom = {}
@@ -70,26 +124,11 @@ function geom:makeGeom(name, prim, mesh, bin_target)
 
 	local bcolor = prim_mat.base_color or { 1, 1, 1, 1 }
 
-	newgeom.vs_params = ffi.new("vs_params_t[1]")
-	newgeom.vs_params[0].mvp    = makeMvp(0.0, 0.0)
-	newgeom.vs_params[0].base_color_factor    = 	ffi.new("float [4]", {
-		bcolor[1], bcolor[2], bcolor[3], bcolor[4]
-	})
-
-	newgeom.vs_sg_range = ffi.new("sg_range[1]")
-	newgeom.vs_sg_range[0].ptr     = newgeom.vs_params
-	newgeom.vs_sg_range[0].size    = ffi.sizeof(newgeom.vs_params[0])
-
-	newgeom.fs_params = ffi.new("fs_params_t[1]")
-	newgeom.fs_params[0].alpha_cutoff   = newgeom.model.alpha.cutoff or 0.0
-	newgeom.fs_params[0].alpha_mode     = newgeom.model.alpha.mode or 0
-
-	newgeom.fs_sg_range = ffi.new("sg_range[1]")
-	newgeom.fs_sg_range[0].ptr     = newgeom.fs_params
-	newgeom.fs_sg_range[0].size    = ffi.sizeof(newgeom.fs_params[0])
+	newgeom.vs_params = ffi.new("line_vs_params_t[1]")
+	newgeom.vs_params[0].mvp = makeMvp(0.0, 0.0)
 
 	newgeom.offset     = 0
-	newgeom.count      = prim.index_count 
+	newgeom.count      = prim.vcount 
 	newgeom.instances  = 1
 
 	newgeom.bintype    = bin_target or bins.BTYPE_OPAQUE
@@ -105,33 +144,29 @@ end
 -- AABB param is a table with siz values (min.max) like: { 0, 0, 0, 1, 1, 1 }
 function geom:makeMesh( goname, primdata )
 
-	local itype 	= primdata.itype
-	local icount 	= primdata.icount
-	local indices 	= primdata.indices
-	local verts 	= primdata.verts
-	local uvs 		= primdata.uvs
-	local normals 	= primdata.normals
-	local aabb 		= primdata.aabb
-
-	if(verts == nil) then
+	if(primdata.verts == nil) then
 		pprint("[Error geom:makeMesh] No valid vertices?")
 		return nil
 	end 
 	if(type(goname) == "cdata") then goname = ffi.string(goname) end
 
 	local buffers 		= {}
-	buffers.itype 		= itype
-	buffers.icount 		= icount
-	buffers.vertices 	= verts
+	buffers.itype 		= primdata.itype
+	buffers.icount 		= primdata.icount
+	buffers.vertices 	= primdata.verts
+	buffers.vcount 		= primdata.vcount 
+	buffers.vsize 		= primdata.vsize
 
-	if(indices) then 
-		buffers.indices = indices
+	local mcount = primdata.vcount
+	if(primdata.indices) then 
+		buffers.indices = primdata.indices
+		mcount = primdata.icount
 	end 
-	if(uvs) then 
-		buffers.uvs = uvs
+	if(primdata.uvs) then 
+		buffers.uvs = primdata.uvs
 	end 
-	if(normals) then 
-		buffers.normals = normals
+	if(primdata.normals) then 
+		buffers.normals = primdata.normals
 	end 
 	
 	local buffs =  meshes.create_buffer(goname, buffers)
@@ -148,7 +183,7 @@ function geom:makeMesh( goname, primdata )
 	geom.meshes[goname] = mesh
 	geom.ctr = geom.ctr + 1
 
-	mesh.count = icount
+	mesh.count = mcount
 
 	return mesh
 end
@@ -502,20 +537,20 @@ end
 
 geom.model_matrix = function( tform, position, angles, scale )
     scale = scale or 1.0
-    position = position or hmm.HMM_Vec3(0,0,0)
-    local rotation = hmm.HMM_Quaternion(0,0,0,1.0)
+    position = position or hmm.HMM_V3(0,0,0)
+    local rotation = hmm.HMM_Q(0,0,0,1.0)
     if(angles) then  
-        local rxm       = hmm.HMM_QuaternionFromAxisAngle(hmm.HMM_Vec3(1.0, 0.0, 0.0), math.rad(angles.x))
-        local rym       = hmm.HMM_QuaternionFromAxisAngle(hmm.HMM_Vec3(0.0, 1.0, 0.0), math.rad(angles.y))
-        local rzm       = hmm.HMM_QuaternionFromAxisAngle(hmm.HMM_Vec3(0.0, 0.0, 1.0), math.rad(angles.z))
-        rotation        = hmm.HMM_MultiplyQuaternion(hmm.HMM_MultiplyQuaternion(rxm, rym), rzm)
+        local rxm       = hmm.HMM_QFromAxisAngle_RH(hmm.HMM_V3(1.0, 0.0, 0.0), math.rad(angles.x))
+        local rym       = hmm.HMM_QFromAxisAngle_RH(hmm.HMM_V3(0.0, 1.0, 0.0), math.rad(angles.y))
+        local rzm       = hmm.HMM_QFromAxisAngle_RH(hmm.HMM_V3(0.0, 0.0, 1.0), math.rad(angles.z))
+        rotation        = hmm.HMM_MulQ(hmm.HMM_MulQ(rxm, rym), rzm)
     end 
 
-    local scaler      = hmm.HMM_Scale(hmm.HMM_Vec3(scale, scale, scale))
+    local scaler      = hmm.HMM_Scale(hmm.HMM_V3(scale, scale, scale))
     local trans     = hmm.HMM_Translate( position )
-    local model     = hmm.HMM_MultiplyMat4( scaler, tform )
-    model           = hmm.HMM_MultiplyMat4(hmm.HMM_QuaternionToMat4( rotation ), model)
-    model           = hmm.HMM_MultiplyMat4(trans, model)
+    local model     = hmm.HMM_MulM4( scaler, tform )
+    if(angles) then model = hmm.HMM_MulM4(hmm.HMM_QToM4( rotation ), model) end
+    model           = hmm.HMM_MulM4(trans, model)
     return model
 end 
 

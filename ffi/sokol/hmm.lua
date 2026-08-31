@@ -111,8 +111,11 @@ typedef union hmm_vec4
                 float x, y, z;
             };        
         };
-
-        float W;
+        union
+        {
+            float W;
+            float w;
+        };
     };
     struct
     {
@@ -129,7 +132,11 @@ typedef union hmm_vec4
             };        
         };
 
-        float A;
+        union 
+        {
+            float A;
+            float a;
+        };
     };
 
     struct
@@ -155,6 +162,18 @@ typedef union hmm_vec4
 
     float Elements[4];
 } hmm_vec4;
+
+typedef union hmm_mat2
+{
+    float Elements[2][2];
+
+} hmm_mat2;
+
+typedef union hmm_mat3
+{
+    float Elements[3][3];
+
+} hmm_mat3;
 
 typedef union hmm_mat4
 {
@@ -204,103 +223,168 @@ float HMM_CosF(float Angle);
 float HMM_ACosF(float Theta);
 float HMM_ExpF(float Float);
 float HMM_LogF(float Float);
+float HMM_SqrtF(float Float);
+float HMM_InvSqrtF(float Float);
 
-float HMM_ToRadians(float Degrees);
-float HMM_SquareRootF(float Float);
-float HMM_RSquareRootF(float Float);
-
-float HMM_LengthSquaredVec2(hmm_vec2 A);
-float HMM_LengthSquaredVec3(hmm_vec3 A);
-float HMM_LengthSquaredVec4(hmm_vec4 A);
-
-float HMM_LengthVec2(hmm_vec2 A);    
-float HMM_LengthVec3(hmm_vec3 A);    
-float HMM_LengthVec4(hmm_vec4 A);    
+float HMM_ToRad(float Degrees);
+float HMM_ToDeg(float Radians);
+float HMM_ToTurn(float Angle);
 
 float HMM_Power(float Base, int Exponent);
 float HMM_PowerF(float Base, float Exponent);
 float HMM_Lerp(float A, float Time, float B);
 float HMM_Clamp(float Min, float Value, float Max);
 
-hmm_vec2 HMM_NormalizeVec2(hmm_vec2 A);
-hmm_vec3 HMM_NormalizeVec3(hmm_vec3 A);
-hmm_vec4 HMM_NormalizeVec4(hmm_vec4 A);
-
-float HMM_DotVec2(hmm_vec2 VecOne, hmm_vec2 VecTwo);
-float HMM_DotVec3(hmm_vec3 VecOne, hmm_vec3 VecTwo);
-float HMM_DotVec4(hmm_vec4 VecOne, hmm_vec4 VecTwo);
-
 hmm_vec3 HMM_Cross(hmm_vec3 VecOne, hmm_vec3 VecTwo);
 
-hmm_vec2 HMM_Vec2(float X, float Y);
+hmm_vec2 HMM_V2(float X, float Y);
 hmm_vec2 HMM_Vec2i(int X, int Y);
-hmm_vec3 HMM_Vec3(float X, float Y, float Z);
+hmm_vec3 HMM_V3(float X, float Y, float Z);
 hmm_vec3 HMM_Vec3i(int X, int Y, int Z);
-hmm_vec4 HMM_Vec4(float X, float Y, float Z, float W);
+hmm_vec4 HMM_V4(float X, float Y, float Z, float W);
 hmm_vec4 HMM_Vec4i(int X, int Y, int Z, int W);
-hmm_vec4 HMM_Vec4v(hmm_vec3 Vector, float W);
+hmm_vec4 HMM_V4V(hmm_vec3 Vector, float W);
 
-hmm_vec2 HMM_AddVec2(hmm_vec2 Left, hmm_vec2 Right);
-hmm_vec3 HMM_AddVec3(hmm_vec3 Left, hmm_vec3 Right);
-hmm_vec4 HMM_AddVec4(hmm_vec4 Left, hmm_vec4 Right);
+hmm_vec2 HMM_AddV2(hmm_vec2 Left, hmm_vec2 Right);
+hmm_vec3 HMM_AddV3(hmm_vec3 Left, hmm_vec3 Right);
+hmm_vec4 HMM_AddV4(hmm_vec4 Left, hmm_vec4 Right);
 
-hmm_vec2 HMM_SubtractVec2(hmm_vec2 Left, hmm_vec2 Right);
-hmm_vec3 HMM_SubtractVec3(hmm_vec3 Left, hmm_vec3 Right);
-hmm_vec4 HMM_SubtractVec4(hmm_vec4 Left, hmm_vec4 Right);
+hmm_vec2 HMM_SubV2(hmm_vec2 Left, hmm_vec2 Right);
+hmm_vec3 HMM_SubV3(hmm_vec3 Left, hmm_vec3 Right);
+hmm_vec4 HMM_SubV4(hmm_vec4 Left, hmm_vec4 Right);
 
-hmm_vec2 HMM_MultiplyVec2(hmm_vec2 Left, hmm_vec2 Right);
-hmm_vec2 HMM_MultiplyVec2f(hmm_vec2 Left, float Right);
-hmm_vec3 HMM_MultiplyVec3(hmm_vec3 Left, hmm_vec3 Right);
-hmm_vec3 HMM_MultiplyVec3f(hmm_vec3 Left, float Right);
-hmm_vec4 HMM_MultiplyVec4(hmm_vec4 Left, hmm_vec4 Right);
-hmm_vec4 HMM_MultiplyVec4f(hmm_vec4 Left, float Right);
+hmm_vec2 HMM_MulV2(hmm_vec2 Left, hmm_vec2 Right);
+hmm_vec2 HMM_MulV2F(hmm_vec2 Left, float Right);
+hmm_vec3 HMM_MulV3(hmm_vec3 Left, hmm_vec3 Right);
+hmm_vec3 HMM_MulV3F(hmm_vec3 Left, float Right);
+hmm_vec4 HMM_MulV4(hmm_vec4 Left, hmm_vec4 Right);
+hmm_vec4 HMM_MulV4F(hmm_vec4 Left, float Right);
 
-hmm_vec2 HMM_DivideVec2(hmm_vec2 Left, hmm_vec2 Right);
-hmm_vec2 HMM_DivideVec2f(hmm_vec2 Left, float Right);
-hmm_vec3 HMM_DivideVec3(hmm_vec3 Left, hmm_vec3 Right);
-hmm_vec3 HMM_DivideVec3f(hmm_vec3 Left, float Right);
-hmm_vec4 HMM_DivideVec4(hmm_vec4 Left, hmm_vec4 Right);
-hmm_vec4 HMM_DivideVec4f(hmm_vec4 Left, float Right);
+hmm_vec2 HMM_DivV2(hmm_vec2 Left, hmm_vec2 Right);
+hmm_vec2 HMM_DivV2F(hmm_vec2 Left, float Right);
+hmm_vec3 HMM_DivV3(hmm_vec3 Left, hmm_vec3 Right);
+hmm_vec3 HMM_DivV3F(hmm_vec3 Left, float Right);
+hmm_vec4 HMM_DivV4(hmm_vec4 Left, hmm_vec4 Right);
+hmm_vec4 HMM_DivV4F(hmm_vec4 Left, float Right);
 
-hmm_bool HMM_EqualsVec2(hmm_vec2 Left, hmm_vec2 Right);
-hmm_bool HMM_EqualsVec3(hmm_vec3 Left, hmm_vec3 Right);
-hmm_bool HMM_EqualsVec4(hmm_vec4 Left, hmm_vec4 Right);
+hmm_bool HMM_EqV2(hmm_vec2 Left, hmm_vec2 Right);
+hmm_bool HMM_EqV3(hmm_vec3 Left, hmm_vec3 Right);
+hmm_bool HMM_EqV4(hmm_vec4 Left, hmm_vec4 Right);
 
-hmm_mat4 HMM_Mat4(void);
-hmm_mat4 HMM_Mat4d(float Diagonal);
-hmm_mat4 HMM_AddMat4(hmm_mat4 Left, hmm_mat4 Right);
-hmm_mat4 HMM_SubtractMat4(hmm_mat4 Left, hmm_mat4 Right);
+float HMM_DotV2(hmm_vec2 Left, hmm_vec2 Right);
+float HMM_DotV3(hmm_vec3 Left, hmm_vec3 Right);
+float HMM_DotV4(hmm_vec4 Left, hmm_vec4 Right);
 
-hmm_mat4 HMM_MultiplyMat4(hmm_mat4 Left, hmm_mat4 Right);
-hmm_mat4 HMM_MultiplyMat4f(hmm_mat4 Matrix, float Scalar);
-hmm_vec4 HMM_MultiplyMat4ByVec4(hmm_mat4 Matrix, hmm_vec4 Vector);
-hmm_mat4 HMM_DivideMat4f(hmm_mat4 Matrix, float Scalar);
+hmm_vec3 HMM_Cross(hmm_vec3 Left, hmm_vec3 Right);
 
-hmm_mat4 HMM_Transpose(hmm_mat4 Matrix);
+float HMM_LenSqrV2(hmm_vec2 A);
+float HMM_LenSqrV3(hmm_vec3 A);
+float HMM_LenSqrV4(hmm_vec4 A);
 
-hmm_mat4 HMM_Orthographic(float Left, float Right, float Bottom, float Top, float Near, float Far);
-hmm_mat4 HMM_Perspective(float FOV, float AspectRatio, float Near, float Far);
+float HMM_LenV2(hmm_vec2 A);    
+float HMM_LenV3(hmm_vec3 A);    
+float HMM_LenV4(hmm_vec4 A);    
+
+hmm_vec2 HMM_NormV2(hmm_vec2 A);
+hmm_vec3 HMM_NormV3(hmm_vec3 A);
+hmm_vec4 HMM_NormV4(hmm_vec4 A);
+
+hmm_vec2 HMM_LerpV2(hmm_vec2 A, float Time, hmm_vec2 B);
+hmm_vec3 HMM_LerpV3(hmm_vec3 A, float Time, hmm_vec3 B);
+hmm_vec4 HMM_LerpV4(hmm_vec4 A, float Time, hmm_vec4 B);
+
+hmm_vec4 HMM_LinearCombineV4M4(hmm_vec4 Left, hmm_vec4 Right);
+
+hmm_mat2 HMM_M2(void);
+hmm_mat2 HMM_M2D(float Diagonal);
+hmm_mat2 HMM_TransposeM2(hmm_mat2 Matrix);
+hmm_mat2 HMM_AddM2(hmm_mat2 Left, hmm_mat2 Right);
+hmm_mat2 HMM_SubM2(hmm_mat2 Left, hmm_mat2 Right);
+hmm_vec2 HMM_MulM2V2(hmm_mat2 Matrix, hmm_vec2 Vector);
+hmm_mat2 HMM_MulM2(hmm_mat2 Left, hmm_mat2 Right);
+hmm_mat2 HMM_MulM2F(hmm_mat2 Matrix, float Scalar);
+hmm_mat2 HMM_DivM2F(hmm_mat2 Matrix, float Scalar);
+float HMM_DeterminantM2(hmm_mat2 Matrix);
+hmm_mat2 HMM_InvGeneralM2(hmm_mat2 Matrix);
+
+hmm_mat3 HMM_M3(void);
+hmm_mat3 HMM_M3D(float Diagonal);
+hmm_mat3 HMM_TransposeM3(hmm_mat3 Matrix);
+hmm_mat3 HMM_AddM3(hmm_mat3 Left, hmm_mat3 Right);
+hmm_mat3 HMM_SubM3(hmm_mat3 Left, hmm_mat3 Right);
+hmm_vec2 HMM_MulM3V3(hmm_mat3 Matrix, hmm_vec3 Vector);
+hmm_mat3 HMM_MulM3(hmm_mat3 Left, hmm_mat3 Right);
+hmm_mat3 HMM_MulM3F(hmm_mat3 Matrix, float Scalar);
+hmm_mat3 HMM_DivM3F(hmm_mat3 Matrix, float Scalar);
+float HMM_DeterminantM3(hmm_mat3 Matrix);
+hmm_mat3 HMM_InvGeneralM3(hmm_mat3 Matrix);
+
+hmm_mat4 HMM_M4(void);
+hmm_mat4 HMM_M4D(float Diagonal);
+hmm_mat4 HMM_TransposeM4(hmm_mat4 Matrix);
+hmm_mat4 HMM_AddM4(hmm_mat4 Left, hmm_mat4 Right);
+hmm_mat4 HMM_SubM4(hmm_mat4 Left, hmm_mat4 Right);
+hmm_mat4 HMM_MulM4(hmm_mat4 Left, hmm_mat4 Right);
+hmm_mat4 HMM_MulM4F(hmm_mat4 Matrix, float Scalar);
+hmm_vec4 HMM_MulM4V4(hmm_mat4 Matrix, hmm_vec4 Vector);
+hmm_mat4 HMM_DivM4F(hmm_mat4 Matrix, float Scalar);
+float HMM_DeterminantM4(hmm_mat4 Matrix);
+hmm_mat4 HMM_InvGeneralM4(hmm_mat4 Matrix);
+
+hmm_mat4 HMM_Orthographic_RH_NO(float Left, float Right, float Bottom, float Top, float Near, float Far);
+hmm_mat4 HMM_Orthographic_RH_ZO(float Left, float Right, float Bottom, float Top, float Near, float Far);
+hmm_mat4 HMM_Orthographic_LH_NO(float Left, float Right, float Bottom, float Top, float Near, float Far);
+hmm_mat4 HMM_Orthographic_RH_ZO(float Left, float Right, float Bottom, float Top, float Near, float Far);
+hmm_mat4 HMM_InvOrthographic(hmm_mat4 OrthoMatrix);
+
+hmm_mat4 HMM_Perspective_RH_NO(float FOV, float AspectRatio, float Near, float Far);
+hmm_mat4 HMM_Perspective_RH_ZO(float FOV, float AspectRatio, float Near, float Far);
+hmm_mat4 HMM_Perspective_LH_NO(float FOV, float AspectRatio, float Near, float Far);
+hmm_mat4 HMM_Perspective_LH_ZO(float FOV, float AspectRatio, float Near, float Far);
+
+hmm_mat4 HMM_InvPerspective_RH(hmm_mat4 PerspectiveMatrix);
+hmm_mat4 HMM_InvPerspective_LH(hmm_mat4 PerspectiveMatrix);
 
 hmm_mat4 HMM_Translate(hmm_vec3 Translation);
-hmm_mat4 HMM_Rotate(float Angle, hmm_vec3 Axis);
+hmm_mat4 HMM_InvTranslate(hmm_mat4 TranslationMatrix);
+
+hmm_mat4 HMM_Rotate_RH(float Angle, hmm_vec3 Axis);
+hmm_mat4 HMM_Rotate_LH(float Angle, hmm_vec3 Axis);
+hmm_mat4 HMM_InvRotate(hmm_mat4 RotationMatrix);
+
 hmm_mat4 HMM_Scale(hmm_vec3 Scale);
+hmm_mat4 HMM_InvScale(hmm_mat4 ScaleMatrix);
 
-hmm_mat4 HMM_LookAt(hmm_vec3 Eye, hmm_vec3 Center, hmm_vec3 Up);
+hmm_mat4 _HMM_LookAt(hmm_vec3 F,  hmm_vec3 S, hmm_vec3 U,  hmm_vec3 Eye);
+hmm_mat4 HMM_LookAt_RH(hmm_vec3 Eye, hmm_vec3 Center, hmm_vec3 Up);
+hmm_mat4 HMM_LookAt_LH(hmm_vec3 Eye, hmm_vec3 Center, hmm_vec3 Up);
+hmm_mat4 HMM_InvLookAt(hmm_mat4 Matrix);
 
-hmm_quaternion HMM_Quaternion(float X, float Y, float Z, float W);
-hmm_quaternion HMM_QuaternionV4(hmm_vec4 Vector);
-hmm_quaternion HMM_AddQuaternion(hmm_quaternion Left, hmm_quaternion Right);
-hmm_quaternion HMM_SubtractQuaternion(hmm_quaternion Left, hmm_quaternion Right);
-hmm_quaternion HMM_MultiplyQuaternion(hmm_quaternion Left, hmm_quaternion Right);
-hmm_quaternion HMM_MultiplyQuaternionF(hmm_quaternion Left, float Multiplicative);
-hmm_quaternion HMM_DivideQuaternionF(hmm_quaternion Left, float Dividend);
-hmm_quaternion HMM_InverseQuaternion(hmm_quaternion Left);
-float HMM_DotQuaternion(hmm_quaternion Left, hmm_quaternion Right);
-hmm_quaternion HMM_NormalizeQuaternion(hmm_quaternion Left);
+hmm_quaternion HMM_Q(float X, float Y, float Z, float W);
+hmm_quaternion HMM_QV4(hmm_vec4 Vector);
+hmm_quaternion HMM_AddQ(hmm_quaternion Left, hmm_quaternion Right);
+hmm_quaternion HMM_SubQ(hmm_quaternion Left, hmm_quaternion Right);
+hmm_quaternion HMM_MulQ(hmm_quaternion Left, hmm_quaternion Right);
+hmm_quaternion HMM_MulQF(hmm_quaternion Left, float Multiplicative);
+hmm_quaternion HMM_DivQF(hmm_quaternion Left, float Dividend);
+float HMM_DotQ(hmm_quaternion Left, hmm_quaternion Right);
+hmm_quaternion HMM_InvQ(hmm_quaternion Left);
+hmm_quaternion HMM_NormQ(hmm_quaternion Left);
+hmm_quaternion _HMM_MixQ(hmm_quaternion Left, float MixLeft, hmm_quaternion Right, float MixRight);
 hmm_quaternion HMM_NLerp(hmm_quaternion Left, float Time, hmm_quaternion Right);
 hmm_quaternion HMM_Slerp(hmm_quaternion Left, float Time, hmm_quaternion Right);
-hmm_mat4 HMM_QuaternionToMat4(hmm_quaternion Left);
-hmm_quaternion HMM_QuaternionFromAxisAngle(hmm_vec3 Axis, float AngleOfRotation);
+hmm_mat4 HMM_QToM4(hmm_quaternion Left);
+hmm_quaternion HMM_M4ToQ_RH(hmm_mat4 M);
+hmm_quaternion HMM_M4ToQ_LH(hmm_mat4 M);
+hmm_quaternion HMM_QFromAxisAngle_RH(hmm_vec3 Axis, float AngleOfRotation);
+hmm_quaternion HMM_QFromAxisAngle_LH(hmm_vec3 Axis, float AngleOfRotation);
+hmm_quaternion HMM_QFromNormPair(hmm_vec3 Left, hmm_vec3 Right);
+hmm_quaternion HMM_QFromVecPair(hmm_vec3 Left, hmm_vec3 Right);
+
+hmm_vec2 HMM_RotateV2(hmm_vec2 V, float Angle);
+hmm_vec3 HMM_RotateV3Q(hmm_vec3 V, hmm_quaternion Q);
+hmm_vec3 HMM_RotateV3AxisAngle_LH(hmm_vec3 V, hmm_vec3 Axis, float Angle);
+hmm_vec3 HMM_RotateV3AxisAngle_RH(hmm_vec3 V, hmm_vec3 Axis, float Angle);
 
 ]]
 

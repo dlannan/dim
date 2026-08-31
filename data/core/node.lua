@@ -201,7 +201,6 @@ function Node:remove_view(root, view)
 end
 
 function Node:close_view(root, view)
-  if(view.doc and view.doc.on_close) then view.doc:on_close() end
   local do_close = function()
     self:remove_view(root, view)
   end
@@ -210,11 +209,14 @@ end
 
 
 -- Assumes the node 
+local anodetype = { up = true, left = true }
+local bnodetype = { down = true, right = true }
+
 function Node:get_direction_node(dir)
   
-  if self.a and (dir == "up" or dir == "left") then 
+  if self.a and (anodetype[dir]) then 
     return self.a:get_direction_node(dir) 
-  elseif self.b and (dir == "down" or dir == "right") then 
+  elseif self.b and (bnodetype[dir]) then 
     return self.b:get_direction_node(dir) 
   else 
     return self 

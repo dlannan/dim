@@ -49,4 +49,6 @@ style.widget_background2 = style.background2
 style.widget_background3 = style.background3
 
 style.threed_background =  { common.color "#252529" }
+
+style.margin = { tab = { top = 2 } }
 return style

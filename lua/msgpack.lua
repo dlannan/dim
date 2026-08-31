@@ -71,6 +71,14 @@ packers['nil'] = function (buffer)
     buffer[#buffer+1] = char(0xC0)              -- nil
 end
 
+packers['cdata'] = function (buffer, cdata)
+    buffer[#buffer+1] = char(0xC0)              -- nil
+end
+
+packers['userdata'] = function (buffer, userdata)
+    buffer[#buffer+1] = char(0xC0)              -- nil
+end
+
 packers['boolean'] = function (buffer, bool)
     if bool then
         buffer[#buffer+1] = char(0xC3)          -- true

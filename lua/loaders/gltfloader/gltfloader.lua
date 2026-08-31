@@ -8,16 +8,14 @@ local ffi 			= require("ffi")
 
 local gameobject	= require("lua.engine.gameobject")
 
-local geom 			= require("lua.gltfloader.geometry-utils")
+local geom 			= require("lua.loaders.geometry-utils")
 local meshes 		= require("lua.geometry.meshes")
-local imageutils 	= require("lua.gltfloader.image-utils")
+local imageutils 	= require("lua.loaders.image-utils")
 
 local b64 			= require("lua.base64")
 local utils			= require("lua.utils")
 local cgltf      	= require("ffi.sokol.cgltf")
 local hmm      		= require("hmm")
-
-local binmgr 		= require("lua.geometry.bins")
 
 local fmt 			= string.format
 
@@ -29,6 +27,12 @@ local gltfloader = {
 	curr_factory 	= nil,
 	temp_meshes 	= {},
 }
+
+------------------------------------------------------------------------------------------------------------
+
+local fileparts = function( path )
+    return string.match(path, "^(.-[\\/])([^\\/]-)%.([^\\/]+)$")
+end
 
 ------------------------------------------------------------------------------------------------------------
 
@@ -102,8 +106,8 @@ end
 -- Combine AABB's of model with primitives. 
 local function calcAABB( aabb, aabbmin, aabbmax )
 	aabb = aabb or { 
-		min = hmm.HMM_Vec3(math.huge,math.huge,math.huge), 
-		max = hmm.HMM_Vec3(-math.huge,-math.huge,-math.huge) 
+		min = hmm.HMM_V3(math.huge,math.huge,math.huge), 
+		max = hmm.HMM_V3(-math.huge,-math.huge,-math.huge) 
 	}
 	aabb.min.x = math.min(aabb.min.x, aabbmin.x)
 	aabb.min.y = math.min(aabb.min.y, aabbmin.y)
@@ -120,23 +124,23 @@ end
 local function transformAABB(aabb, tform)
     -- compute 8 corners of the local AABB
     local corners = {
-        hmm.HMM_Vec3(aabb.min.x, aabb.min.y, aabb.min.z),
-        hmm.HMM_Vec3(aabb.max.x, aabb.min.y, aabb.min.z),
-        hmm.HMM_Vec3(aabb.min.x, aabb.max.y, aabb.min.z),
-        hmm.HMM_Vec3(aabb.min.x, aabb.min.y, aabb.max.z),
-        hmm.HMM_Vec3(aabb.min.x, aabb.max.y, aabb.max.z),
-        hmm.HMM_Vec3(aabb.max.x, aabb.max.y, aabb.min.z),
-        hmm.HMM_Vec3(aabb.max.x, aabb.min.y, aabb.max.z),
-        hmm.HMM_Vec3(aabb.max.x, aabb.max.y, aabb.max.z),
+        hmm.HMM_V3(aabb.min.x, aabb.min.y, aabb.min.z),
+        hmm.HMM_V3(aabb.max.x, aabb.min.y, aabb.min.z),
+        hmm.HMM_V3(aabb.min.x, aabb.max.y, aabb.min.z),
+        hmm.HMM_V3(aabb.min.x, aabb.min.y, aabb.max.z),
+        hmm.HMM_V3(aabb.min.x, aabb.max.y, aabb.max.z),
+        hmm.HMM_V3(aabb.max.x, aabb.max.y, aabb.min.z),
+        hmm.HMM_V3(aabb.max.x, aabb.min.y, aabb.max.z),
+        hmm.HMM_V3(aabb.max.x, aabb.max.y, aabb.max.z),
     }
 
     local newAABB = { 
-        min = hmm.HMM_Vec3(math.huge, math.huge, math.huge),
-        max = hmm.HMM_Vec3(-math.huge, -math.huge, -math.huge)
+        min = hmm.HMM_V3(math.huge, math.huge, math.huge),
+        max = hmm.HMM_V3(-math.huge, -math.huge, -math.huge)
     }
 
     for i=1,#corners do
-        local worldCorner = hmm.HMM_MultiplyMat4ByVec4(tform, hmm.HMM_Vec4(corners[i].x, corners[i].y, corners[i].z, 1))
+        local worldCorner = hmm.HMM_MulM4V4(tform, hmm.HMM_V4(corners[i].x, corners[i].y, corners[i].z, 1))
         newAABB.min.x = math.min(newAABB.min.x, worldCorner.x)
         newAABB.min.y = math.min(newAABB.min.y, worldCorner.y)
         newAABB.min.z = math.min(newAABB.min.z, worldCorner.z)
@@ -241,8 +245,8 @@ function gltfloader:processdata( model, gochildname, thisnode, parent )
 
 			-- geomextension.setdataindexfloatstotable( buffer_data, verts, indices, 3)
 			local pos_acc = pos_attrib.data
-			local pmin = hmm.HMM_Vec3(pos_acc.min[0], pos_acc.min[1], pos_acc.min[2])
-			local pmax = hmm.HMM_Vec3(pos_acc.max[0], pos_acc.max[1], pos_acc.max[2]) 
+			local pmin = hmm.HMM_V3(pos_acc.min[0], pos_acc.min[1], pos_acc.min[2])
+			local pmax = hmm.HMM_V3(pos_acc.max[0], pos_acc.max[1], pos_acc.max[2]) 
 			aabb = calcAABB( aabb, pmin, pmax )
 		end
 
@@ -338,7 +342,7 @@ function gltfloader:makeNodeMeshes( model, parent, node )
 	--  parent node mesh
 
 	local parentname = gameobject.goname(parent)
-	local gomeshname  = parentname.."/node_"..string.format("%s", node.name)
+	local gomeshname  = parentname.."_node_"..string.format("%s", node.name)
 	gomeshname = gomeshname:gsub("%s+", "")
 		
 	local gochild = gameobject.create( nil, gomeshname )
@@ -360,12 +364,12 @@ function gltfloader:makeNodeMeshes( model, parent, node )
 
 	-- Try children
 	local rot = thisnode["rotation"]
-	if(rot) then gameobject.set_rotation(gochild, hmm.HMM_Quaternion(rot[1], rot[2], rot[3], rot[4])) end
+	if(rot) then gameobject.set_rotation(gochild, hmm.HMM_Q(rot[1], rot[2], rot[3], rot[4])) end
 	local trans = thisnode["translation"]
-	if(trans) then gameobject.set_position(gochild, hmm.HMM_Vec3(trans[1], trans[2], trans[3])) end
+	if(trans) then gameobject.set_position(gochild, hmm.HMM_V3(trans[1], trans[2], trans[3])) end
 
 	local scale = thisnode["scale"]
-	if(scale) then gameobject.set_scale(gochild, hmm.HMM_Vec3(math.abs(scale[1]), math.abs(scale[2]), math.abs(scale[3])) ) end
+	if(scale) then gameobject.set_scale(gochild, hmm.HMM_V3(math.abs(scale[1]), math.abs(scale[2]), math.abs(scale[3])) ) end
 	
 	-- Parent this mesh to the incoming node 
 	gameobject.set_parent(gochild, parent)
@@ -402,7 +406,7 @@ end
 
 ------------------------------------------------------------------------------------------------------------
 -- // parse the GLTF buffer definitions and start loading buffer blobs
-function gltf_parse_buffers(model)
+local function gltf_parse_buffers(model)
 	
 	local options = ffi.new("cgltf_options[1]", {})
 	local result = cgltf.cgltf_load_buffers( options, model.data[0], model.filename)
@@ -417,7 +421,7 @@ end
 -- --------------------------------------------------------------------------------------------------------
 -- This creates a world transform for each node. Not sure I like this (was copied from sokol cgltf example)
 local function build_transform_for_gltf_node(node)
-    local parent_tform = hmm.HMM_Mat4d(1.0) -- ✅ start with identity
+    local parent_tform = hmm.HMM_M4D(1.0) -- ✅ start with identity
     if node[0].parent ~= nil then
         parent_tform = build_transform_for_gltf_node(node[0].parent)
     end
@@ -425,23 +429,23 @@ local function build_transform_for_gltf_node(node)
     if node[0].has_matrix == 1 then
         local tform = ffi.new("hmm_mat4[1]")
         ffi.copy(tform, node.matrix, 16 * ffi.sizeof("float"))
-        return hmm.HMM_MultiplyMat4(parent_tform, tform[0])
+        return hmm.HMM_MulM4(parent_tform, tform[0])
     else
-        local translate = hmm.HMM_Mat4d(1.0)
+        local translate = hmm.HMM_M4D(1.0)
 		if(node[0].has_translation == 1) then 
-			translate = hmm.HMM_Translate(hmm.HMM_Vec3(node[0].translation[0], node[0].translation[1], node[0].translation[2])) 
+			translate = hmm.HMM_Translate(hmm.HMM_V3(node[0].translation[0], node[0].translation[1], node[0].translation[2])) 
 		end
-        local rotate = hmm.HMM_Mat4d(1.0)
+        local rotate = hmm.HMM_M4D(1.0)
 		if(node[0].has_rotation == 1) then 
-			rotate = hmm.HMM_QuaternionToMat4(hmm.HMM_Quaternion( node[0].rotation[0], node[0].rotation[1], node[0].rotation[2], node[0].rotation[3]))
+			rotate = hmm.HMM_QToM4(hmm.HMM_Q( node[0].rotation[0], node[0].rotation[1], node[0].rotation[2], node[0].rotation[3]))
 		end
-        local scale = hmm.HMM_Mat4d(1.0)
+        local scale = hmm.HMM_M4D(1.0)
 		if(node[0].has_scale == 1) then 
-			scale = hmm.HMM_Scale(hmm.HMM_Vec3(node[0].scale[0], node[0].scale[1], node[0].scale[2]))
+			scale = hmm.HMM_Scale(hmm.HMM_V3(node[0].scale[0], node[0].scale[1], node[0].scale[2]))
 		end
-        local local_tform = hmm.HMM_MultiplyMat4(translate, hmm.HMM_MultiplyMat4(rotate, scale))
+        local local_tform = hmm.HMM_MulM4(translate, hmm.HMM_MulM4(rotate, scale))
 
-        return hmm.HMM_MultiplyMat4(parent_tform, local_tform)
+        return hmm.HMM_MulM4(parent_tform, local_tform)
     end
 end
 
@@ -456,7 +460,7 @@ end
 
 -- --------------------------------------------------------------------------------------------------------
 -- Load images using our utils.
-function gltf_parse_images(model)
+local function gltf_parse_images(model)
 
 	local image_map = {}
 	model.images = {}
@@ -504,7 +508,7 @@ end
 
 -- --------------------------------------------------------------------------------------------------------
 
-function gltf_parse_materials(model)
+local function gltf_parse_materials(model)
 
 	model.materials = {}
 	model.materials_map = {}
@@ -550,7 +554,7 @@ end
 
 -- --------------------------------------------------------------------------------------------------------
 
-function gltf_parse_meshes(model)
+local function gltf_parse_meshes(model)
 
 	model.scene = {}
 	model.scene.meshes = {}
@@ -641,7 +645,7 @@ end
 -- --------------------------------------------------------------------------------------------------------
 -- This is a special version of load that allows the loading of a single mesh into a gameobject manager
 
-function gltfloader:load_gltf( assetfilename, asset, disableaabb, bin_target )
+function gltfloader:load_gltf_asset( assetfilename, asset, disableaabb, bin_target )
 
 	-- Check for gltf - only support this at the moment. 
 	local valid = string.match(assetfilename, ".+%."..asset.format)
@@ -700,8 +704,8 @@ function gltfloader:load_gltf( assetfilename, asset, disableaabb, bin_target )
 	-- end
 
 	model.aabb = { 
-		min = hmm.HMM_Vec3(math.huge,math.huge,math.huge), 
-		max = hmm.HMM_Vec3(-math.huge,-math.huge,-math.huge) 
+		min = hmm.HMM_V3(math.huge,math.huge,math.huge), 
+		max = hmm.HMM_V3(-math.huge,-math.huge,-math.huge) 
 	}
 
 	if(asset.format == "gltf" or asset.format == "glb") then 
@@ -794,6 +798,45 @@ function gltfloader:run_nodes( model, node_func )
 		self:run_node( model, node, node_func)
 	end 
 end
+
+-- --------------------------------------------------------------------------------------
+
+function gltfloader:load_gltf(filename, params)
+
+    local dir, fname, extension = fileparts(filename)
+    local asset = {
+        path = "",
+        folder = dir,
+        name = fname,
+        asset = fname,
+        format = extension
+    }
+
+	-- print(asset.path)
+	-- print(asset.asset)
+	-- print(asset.folder)
+	-- print(asset.format)
+
+	local assetfilename = filename
+	local gltf_data = gltfloader:load_gltf_asset( assetfilename, asset, nil, params.bin_target )
+    if(gltf_data == nil) then return nil end
+
+    local ent = { 
+		name = asset.name,
+        id  = asset.go,
+        model = nil,
+        mesh = gltf_data,
+		pos = {0, 0, 0}, 
+		rot = { 0, 0, 0}, 
+		scale = {1, 1, 1},
+		etype = asset.folder,
+		filename = assetfilename,
+		format = asset.format,
+	} 
+
+    if(params and params.on_load) then params.on_load(ent, params) end
+    return ent
+end   
 
 ------------------------------------------------------------------------------------------------------------
 

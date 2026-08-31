@@ -109,7 +109,7 @@ end
 function RootView:open_doc(doc)
   local node = self:get_active_node()
   if(node == nil) then node = core.root_view:get_active_node() end
-  if node.locked and node.nofocus ~= true and core.focus_view then
+  if node.locked and core.focus_view then
     self:set_focus_view()
     node = self.root_node:get_node_for_view(core.focus_view)
   end
@@ -121,6 +121,7 @@ function RootView:open_doc(doc)
       return view
     end
   end
+
   local view =  DocView:new(doc)
   node:add_view(view)
   self.root_node:update_layout()
@@ -243,15 +244,13 @@ function RootView:on_mouse_released(button, x, y, ...)
   --   return
   -- end
 
-  local node = self.root_node:get_child_overlapping_point(x, y)
-  if(node) then 
-    node:on_mouse_released(button, x, y)
-  end
-
   if self.dragged_divider then
-    self.dragged_divider.is_hovered = nil
     self.dragged_divider = nil
-    self.dragged_released = true
+  else
+    local node = self.root_node:get_child_overlapping_point(x, y)
+    if(node) then 
+      node:on_mouse_released(button, x, y)
+    end
   end
 end
 
@@ -324,7 +323,6 @@ end
 
 function RootView:on_mouse_wheel(...)
   local x, y = self.mouse.x, self.mouse.y
-  self.dragged_released = nil
   local node = self.root_node:get_child_overlapping_point(x, y)
     -- return node.active_view.view:on_mouse_wheel(...)
   local ok = node.active_view.on_mouse_wheel and node.active_view:on_mouse_wheel(...)

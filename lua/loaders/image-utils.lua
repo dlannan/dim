@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------------------------
 
-local utils = require("lua.utils")
+local utils 		= require("lua.utils")
 
 local imageutils = {
 	ctr 		= 0,

@@ -23,7 +23,7 @@ local stb           = require("stb")
 local utils         = require("utils")
 local keymap        = require("src.keymap")
 
-local imageutils    = require("lua.gltfloader.image-utils")
+local imageutils    = require("lua.loaders.image-utils")
 
 local ffi           = require("ffi")
 

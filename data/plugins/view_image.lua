@@ -11,13 +11,13 @@ local utils   = require("lua.utils")
 local tinsert   = table.insert
 
 local images = {
-  files = { "%.png$", "%.jpg$", "%.jpeg$", "%.tga$", "%.gif$" },
+  files = { ["png"] = 1, ["jpg"] = 2, ["jpeg"] = 3, ["tga"] = 4, ["gif"] = 5 },
   file_types = { "png", "jpg", "jpeg", "tga", "gif" },
 }
 
-local function find(str, field)
+local function find(string, field)
   for i, v in ipairs(images.files) do
-    if common.match_pattern(str, v or {}) then
+    if common.match_pattern(string, v or {}) then
       return i
     end
   end
@@ -26,8 +26,10 @@ end
 
 -- Override the Doc loader - if its a png.. then load it, and make a png Image Viewer for it.
 local imagedoc_load = function(self, filename)
-  local idx = find(filename, "files")
-  if ( idx ) then 
+
+  local ext = core.get_extension(filename)
+  local idx = images.files[ext]
+  if ( idx ) then  
     local image, image_info = renderer.load_image(filename)
     if(image) then 
       self.image = { nk_image = image, info = image_info, zoom = 1.0, itype = images.file_types[idx] }
@@ -38,7 +40,7 @@ local imagedoc_load = function(self, filename)
   return nil
 end
 
-tinsert(Doc.loaders, imagedoc_load)
+tinsert(Doc.loaders, { loader = imagedoc_load, exts = images.files })
 
 local function imagedocview_draw(self)
   if(self.doc.image) then 

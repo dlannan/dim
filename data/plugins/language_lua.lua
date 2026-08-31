@@ -1,7 +1,7 @@
 local syntax = require "core.syntax"
 
 syntax.add {
-  files = "%.lua$",
+  files =  { "%.script$", "%.lua$" },
   headers = "^#!.*[ /]lua",
   comment = "--",
   patterns = {

@@ -1,7 +1,7 @@
 
 local b='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=' -- You will need this for encoding/decoding
 -- encoding
-function enc(data)
+local function enc(data)
     return ((data:gsub('.', function(x) 
         local r,b='',x:byte()
         for i=8,1,-1 do r=r..(b%2^i-b%2^(i-1)>0 and '1' or '0') end
@@ -15,7 +15,7 @@ function enc(data)
 end
 
 -- decoding
-function dec(data)
+local function dec(data)
     data = string.gsub(data, '[^'..b..'=]', '')
     return (data:gsub('.', function(x)
         if (x == '=') then return '' end

@@ -33,6 +33,8 @@ function SidebarView:new()
   local new_sidebar = utils.deepcopy(SidebarView)
   new_sidebar.view = View:new()
   new_sidebar.view.scrollable = true
+  new_sidebar.view.nofocus = true 
+  new_sidebar.nofocus = true
   new_sidebar.visible = true
 
   new_sidebar.init_size = true

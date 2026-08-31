@@ -69,7 +69,7 @@ local function project_scan_thread()
     end
 
     local redraw = false
-    while running do
+    if running then
         -- every check disable redraw
         redraw = false
 

@@ -22,7 +22,7 @@ local bins 	    = require("lua.geometry.bins")
 local smgr      = require("lua.engine.statemanager")
 local seq       = require("lua.engine.sequencer")
 
-local imageutils 	= require("lua.gltfloader.image-utils")
+local imageutils 	= require("lua.loaders.image-utils")
 
 local msgpack   = require "lua.msgpack"
 local mputils   = require "lua.msgpack-utils"

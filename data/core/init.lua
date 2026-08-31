@@ -16,6 +16,7 @@ local Doc
 local core = {}
 core.prerun_funcs = {}
 core.postrun_funcs = {}
+core.registered_extensions = {}
 
 --------------------------------------------------------------------------------------------------
 
@@ -245,6 +246,7 @@ function core.set_active_view(view)
     end
     core.last_active_view = core.active_view
     core.active_view = view
+    core.focus_view = view
   end
 end
 
@@ -280,14 +282,21 @@ function core.pop_clip_rect()
   renderer.set_clip_rect(x, y, w, h)
 end
 
+function core.register_extension(ext)
+  core.registered_extensions[ext] = {}
+end
+
+function core.get_extension(filename)
+  return filename:match("%.([^%.]+)$")
+end
 
 function core.open_doc(filename)
-  if filename then
+  local ext = core.get_extension(filename)
+  if filename and core.registered_extensions[ext] == nil then
     -- try to find existing doc for filename
     local abs_filename = system.absolute_path(filename)
     for _, doc in ipairs(core.docs) do
-      if doc.filename
-      and abs_filename == system.absolute_path(doc.filename) then
+      if doc.filename and abs_filename == system.absolute_path(doc.filename) then
         return doc
       end
     end
@@ -503,7 +512,7 @@ end
 
 function core.loop( tm, f )
   local tmr = system.get_time()
-  local diff = mat.max(0.001, tm-tmr)
+  local diff = math.max(0.001, tm-tmr)
   local cycles = 0
   core.add_thread( function() 
     local run = nil
@@ -525,6 +534,27 @@ function core.send_message( msg, delay )
       tinsert(core.messages, msg)
     end)
   end
+end
+
+function core.file_read( filename, owner, callback )
+    core.send_message( { 
+        dst = "SysFileRead", 
+        src = "core", 
+        owner = owner, 
+        filename = filename, 
+        callback = callback
+    })
+end
+
+function core.file_write( filename, owner, data, callback )
+    core.send_message( { 
+        dst = "SysFileWrite", 
+        src = "core", 
+        owner = owner, 
+        filename = filename, 
+        callback = callback,
+        data = data,
+    })
 end
 
 function core.recv_message( name, recv_func )

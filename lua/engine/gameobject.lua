@@ -1,9 +1,9 @@
-local tinsert 	= table.insert
-local utils 	= require("lua.utils")
-local hmm       = require("hmm")
-local ffi 		= require("ffi")
+local tinsert 		= table.insert
+local utils 		= require("lua.utils")
+local hmm       	= require("hmm")
+local ffi 			= require("ffi")
 
-local geom 		= require("lua.gltfloader.geometry-utils")
+-- local geom 			= require("lua.loaders.geometry-utils")
 
 -- --------------------------------------------------------------------------------------------------------
 -- Internal storage for a mesh gameobject
@@ -80,9 +80,9 @@ gameobject.create = function( id, name, pos, rot, scale, parent )
 	-- Sometimes the original gameobject name is used
 	if(type(name)=="cdata") then name = ffi.string(name) end 
 
-	pos = pos or hmm.HMM_Vec3(0, -999999, 0)
-	rot = rot or hmm.HMM_Quaternion(0, 0, 0, 0)
-	local scale = hmm.HMM_Vec3(0, 0, 0)
+	pos = pos or hmm.HMM_V3(0, -999999, 0)
+	rot = rot or hmm.HMM_Q(0, 0, 0, 0)
+	local scale = hmm.HMM_V3(1, 1, 1)
 
 	gameobject.check()
 	local gobj_index = gameobject.count 
@@ -147,11 +147,11 @@ end
 
 -- --------------------------------------------------------------------------------------------------------
 
-gameobject.get_mesh = function(id)
-	assert(id < gameobject.count and id >= 0)
-	local go = gameobject.all_gameobjects[id]
-	return geom:GetMesh(ffi.string(go.name))
-end 
+-- gameobject.get_mesh = function(id)
+-- 	assert(id < gameobject.count and id >= 0)
+-- 	local go = gameobject.all_gameobjects[id]
+-- 	return geom:GetMesh(ffi.string(go.name))
+-- end 
 
 -- --------------------------------------------------------------------------------------------------------
 

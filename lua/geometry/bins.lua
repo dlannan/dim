@@ -59,6 +59,7 @@ local ffi       = require("ffi")
 
 local tinsert   = table.insert
 local tcount    = table.getn
+local tremove   = table.remove
 
 -- ---------------------------------------------------------------------------------------------------
 
@@ -204,12 +205,25 @@ bin_mgr.camera_add = function( cameraid, front )
 end 
 
 -- ---------------------------------------------------------------------------------------------------
+
+bin_mgr.camera_remove = function( cameraid )
+
+    local found = nil
+    for k, camid in ipairs(bin_mgr.cameras) do
+        if(camid == cameraid) then found = k; break end 
+    end
+    if(found) then 
+        tremove(bin_mgr.cameras, found) 
+    end
+end
+
+-- ---------------------------------------------------------------------------------------------------
 -- Need a way to order passes on submission
 bin_mgr.pass_add = function(pdata, index, front, attach)
 
     local thispass      = ffi.new("sg_pass[1]")
     thispass[0].action.colors[0].load_action = pdata.action
-    thispass[0].action.colors[0].clear_value = pdata.clear   
+    if(pdata.clear) then thispass[0].action.colors[0].clear_value = pdata.clear end 
 
     if(attach) then 
         thispass[0].attachments = attach
@@ -288,12 +302,38 @@ bin_mgr.add_offscreen = function(newcam, clear_color, bin_target, front, w, h)
             clear       = clear_color,
         }
         newcam.offscreen = true
-        local off_attachments, color_img, depth_img = bin_mgr.add_offscreen_buffers( w, h )
-        local passid = bin_mgr.pass_add(main_pass, bin_target, nil, off_attachments)
-        newcam.color_image = color_img 
-        newcam.depth_image = depth_img      
+        newcam.off_attachments, newcam.color_image, newcam.depth_image = bin_mgr.add_offscreen_buffers( w, h )
+        newcam.passid = bin_mgr.pass_add(main_pass, bin_target, nil, newcam.off_attachments)
+        cammgr.add_pass(newcam.name, newcam.passid)
+        bin_mgr.camera_add(newcam.id, front)    
+        return newcam.off_attachments            
+    end
+    return nil
+end
+
+-- ---------------------------------------------------------------------------------------------------
+-- Free up resources!
+bin_mgr.camera_del = function( camera_name )
+    local cam = cammgr.get(camera_name)
+    if(cam) then 
+        if(cam.offscreen) then 
+            sg.sg_destroy_attachments(cam.off_attachments)
+            bin_mgr.camera_remove(cam.id)
+            cammgr.remove(camera_name)
+        end
+    end
+end
+
+-- ---------------------------------------------------------------------------------------------------
+
+bin_mgr.add_pass = function( newcam, attachid, bin_target)
+
+    if(newcam) then 
+        local main_pass = {
+            action      = sg.SG_LOADACTION_LOAD,
+        }
+        local passid = bin_mgr.pass_add(main_pass, bin_target, nil, attachid)
         cammgr.add_pass(newcam.name, passid)
-        bin_mgr.camera_add(newcam.id, front)                
     end
 end
 
@@ -354,6 +394,7 @@ bin_mgr.render = function(w, h)
 
                     -- Set offscreen rendering
                     if(camera.offscreen == true) then 
+                        if(camera.offscreen_prerender) then camera.offscreen_prerender(pass.binlist) end
                     else
                         pass.pass[0].swapchain = slib.sglue_swapchain() 
                         -- pprint("normal: ", camera.name)

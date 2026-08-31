@@ -71,12 +71,14 @@ end
 -- User can add loaders here if it returns non nil, then loaded the doc!
 function Doc:check_loaders(filename)
   for k, loader in ipairs(Doc.loaders) do 
-    local res = loader(self, filename)
-    if(res) then  return true end 
+    local ext = filename:match("%.([^%.]+)$")
+    if(loader.exts[ext]) then 
+      local res = loader.loader(self, filename)
+      if(res) then  return true else return nil end 
+    end
   end 
   return nil
 end
-
 
 function Doc:load(filename)
   if(self:check_loaders(filename)) then return end 

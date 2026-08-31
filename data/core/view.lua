@@ -44,6 +44,13 @@ function View:get_name()
   return "---"
 end
 
+function View:set_target_size( axis, size )
+  if(axis == "x") then 
+    self.size.x = size 
+  else
+    self.size.y = size 
+  end 
+end
 
 function View:get_scrollable_size()
   return math.huge

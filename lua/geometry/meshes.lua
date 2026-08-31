@@ -14,14 +14,14 @@
 local ffi           = require("ffi")
 
 local utils         = require("lua.utils")
-local imageutils 	= require("lua.gltfloader.image-utils")
+local imageutils 	= require("lua.loaders.image-utils")
 local cgltf      	= require("ffi.sokol.cgltf")
 
 local tinsert       = table.insert
 
 -- --------------------------------------------------------------------------------------
 
-local shc           = require("tools.shader_compiler.shc_compile").init( "dim", false )
+local shc           = require("tools.shader_compiler.shc_compile").init( "worldbuilder", false )
 
 -- ----------------------------------------------------------------------------------------
 
@@ -67,12 +67,17 @@ mesh.create_buffer     = function(name, buffers)
     local attribs     = {}
     local float_size  = ffi.sizeof("float")
     local offset      = 0
+    local vsize       = buffers.vsize or 3
 
     if(buffers.vertices) then 
         
-        vertcount = ffi.sizeof(buffers.vertices) / (3 * float_size)
-        stride = 3
-        tinsert(attribs, { offset = offset, format = sg.SG_VERTEXFORMAT_FLOAT3 })
+        vertcount = buffers.vcount or ffi.sizeof(buffers.vertices) / (vsize * float_size)
+        stride = vsize
+        if(vsize == 4) then 
+            tinsert(attribs, { offset = offset, format = sg.SG_VERTEXFORMAT_FLOAT4 })
+        else     
+            tinsert(attribs, { offset = offset, format = sg.SG_VERTEXFORMAT_FLOAT3 })
+        end
 
         if(buffers.uvs) then 
             stride = stride + 2
@@ -95,18 +100,14 @@ mesh.create_buffer     = function(name, buffers)
         vbuf   = nil,
         vcount  = vertcount,
         ibuf   = nil,
-        icount  = 0,
+        icount  = buffers.icount or 0,
+        index_type = buffers.itype or nil,
         sbuf   = nil,
         scount  = 0,
         stride  = stride,
         attrs   = attribs,
         depth   = {},
     }
-
-    if(buffers.indices) then 
-        buffs.icount = buffers.icount
-        buffs.index_type = buffers.itype
-    end
 
     local uvptr = nil
     local nptr = nil
@@ -122,9 +123,9 @@ mesh.create_buffer     = function(name, buffers)
         -- Copy in interlaced! 
         local ptr = ffi.cast("float *", buffer) 
         for i=1, vertcount do 
-            ffi.copy(ptr, vptr,  3 * float_size)
-            vptr = vptr + 3
-            ptr = ptr + 3
+            ffi.copy(ptr, vptr,  stride * float_size)
+            vptr = vptr + vsize
+            ptr = ptr + vsize
 
             if(buffers.uvs) then 
                 ffi.copy(ptr, uvptr, 2* float_size)
@@ -205,7 +206,7 @@ mesh.material  = function(name, shaderfile, params)
     local cached = all_meshes.materials[shaderfile]
     if(cached) then return cached end
 
-    local shader    = shc.compile(shaderfile)
+    local shader    = shc.compile(shaderfile, name, name)
     local shd       = sg.sg_make_shader(shader)
 
     local sampler_desc      = ffi.new("sg_sampler_desc")

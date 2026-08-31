@@ -44,7 +44,7 @@ local WorkspaceData         = {
   configs = {},       -- Each space has a project path
 }
 
-local workspace_filename = ".dim_cfg.json"
+local workspace_filename = ".worldbuilder_cfg.json"
 
 
 local function serialize(val)

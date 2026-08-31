@@ -15,18 +15,9 @@ local cammgr        = require("lua.engine.camera_manager")
 local bins 	        = require("lua.geometry.bins")
 
 local threed_models = {
-  files = { "%.glb$", "%.gltf$" },
+  files = { ["glb"] = true, ["gltf"] = true, ["GLB"] = true, ["GLTF"] = true },
   count = 0,
 }
-
-local function find(string)
-  for i, v in ipairs(threed_models.files) do
-    if common.match_pattern(string, v or {}) then
-      return i
-    end
-  end
-  return nil
-end
 
 local function draw_stats(model, pos, size)
   if(model.data == nil or model.data.mesh == nil) then return end
@@ -43,44 +34,6 @@ local function draw_stats(model, pos, size)
   end
 end
 
--- Override the Doc loader - if its a png.. then load it, and make a png Image Viewer for it.
-local function GLTF_load(self, filename)
-  if ( find(filename) ) then
-    core.try(function()
-      threed_models.count = threed_models.count + 1
-      local bin_target = bins.BTYPE_OPAQUE + threed_models.count
-
-      local params = {
-        bin_target = bin_target,
-        on_load = function(model)
-          local cam_name = "gltf_cam_"..model.name
-          -- Should have some sort of default configh ere
-          local newcam = cammgr.add(cam_name, 60.0, 1, 0.01, 1000.0) 
-          local clear_color = { 0.118, 0.118, 0.118, 0.0 }
-          bins.add_offscreen(newcam, clear_color, bin_target, true)
-          model.camera = cam_name
-          model.bin_target = bin_target
-        end
-      }
-      self.model = renderer.load_model(filename, params)
-    end)
-    
-    if(self.model) then
-      self.model.scale = 1.0
-      self.filename = filename
-      return true
-    end
-  end
-  return nil
-end
-
-tinsert(Doc.loaders, GLTF_load)
-
-
-local function GLTF_on_mouse_moved(self, x, y, dx, dy)
-  self.hovered = true
-end
-
 local function GLTF_on_hide(doc)
   if(doc.model) then
     local model = doc.model
@@ -91,8 +44,63 @@ local function GLTF_on_hide(doc)
   end
 end
 
--- NOTE: These draw routines only fire on updates needed for the UI window. 
---       THEY DO NOT UPDATE PER FRAME RENDER!! 
+local function GLTF_on_close(doc)
+    if (doc.model) then
+        local model = doc.model
+        bins.camera_del(model.params.camera)
+    end
+end
+
+
+-- Override the Doc loader - if its a png.. then load it, and make a png Image Viewer for it.
+local function GLTF_load(self, filename)
+
+    self.on_hide = GLTF_on_hide
+    self.on_close = GLTF_on_close
+
+    local cam_count = utils.tcount(cammgr.cameras())
+    local bin_target = bins.BTYPE_OPAQUE + cam_count
+
+    local params = {
+      do_load = function(model_load)
+        local cam_count = utils.tcount(cammgr.cameras())
+        model_load.params.bin_target = bins.BTYPE_OPAQUE + cam_count
+        
+        local gltfloader    = require("lua.loaders.gltfloader.gltfloader")
+        return gltfloader:load_gltf(model_load.filename, model_load.params)
+      end,
+      type = "gltf",
+    }
+
+    params.on_load = function(model)
+      local cam_count = utils.tcount(cammgr.cameras())
+      local cam_name = "gltf_cam_"..model.name.."_"..(cam_count or 0)
+      -- Should have some sort of default configh ere
+      local newcam = cammgr.add(cam_name, 60.0, 1, 0.01, 1000.0) 
+      local clear_color = { 0.118, 0.118, 0.118, 0.0 }
+      bins.add_offscreen(newcam, clear_color, params.bin_target, true)
+      params.camera = cam_name
+      model.camera = cam_name
+      model.bin_target = params.bin_target
+    end
+
+    self.model = renderer.load_model(filename, params)
+  
+  if(self.model) then
+    self.model.scale = 1.0
+    self.filename = filename
+    return true
+  end
+  return nil
+end
+
+tinsert(Doc.loaders, { loader = GLTF_load, exts = threed_models.files } )
+
+
+local function GLTF_on_mouse_moved(self, x, y, dx, dy)
+  self.hovered = true
+end
+
 local function GLTF_draw(self)
 
   -- print("drawing....", debug.traceback())
@@ -109,7 +117,6 @@ local function GLTF_draw(self)
     local model = self.doc.model
     local doc_size = self.view.size
     local doc_pos = self.view.position
-    self.doc.on_hide = GLTF_on_hide
 
     if(self.view.hovered) then 
       system.set_cursor("arrow", { 
@@ -119,6 +126,16 @@ local function GLTF_draw(self)
       renderer.set_cursor()
       self.view.hovered = nil
     end
+
+    -- local hovered = false
+    -- if(self:scrollbar_overlaps_point(x, y))
+
+    -- local old_cursor = renderer.cursor
+    -- system.set_cursor("arrow", { 
+    --   position = { x = doc_pos.x, y = doc_pos.y }, 
+    --   size = { x = 1.0, y = 1.0 }
+    -- })
+    -- renderer.set_cursor()
 
     core.try(function()
       renderer.draw_model(model, doc_pos.x, doc_pos.y, doc_size.x, doc_size.y)
@@ -131,6 +148,8 @@ local function GLTF_draw(self)
       self.doc.drawn = true
     end)
 
+    -- system.set_cursor( old_cursor.name, old_cursor.rect )
+    -- renderer.set_cursor()
     return true
   end
   return nil
@@ -147,3 +166,6 @@ end
 
 tinsert(DocView.drawers, GLTF_draw)
 tinsert(DocView.on_mouse_wheels, GLTF_on_mouse_wheel)
+
+core.register_extension("gltf")
+core.register_extension("glb") 

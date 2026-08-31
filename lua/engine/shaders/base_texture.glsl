@@ -1,6 +1,6 @@
 @ctype mat4 hmm_mat4
 
-@vs vs
+@vs vs_terrain
 layout(binding=0, std140) uniform vs_params {
     mat4 mvp;
     vec4 base_color_factor;
@@ -19,7 +19,7 @@ void main() {
 }
 @end
 
-@fs fs
+@fs fs_terrain
 layout(binding=1) uniform fs_params {
     float alpha_cutoff;
     int alpha_mode; // 0=opaque, 1=mask, 2=blend
@@ -43,4 +43,4 @@ void main() {
 }
 @end
 
-@program base_texture vs fs
+@program terrain vs_terrain fs_terrain

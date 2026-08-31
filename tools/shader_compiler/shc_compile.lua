@@ -23,11 +23,7 @@ sh_compiler.init = function(base_path, debug_shader, tools_path)
         tools_dir = base_dir..tools_path..dirtools.sep
     end 
 
-    if(ffi.os == "Windows") then 
-        sh_compiler.target_tmp      = base_dir.."bin\\shaderbin\\shader_gen.h"
-    else 
-        sh_compiler.target_tmp      = base_dir.."bin/shaderbin/shader_gen.h"
-    end
+    sh_compiler.console_out     = "stdout:"
     sh_compiler.target_lang     = "glsl410"
     sh_compiler.target_output   = "sokol"
     
@@ -47,9 +43,9 @@ end
 -- --------------------------------------------------------------------------------------
 -- Process the shader header file for use in the lua scripts
 --   returns a lua table that can then be used in the soko shader methods
-sh_compiler.process_shader = function( filename, shader_src, program_name )
+sh_compiler.process_shader = function( filename, shader_src, program_name, mat_name )
 
-    if(program_name) then 
+    if(program_name and #program_name > 0) then 
         program_name = program_name.."_"
     else 
         program_name = ""
@@ -80,6 +76,10 @@ sh_compiler.process_shader = function( filename, shader_src, program_name )
         ffi_str = ffi_str.."]]\n\n"
     end
 
+    if(mat_name) then
+        ffi_str = string.gsub( ffi_str, "vs_params_t", mat_name.."_vs_params_t")
+        ffi_str = string.gsub( ffi_str, "fs_params_t", mat_name.."_fs_params_t")
+    end
     -- Make a sg_shader_desc 
 
     -- get vs_source 
@@ -124,11 +124,11 @@ sh_compiler.process_shader = function( filename, shader_src, program_name )
 
     ffi_str = ffi_str..desc_str.."\n"
     ffi_str = ffi_str..[[return ]]..program_name..[[shader]]
-   
+      
     if(sh_compiler.debug) then 
-        pprint(">>------- Shader: "..filename.." ---------")
-        pprint(ffi_str) 
-        pprint("<<------- End Shader ---------")
+        print(">>------- Shader: "..filename.." ---------")
+        print(ffi_str) 
+        print("<<------- End Shader ---------")
     end
     return load(ffi_str, nil, nil, tbl)()
 end
@@ -137,32 +137,36 @@ end
 -- Compile shader to file, load file, parse it and build the appropriate lua script to use
 --   in the sokol shader setups
 
-sh_compiler.compile = function( glslfile, program_name )
+sh_compiler.compile = function( glslfile, program_name, mat_name )
 
-    local command = exec..' -i '..glslfile.." -o "..sh_compiler.target_tmp
+    program_name = program_name or ""
+   
+    local command = exec..' -i '..glslfile.." -o "..sh_compiler.console_out
     command = command.." -l "..sh_compiler.target_lang.." -f "..sh_compiler.target_output
--- print(command)
+    -- print(command)
+
     local runner = io.popen(command, "r")
     -- Read in the results, then the files
+    local shader_src = nil
     if(runner) then 
-        local results = runner:read("*a")
+        shader_src = runner:read("*a")
         runner:close()
-        pprint("[sh_compiler.lua] Shader: "..glslfile.." compiled correctly.")
+        print("[sh_compiler.lua] Shader: "..glslfile.." compiled correctly.")
     else 
-        pprint("Invalid command: "..command)
+        print("[sh_compiler.lua] shc compiler failed: "..command)
         return nil
     end
 
     -- Load in the generated file
-    local lua_shader = ""
-    local tmpfile = io.open(sh_compiler.target_tmp, "r")
-    if(tmpfile) then 
-        local shader_src = tmpfile:read("*a")
-        tmpfile:close()
-        lua_shader = sh_compiler.process_shader(glslfile, shader_src, program_name)
-        return lua_shader
+    if(shader_src) then 
+        local res, err = sh_compiler.process_shader(glslfile, shader_src, program_name, mat_name)
+        if(err) then 
+            print("[sh_compiler.lua] Process Shader error: ", err)
+            return nil 
+        end 
+        return res
     else
-        pprint("Cannot load tmpfile: "..sh_compiler.target_tmp)
+        print("[sh_compiler.lua] Shader not compiled: "..glslfile)
         return nil
     end
 end
